@@ -1,11 +1,12 @@
-"use client"
+"use client";
+
 import { useState } from "react";
-// import group from "./group.png";
-// import image11 from "./image-11.png";
-// import line1 from "./line-1.svg";
-// import line2 from "./line-2.svg";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function SignUp() {
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -13,157 +14,250 @@ export default function SignUp() {
     confirmPassword: "",
   });
 
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+      general: "",
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.username.trim()) {
+      newErrors.username = "Username wajib diisi.";
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email wajib diisi.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Format email tidak valid.";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password wajib diisi.";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password minimal 6 karakter.";
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = "Konfirmasi password wajib diisi.";
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Konfirmasi password tidak sama.";
+    }
+
+    return newErrors;
+  };
+
+  const handleGoogleRegister = () => {
+    alert("Register with Google masih dummy ya.");
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const existingUsers = JSON.parse(localStorage.getItem("users")) || [];
+
+      const emailUsed = existingUsers.some(
+        (user) => user.email.toLowerCase() === formData.email.toLowerCase()
+      );
+
+      if (emailUsed) {
+        setErrors({
+          email: "Email sudah terdaftar. Gunakan email lain.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const newUser = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+      };
+
+      localStorage.setItem("users", JSON.stringify([...existingUsers, newUser]));
+      router.push("/login");
+    } catch {
+      setErrors({
+        general: "Terjadi kesalahan saat menyimpan data.",
+      });
+      setIsSubmitting(false);
+    }
   };
 
-  const handleGoogleRegister = () => {};
-
   return (
-    <div className="bg-[#d4eefb] overflow-hidden w-full min-w-[1920px] min-h-[1080px] relative">
-      <div className="top-[540px] left-[-442px] w-[553px] h-[553px] bg-[#53bab3b2] rounded-[276.5px] blur-[100px] absolute aspect-[1]" />
+    <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
+      {/* background blur blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
+        <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
+        <div className="absolute left-[14%] top-[-7rem] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
+        <div className="absolute right-[20%] top-[16%] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
+        <div className="absolute bottom-[-9rem] left-[-2rem] h-80 w-80 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
+        <div className="absolute bottom-[-5rem] left-[26%] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
+        <div className="absolute left-[-6rem] top-[-3rem] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
+      </div>
 
-      <div className="top-[-371px] left-[927px] w-[553px] h-[553px] bg-[#53bab3b2] rounded-[276.5px] blur-[100px] absolute aspect-[1]" />
-
-      <div className="top-[-302px] left-[299px] w-[542px] h-[542px] bg-[#ffe5f3cc] rounded-[271px] blur-[100px] absolute aspect-[1]" />
-
-      <div className="top-[171px] left-[1000px] w-[542px] h-[542px] bg-[#ffe5f3cc] rounded-[271px] blur-[100px] absolute aspect-[1]" />
-
-      <div className="top-[908px] left-[-49px] w-[593px] h-[593px] bg-[#ffe5f3cc] rounded-[296.5px] blur-[100px] absolute aspect-[1]" />
-
-      <div className="top-[684px] left-[482px] w-[542px] h-[542px] bg-[#9ad9f8cc] rounded-[271px] blur-[100px] absolute aspect-[1]" />
-
-      <div className="top-[-116px] left-[-216px] w-[542px] h-[542px] bg-[#9ad9f8cc] rounded-[271px] blur-[100px] absolute aspect-[1]" />
-
-      <div className="top-3 left-[902px] w-[483px] h-[483px] rounded-[241.5px] bg-[linear-gradient(159deg,rgba(255,250,194,1)_0%,rgba(255,255,10,1)_100%)] absolute aspect-[1]" />
-
-      <img
-        className="absolute w-[1620px] h-[1080px] top-0 left-[300px] aspect-[1.5]"
-        alt="Group"
-        src="/images/group.png"
-      />
-
-      <div className="absolute top-[calc(50.00%_-_415px)] left-[90px] w-[620px] h-[830px] bg-white rounded-[20px] shadow-[0px_0px_15px_#0000004c]" />
-
-      <form
-        onSubmit={handleSubmit}
-        className="flex-col w-[620px] h-[830px] gap-[30px] px-0 py-10 absolute top-[125px] left-[90px] flex items-center"
-        noValidate
-      >
-        <div className="h-[90px] justify-center gap-2.5 px-[30px] py-2.5 relative self-stretch w-full flex items-center">
-          <h1 className="flex-1 h-[114px] mt-[-23.00px] mb-[-21.00px] [font-family:'Poppins-Bold',Helvetica] font-bold text-[#0c72a6] text-[64px] relative flex items-center justify-center text-center tracking-[0] leading-[normal]">
-            Sign Up
-          </h1>
-        </div>
-
-        <label className="flex w-[530px] items-center gap-5 px-[30px] py-3 relative flex-[0_0_auto] bg-white rounded-[50px] border border-solid border-neutral-400 cursor-text">
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleChange}
-            placeholder="Username"
-            autoComplete="username"
-            className="relative flex items-center justify-center w-full mt-[-1.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-neutral-400 text-xl text-center tracking-[0] leading-[normal] placeholder:text-neutral-400 focus:text-[#2c2c2c] bg-transparent border-0 outline-none appearance-none"
-          />
-        </label>
-
-        <label className="flex w-[530px] items-center gap-5 px-[30px] py-3 relative flex-[0_0_auto] bg-white rounded-[50px] border border-solid border-neutral-400 cursor-text">
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Email"
-            autoComplete="email"
-            className="relative flex items-center justify-center w-full mt-[-1.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-neutral-400 text-xl text-center tracking-[0] leading-[normal] placeholder:text-neutral-400 focus:text-[#2c2c2c] bg-transparent border-0 outline-none appearance-none"
-          />
-        </label>
-
-        <label className="flex w-[530px] items-center gap-5 px-[30px] py-3 relative flex-[0_0_auto] bg-white rounded-[50px] border border-solid border-neutral-400 cursor-text">
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Password"
-            autoComplete="new-password"
-            className="relative flex items-center justify-center w-full mt-[-1.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-neutral-400 text-xl text-center tracking-[0] leading-[normal] placeholder:text-neutral-400 focus:text-[#2c2c2c] bg-transparent border-0 outline-none appearance-none"
-          />
-        </label>
-
-        <label className="flex w-[530px] items-center gap-5 px-[30px] py-3 relative flex-[0_0_auto] bg-white rounded-[50px] border border-solid border-neutral-400 cursor-text">
-          <input
-            type="password"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            placeholder="Konfirmasi Password"
-            autoComplete="new-password"
-            className="relative flex items-center justify-center w-full mt-[-1.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-neutral-400 text-xl text-center tracking-[0] leading-[normal] placeholder:text-neutral-400 focus:text-[#2c2c2c] bg-transparent border-0 outline-none appearance-none"
-          />
-        </label>
-
-        <div className="w-[530px] justify-center gap-3.5 p-2.5 relative flex-[0_0_auto] flex items-center">
+      <section className="relative z-10 min-h-screen w-full overflow-hidden px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
+        {/* illustration as right-side layer */}
+        <div className="absolute inset-y-0 right-0 hidden w-[80vw] xl:block">
           <img
-            className="ml-[-9.50px] relative w-60 h-px object-cover"
-            alt="Line"
-            src="/images/line-1.png"
-          />
-
-          <div className="relative flex items-center justify-center w-fit mt-[-1.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-[#2c2c2c] text-xl text-center tracking-[0] leading-[normal]">
-            or
-          </div>
-
-          <img
-            className="mr-[-9.50px] relative w-60 h-px object-cover"
-            alt="Line"
-            src="/images/line-2.png"
+            src="/images/Group-1054.png"
+            alt="Group"
+            className="h-full w-full object-cover object-[25%_center]"
           />
         </div>
 
-        <button
-          type="button"
-          onClick={handleGoogleRegister}
-          className="w-[530px] justify-center gap-3 px-[30px] py-3 relative flex-[0_0_auto] bg-white rounded-[50px] border border-solid border-neutral-400 flex items-center cursor-pointer hover:bg-neutral-50 transition-colors"
-        >
-          <img
-            className="relative w-[22px] h-[22px] aspect-[1] object-cover"
-            alt="Image"
-            src="/images/image-11.png"
-          />
+        {/* content wrapper */}
+        <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1600px] items-center">
+          <div className="w-full max-w-[460px] lg:ml-8">
+            <div className="rounded-[20px] bg-white px-5 py-8 shadow-[0_0_18px_rgba(0,0,0,0.18)] sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+              <h1 className="mb-8 text-center text-[34px] font-bold leading-none text-[#0c72a6] sm:text-[42px] lg:mb-10 lg:text-[48px]">
+                Sign Up
+              </h1>
 
-          <div className="relative flex items-center justify-center w-fit mt-[-1.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-[#2c2c2c] text-xl text-center tracking-[0] leading-[normal]">
-            Register with Google
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+                <div>
+                  <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="Username"
+                    autoComplete="username"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                  />
+                  {errors.username && (
+                    <p className="mt-1.5 ml-3 text-[12px] text-red-500">
+                      {errors.username}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Email"
+                    autoComplete="email"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                  />
+                  {errors.email && (
+                    <p className="mt-1.5 ml-3 text-[12px] text-red-500">
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Password"
+                    autoComplete="new-password"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                  />
+                  {errors.password && (
+                    <p className="mt-1.5 ml-3 text-[12px] text-red-500">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Konfirmasi Password"
+                    autoComplete="new-password"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                  />
+                  {errors.confirmPassword && (
+                    <p className="mt-1.5 ml-3 text-[12px] text-red-500">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 pt-1">
+                  <div className="h-px flex-1 bg-neutral-500" />
+                  <span className="text-[14px] text-[#2c2c2c]">or</span>
+                  <div className="h-px flex-1 bg-neutral-500" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleRegister}
+                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white px-6 text-[14px] font-normal text-[#2c2c2c] transition-colors hover:bg-neutral-50"
+                >
+                  <img
+                    className="h-5 w-5 object-contain"
+                    alt="Google"
+                    src="/images/image-11.png"
+                  />
+                  <span>Register with Google</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="h-[40px] w-full rounded-full bg-[#0c72a6] px-6 text-[14px] font-medium text-white transition-colors hover:bg-[#0a5f8a] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isSubmitting ? "Signing Up..." : "Sign Up"}
+                </button>
+
+                {errors.general && (
+                  <p className="text-center text-[12px] text-red-500">
+                    {errors.general}
+                  </p>
+                )}
+
+                <p className="pt-1 text-center text-[14px] text-[#0c72a6]">
+                  Already have an account?{" "}
+                  <Link
+                    href="/login"
+                    className="font-medium underline transition-colors hover:text-[#0a5f8a]"
+                  >
+                    Sign In
+                  </Link>
+                </p>
+              </form>
+            </div>
           </div>
-        </button>
-
-        <button
-          type="submit"
-          className="w-[530px] h-14 justify-center gap-5 px-[30px] py-3 relative bg-[#0c72a6] rounded-[50px] flex items-center cursor-pointer hover:bg-[#0a5f8a] transition-colors"
-        >
-          <div className="w-fit [font-family:'Poppins-Medium',Helvetica] font-medium text-white text-xl relative flex items-center justify-center text-center tracking-[0] leading-[normal]">
-            Sign Up
-          </div>
-        </button>
-
-        <div className="h-10 justify-center gap-2.5 p-2.5 relative self-stretch w-full flex items-center">
-          <p className="relative flex items-center justify-center w-fit mt-[-6.00px] mb-[-4.00px] [font-family:'Poppins-Regular',Helvetica] font-normal text-[#0c72a6] text-xl text-center tracking-[0] leading-[normal]">
-            <span>Already have an account? </span>
-            <a
-              href="#"
-              className="underline hover:text-[#0a5f8a] transition-colors"
-            >
-              Sign In
-            </a>
-          </p>
         </div>
-      </form>
-    </div>
+
+        {/* mobile fallback image hidden by default desktop logic */}
+        <div className="mt-8 block xl:hidden">
+          <img
+            src="/images/Group-1054.png"
+            alt="Group"
+            className="mx-auto h-auto w-full max-w-[700px] object-contain"
+          />
+        </div>
+      </section>
+    </main>
   );
-};
+}
