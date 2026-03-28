@@ -1,32 +1,19 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  button,
-  input,
-  select,
-  textarea {
-    @apply appearance-none bg-transparent border-0 outline-none;
-  }
-}
-
-@tailwind components;
-@tailwind utilities;
-
-@layer components {
-  .all-\[unset\] {
-    all: unset;
-  }
-}
+@import "tailwindcss";
 
 :root {
   --variable-collection-clicked-text: rgba(219, 123, 178, 1);
   --variable-collection-color: rgba(0, 150, 135, 1);
 }
 
-:root {
-  --animate-spin: spin 1s linear infinite;
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: white;
 }
 
 .animate-fade-in {
@@ -50,28 +37,12 @@
 }
 
 .animate-spin {
-  animation: var(--animate-spin);
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
   to {
     transform: rotate(1turn);
-  }
-}
-
-@keyframes image-glow {
-  0% {
-    opacity: 0;
-    animation-timing-function: cubic-bezier(0.74, 0.25, 0.76, 1);
-  }
-
-  10% {
-    opacity: 0.7;
-    animation-timing-function: cubic-bezier(0.12, 0.01, 0.08, 0.99);
-  }
-
-  to {
-    opacity: 0.4;
   }
 }
 
