@@ -269,7 +269,7 @@ export default function UserDashboardPage() {
                   <button
                     key={entry.id}
                     type="button"
-                    onClick={() => router.push("/journaling")}
+                    onClick={() => router.push("/journaling?new=true")}
                     className="block w-full text-left"
                   >
                     <div className="flex items-center gap-4 py-2">
