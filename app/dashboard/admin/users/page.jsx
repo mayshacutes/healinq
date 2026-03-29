@@ -101,6 +101,12 @@ export default function AdminUsersPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
 
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+
+  const [editingUser, setEditingUser] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
   const [newUserForm, setNewUserForm] = useState({
     name: "",
     email: "",
@@ -257,6 +263,76 @@ export default function AdminUsersPage() {
     setStatusFilter("Suspended");
     setIsStatusOpen(false);
     setActionMessage("Showing suspended users only.");
+  };
+
+  const handleViewUser = (user) => {
+    setSelectedUser(user);
+    setShowViewModal(true);
+  };
+
+  const handleOpenEditUser = (user) => {
+    setEditingUser({ ...user });
+    setShowEditModal(true);
+  };
+
+  const handleEditUserChange = (e) => {
+    const { name, value } = e.target;
+    setEditingUser((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSaveEditUser = (e) => {
+    e.preventDefault();
+
+    if (
+      !editingUser.name.trim() ||
+      !editingUser.email.trim() ||
+      !editingUser.address.trim()
+    ) {
+      setActionMessage("Please complete all edit fields first.");
+      return;
+    }
+
+    const emailUsedByAnotherUser = users.some(
+      (user) =>
+        user.id !== editingUser.id &&
+        user.email.toLowerCase() === editingUser.email.toLowerCase()
+    );
+
+    if (emailUsedByAnotherUser) {
+      setActionMessage("This email is already used by another user.");
+      return;
+    }
+
+    setUsers((prev) =>
+      prev.map((user) => (user.id === editingUser.id ? editingUser : user))
+    );
+    setShowEditModal(false);
+    setEditingUser(null);
+    setActionMessage("User updated successfully.");
+  };
+
+  const handleDeleteUser = (userId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this user?"
+    );
+
+    if (!confirmed) return;
+
+    setUsers((prev) => prev.filter((user) => user.id !== userId));
+    setActionMessage("User deleted successfully.");
+
+    if (selectedUser?.id === userId) {
+      setShowViewModal(false);
+      setSelectedUser(null);
+    }
+
+    if (editingUser?.id === userId) {
+      setShowEditModal(false);
+      setEditingUser(null);
+    }
   };
 
   return (
@@ -521,18 +597,21 @@ export default function AdminUsersPage() {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
+                              onClick={() => handleViewUser(user)}
                               className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90"
                             >
                               View
                             </button>
                             <button
                               type="button"
+                              onClick={() => handleOpenEditUser(user)}
                               className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90"
                             >
                               Edit
                             </button>
                             <button
                               type="button"
+                              onClick={() => handleDeleteUser(user.id)}
                               className="rounded-full bg-[#f3f3f3] px-3 py-1.5 text-[12px] font-medium text-[#666] transition hover:opacity-90"
                             >
                               Delete
@@ -747,6 +826,206 @@ export default function AdminUsersPage() {
                 >
                   Save User
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showViewModal && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[460px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[26px] font-bold text-[#db2d8d]">
+                  User Detail
+                </h2>
+                <p className="mt-1 text-[14px] text-[#777]">
+                  Detailed information for this user
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedUser(null);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
+                <p className="text-[12px] text-[#ea3f97]">Full Name</p>
+                <p className="mt-1 text-[15px] font-semibold text-[#222]">
+                  {selectedUser.name}
+                </p>
+              </div>
+
+              <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
+                <p className="text-[12px] text-[#0c72a6]">Email</p>
+                <p className="mt-1 text-[15px] font-semibold text-[#222]">
+                  {selectedUser.email}
+                </p>
+              </div>
+
+              <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
+                <p className="text-[12px] text-[#ea3f97]">Address</p>
+                <p className="mt-1 text-[15px] font-semibold text-[#222]">
+                  {selectedUser.address}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
+                  <p className="text-[12px] text-[#0c72a6]">Joined</p>
+                  <p className="mt-1 text-[15px] font-semibold text-[#222]">
+                    {selectedUser.joined}
+                  </p>
+                </div>
+
+                <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
+                  <p className="text-[12px] text-[#ea3f97]">Status</p>
+                  <div className="mt-2">
+                    <span
+                      className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
+                        selectedUser.status
+                      )}`}
+                    >
+                      {selectedUser.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowViewModal(false);
+                    setSelectedUser(null);
+                  }}
+                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[520px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[26px] font-bold text-[#db2d8d]">
+                  Edit User
+                </h2>
+                <p className="mt-1 text-[14px] text-[#777]">
+                  Update the selected user information
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingUser(null);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditUser} className="space-y-4">
+              <input
+                type="text"
+                name="name"
+                placeholder="Full name"
+                value={editingUser.name}
+                onChange={handleEditUserChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <input
+                type="email"
+                name="email"
+                placeholder="Email address"
+                value={editingUser.email}
+                onChange={handleEditUserChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <input
+                type="text"
+                name="address"
+                placeholder="Address"
+                value={editingUser.address}
+                onChange={handleEditUserChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-[13px] font-medium text-[#666]">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={editingUser.status}
+                    onChange={handleEditUserChange}
+                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-[13px] font-medium text-[#666]">
+                    Role
+                  </label>
+                  <div className="flex h-[48px] items-center rounded-[14px] border border-[#e6e6e6] bg-[#fafafa] px-4 text-[14px] text-[#666]">
+                    {editingUser.role}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-between gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteUser(editingUser.id)}
+                  className="rounded-full bg-[#f3f3f3] px-5 py-2.5 text-[14px] font-medium text-[#666] transition hover:bg-[#ebebeb]"
+                >
+                  Delete User
+                </button>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setEditingUser(null);
+                    }}
+                    className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </form>
           </div>
