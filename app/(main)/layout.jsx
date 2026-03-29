@@ -8,7 +8,7 @@ export default function MainLayout({ children }) {
       <Sidebar />
 
       {/* CONTENT */}
-      <main className="ml-[0px] w-full min-h-screen bg-[#d4eefc]">
+      <main className="ml-[87px] w-full min-h-screen bg-[#d4eefc]">
         {children}
       </main>
 
