@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Poppins } from "next/font/google";
+import Sidebar from "@/components/Sidebar";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -14,7 +15,15 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={poppins.className}>{children}</body>
+      <body className={poppins.className}>{children}
+        <Sidebar />
+
+        {/* CONTENT */}
+        <div className="ml-[120px]">
+          {children}
+        </div>
+      </body>
     </html>
   );
+  
 }
