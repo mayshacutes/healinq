@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { getDailyLyric } from "@/lib/dailyLyric";
 
 const counselors = [
   { id: 1, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.5 },
@@ -54,16 +55,6 @@ const consultationHistory = [
   { id: 7, day: "10", month: "March" },
   { id: 8, day: "11", month: "March" },
   { id: 9, day: "10", month: "March" },
-];
-
-const lyricsByDay = [
-  { title: "Who Knows", lyric: "You’re pure, you’re kind, mature, divine. Let me know, let me know..." },
-  { title: "Blue", lyric: "I’ll paint the sky in shades of calm and learn to breathe again today." },
-  { title: "Saturn", lyric: "Some things take time to heal, and some answers arrive softly." },
-  { title: "Begin Again", lyric: "Even if the day feels heavy, tomorrow still gives you another page." },
-  { title: "Home", lyric: "There is still a place for your heart to rest, even after difficult days." },
-  { title: "Bloom", lyric: "Little by little, your quiet growth is still becoming something beautiful." },
-  { title: "Golden Hour", lyric: "You deserve gentle moments too, not only survival and endurance." },
 ];
 
 function formatGreetingDate(date) {
@@ -122,16 +113,6 @@ function getRelativeLabel(dateString) {
   }).format(entryDate);
 }
 
-function getDailyLyric() {
-  const today = new Date();
-  const seed =
-    today.getFullYear() * 1000 +
-    (today.getMonth() + 1) * 100 +
-    today.getDate();
-
-  return lyricsByDay[seed % lyricsByDay.length];
-}
-
 export default function UserDashboardPage() {
   const router = useRouter();
 
@@ -188,7 +169,7 @@ export default function UserDashboardPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#d7edf7]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0">
         <Image
-          src="/images/group-31.png"
+          src="/images/Group 31.png"
           alt=""
           width={1920}
           height={281}
