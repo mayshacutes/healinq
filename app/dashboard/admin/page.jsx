@@ -1,3 +1,5 @@
+export default function Admin() {
+  return <h1>Admin Dashboard</h1>
 "use client";
 
 import Link from "next/link";
