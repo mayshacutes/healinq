@@ -533,7 +533,7 @@ export default function HomePage() {
           <li><a href="#testimonials">Testimoni</a></li>
           <li><a href="#contact">Kontak</a></li>
         </ul>
-        <a href="/auth/signup" className="nav-cta">
+        <a href="/signup" className="nav-cta">
           <span></span> Log In / Sign Up
         </a>
       </nav>
@@ -559,7 +559,7 @@ export default function HomePage() {
               HealinQ hadir sebagai pendamping digital kesehatan mental yang hangat, inklusif, dan terpercaya. Dari konsultasi profesional hingga self-healing tools — semua ada di sini.
             </p>
             <div className="hero-btns">
-              <a href="/auth/signup" className="btn-primary">Mulai Sekarang ✨</a>
+              <a href="/signup" className="btn-primary">Mulai Sekarang ✨</a>
             </div>
             <div className="hero-stats">
               {[["10+","Psikolog & Konselor"],["98%","Tingkat Kepuasan"],["24/7","Layanan Tersedia"]].map(([num, lbl]) => (
@@ -712,7 +712,7 @@ export default function HomePage() {
             Bergabung dengan pengguna yang sudah merasakan manfaat HealinQ. Daftar gratis sekarang dan mulai perjalananmu hari ini.
           </p>
           <div className="cta-btns">
-            <a href="/auth/signup" className="btn-white">✨ Daftar Gratis</a>
+            <a href="/signup" className="btn-white">✨ Daftar Gratis</a>
           </div>
         </div>
       </section>
