@@ -276,21 +276,13 @@ const css = `
   }
 
   /* LAYOUT */
-  .page {
-    max-width: 1160px;
-    margin: 0 auto;
-    padding: 28px 20px 60px;
-    display: grid;
-    grid-template-columns: 290px 1fr;
-    gap: 22px;
-  }
+  .page { max-width:1160px;margin:0 auto;padding:28px 20px 60px;
+    display:grid;grid-template-columns:290px 1fr;gap:22px;
+    margin-left:80px; }
 
   /* LEFT */
-  .left {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-  }
+  .left { display:flex;flex-direction:column;gap:18px; }
+
 
   /* Profile card */
   .pcard {
