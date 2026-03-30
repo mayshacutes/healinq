@@ -1,556 +1,640 @@
 "use client";
 
-import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
-function calculateLevel(xp) {
-    return Math.max(1, Math.floor(xp / 150) + 1);
+// ── DATA ──────────────────────────────────────────────────────────────────────
+
+const MISSIONS = {
+  daily: [
+    { id: 1, icon: "📔", color: "teal", title: "Tulis Jurnal Hari Ini", desc: "Ungkapkan perasaanmu dalam tulisan bebas minimal 50 kata", progress: 1, total: 1, xp: 50, status: "done" },
+    { id: 2, icon: "🧘", color: "pink", title: "Sesi Meditasi 10 Menit", desc: "Luangkan waktu untuk bernapas dan hadir di momen ini", progress: 0, total: 1, xp: 30, status: "active" },
+    { id: 3, icon: "🌞", color: "yellow", title: "Mood Check-in Pagi", desc: "Catat bagaimana perasaanmu di awal hari", progress: 1, total: 1, xp: 20, status: "done" },
+  ],
+  weekly: [
+    { id: 4, icon: "💬", color: "lav", title: "Sesi Konsultasi Minggu Ini", desc: "Jadwalkan & hadiri sesi bersama psikiatermu", progress: 0, total: 1, xp: 150, status: "active" },
+    { id: 5, icon: "🍀", color: "pink", title: "Tambah 3 Momen di Jar of Happiness", desc: "Simpan hal-hal kecil yang membuatmu bahagia minggu ini", progress: 2, total: 3, xp: 80, status: "active" },
+    { id: 6, icon: "🔥", color: "teal", title: "Jaga Streak 7 Hari", desc: "Login dan lakukan aktivitas selama 7 hari berturut-turut", progress: 7, total: 7, xp: 200, status: "done" },
+  ],
+  special: [
+    { id: 7, icon: "📚", color: "lav", title: "Baca 5 Artikel Kesehatan Mental", desc: "Perkaya pengetahuanmu lewat konten edukasi di HealinQ", progress: 3, total: 5, xp: 100, status: "active" },
+    { id: 8, icon: "🔒", color: "grey", title: "Capai Level 15", desc: "Lanjutkan perjalananmu untuk membuka misi ini", progress: 0, total: 1, xp: 500, status: "locked" },
+  ],
+};
+
+const REWARDS_INIT = [
+  { id: 1, emoji: "🖼️", name: "Frame Profil Bunga", desc: "Hiasi profilmu dengan border bunga cherry blossom yang cantik", xp: 200, state: "claimed" },
+  { id: 2, emoji: "🐰", name: "Avatar Kelinci Sakura", desc: "Avatar eksklusif kelinci dengan mahkota bunga sakura", xp: 300, state: "available" },
+  { id: 3, emoji: "💊", name: "Diskon Konsultasi 20%", desc: "Dapatkan potongan harga 20% untuk sesi konsultasi berikutnya", xp: 500, state: "available" },
+  { id: 4, emoji: "🌙", name: "Theme Malam Berbintang", desc: "Ubah tampilan aplikasi dengan tema gelap indigo dan bintang", xp: 400, state: "available" },
+  { id: 5, emoji: "✨", name: "Afirmasi Premium", desc: "Akses 30 afirmasi positif eksklusif yang dikurasi psikolog", xp: 250, state: "available" },
+  { id: 6, emoji: "👑", name: "Mahkota Legend", desc: "Badge eksklusif untuk pengguna yang mencapai Level 20", xp: null, state: "locked" },
+];
+
+const CONSULTATIONS = [
+  { id: 1, day: 28, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "15:00 • 60 menit", type: "online",  status: "done",      note: "Teknik grounding & CBT" },
+  { id: 2, day: 16, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "10:00 • 45 menit", type: "offline", status: "done",      note: "Evaluasi perkembangan" },
+  { id: 3, day: 15, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "13:00 • 60 menit", type: "online",  status: "done",      note: "Manajemen kecemasan" },
+  { id: 4, day: 14, month: "March", doctor: "dr. Budi Santoso, Sp.KJ", time: "09:00 • 30 menit", type: "online", status: "cancelled", note: "Dibatalkan pasien" },
+  { id: 5, day: 13, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "14:00 • 60 menit", type: "offline", status: "done",      note: "Sesi relaksasi" },
+  { id: 6, day: 12, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "11:00 • 45 menit", type: "online",  status: "done",      note: "Journal review" },
+  { id: 7, day: 11, month: "March", doctor: "dr. Budi Santoso, Sp.KJ", time: "15:30 • 60 menit", type: "online", status: "done",    note: "Mindfulness & breathing" },
+  { id: 8, day: 10, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "10:00 • 60 menit", type: "offline", status: "done",      note: "Sesi perdana" },
+];
+
+const BADGES = [
+  { emoji: "📝", name: "First Word", earned: true, color: "pink" },
+  { emoji: "🔥", name: "On Fire", earned: true, color: "teal" },
+  { emoji: "💬", name: "Open Up", earned: true, color: "lav" },
+  { emoji: "🌟", name: "Star Habit", earned: true, color: "yellow" },
+  { emoji: "🧘", name: "Calm Mind", earned: true, color: "pink" },
+  { emoji: "🍀", name: "Happy Jar", earned: true, color: "teal" },
+  { emoji: "🌈", name: "Good Vibes", earned: true, color: "lav" },
+  { emoji: "💪", name: "Resilient", earned: true, color: "yellow" },
+  { emoji: "🦋", name: "Transform", earned: false },
+  { emoji: "🌙", name: "Night Owl", earned: false },
+  { emoji: "👑", name: "Legend", earned: false },
+  { emoji: "🚀", name: "Max Level", earned: false },
+];
+
+// ── STYLES ────────────────────────────────────────────────────────────────────
+
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Quicksand:wght@400;500;600;700&display=swap');
+
+  :root {
+    --pink: #F9A8C9; --pink-light: #FDE8F3; --pink-mid: #F472B6; --pink-dark: #DB2777;
+    --teal: #4ECDC4; --teal-light: #CFFAFA; --teal-dark: #2A9D8F;
+    --lav: #E9D5FF; --lav-mid: #A855F7;
+    --yellow: #FEF08A; --yellow-mid: #EAB308;
+    --orange: #FED7AA; --orange-mid: #F97316;
+    --soft-bg: #FFF5FB; --text-dark: #3D2C3E; --text-mid: #7A5C7E; --text-light: #B89ABE;
+    --card-shadow: 0 8px 32px rgba(244,114,182,.10);
+    --r: 20px; --r-sm: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Quicksand',sans-serif; background:var(--soft-bg); color:var(--text-dark); }
+
+  /* NAV */
+  .nav { position:sticky;top:0;z-index:100;background:rgba(255,255,255,.88);backdrop-filter:blur(14px);
+    border-bottom:1.5px solid #FDE8F3;padding:0 36px;display:flex;align-items:center;
+    justify-content:space-between;height:62px; }
+  .nav-logo { height:36px;width:auto;object-fit:contain; }
+
+  /* MODAL OVERLAY */
+  .modal-overlay { position:fixed;inset:0;background:rgba(61,44,62,.45);backdrop-filter:blur(4px);
+    z-index:200;display:flex;align-items:center;justify-content:center;padding:20px; }
+  .modal { background:white;border-radius:var(--r);box-shadow:0 24px 60px rgba(61,44,62,.25);
+    width:100%;max-width:480px;overflow:hidden; }
+  .modal-head { background:linear-gradient(135deg,var(--pink-mid),var(--teal-dark));
+    padding:20px 24px;display:flex;align-items:center;justify-content:space-between; }
+  .modal-title { font-family:'Nunito',sans-serif;font-weight:900;font-size:1.1rem;color:white; }
+  .modal-close { background:rgba(255,255,255,.2);border:none;border-radius:50%;
+    width:32px;height:32px;color:white;font-size:1.1rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:background .2s; }
+  .modal-close:hover { background:rgba(255,255,255,.35); }
+  .modal-body { padding:24px; }
+  .field { margin-bottom:16px; }
+  .field label { display:block;font-size:.8rem;font-weight:700;color:var(--text-mid);margin-bottom:6px; }
+  .field input, .field textarea, .field select {
+    width:100%;border:1.5px solid var(--pink-light);border-radius:var(--r-sm);
+    padding:10px 14px;font-family:'Quicksand',sans-serif;font-size:.88rem;color:var(--text-dark);
+    background:var(--soft-bg);outline:none;transition:border-color .2s; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color:var(--pink-mid); }
+  .field textarea { resize:vertical;min-height:72px; }
+  .field-row { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+  .modal-footer { display:flex;gap:10px;padding:0 24px 24px; }
+  .btn-save { flex:1;background:linear-gradient(135deg,var(--pink-mid),#E879A0);color:white;
+    border:none;border-radius:50px;padding:11px;font-family:'Quicksand',sans-serif;
+    font-weight:700;font-size:.9rem;cursor:pointer;transition:box-shadow .2s; }
+  .btn-save:hover { box-shadow:0 6px 18px rgba(244,114,182,.4); }
+  .btn-cancel { flex:0 0 auto;background:var(--pink-light);color:var(--pink-dark);border:none;
+    border-radius:50px;padding:11px 20px;font-family:'Quicksand',sans-serif;
+    font-weight:700;font-size:.9rem;cursor:pointer;transition:background .2s; }
+  .btn-cancel:hover { background:var(--pink); }
+
+  /* LAYOUT */
+  .page { max-width:1160px;margin:0 auto;padding:28px 20px 60px;
+    display:grid;grid-template-columns:290px 1fr;gap:22px; }
+
+  /* LEFT */
+  .left { display:flex;flex-direction:column;gap:18px; }
+
+  /* Profile card */
+  .pcard { background:white;border-radius:var(--r);box-shadow:var(--card-shadow);overflow:hidden; }
+  .pbanner { height:88px;background:linear-gradient(135deg,var(--pink-mid) 0%,var(--teal-dark) 100%);
+    position:relative; }
+  .pbanner::after { content:'🌸 🌿 ✨';position:absolute;bottom:8px;right:12px;
+    font-size:.8rem;opacity:.4;letter-spacing:4px; }
+  .pbody { padding:0 22px 22px; }
+  .av-wrap { margin-top:-30px;margin-bottom:12px;position:relative;display:inline-block; }
+  .av { width:62px;height:62px;border-radius:50%;
+    background:linear-gradient(135deg,var(--pink-light),var(--teal-light));
+    display:flex;align-items:center;justify-content:center;font-size:1.7rem;
+    border:3px solid white;box-shadow:0 4px 14px rgba(244,114,182,.25); }
+  .av-online { position:absolute;bottom:3px;right:3px;width:13px;height:13px;
+    background:#22C55E;border-radius:50%;border:2px solid white; }
+  .pname { font-family:'Nunito',sans-serif;font-weight:900;font-size:1.15rem;color:var(--text-dark); }
+  .phandle { font-size:.8rem;color:var(--text-light);font-weight:600;margin:2px 0 9px; }
+  .pbio { font-size:.83rem;color:var(--text-mid);line-height:1.6;margin-bottom:14px; }
+  .ptags { display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px; }
+  .ptag { border-radius:50px;padding:3px 11px;font-size:.72rem;font-weight:700; }
+  .ptag-pink { background:var(--pink-light);color:var(--pink-dark); }
+  .ptag-teal { background:var(--teal-light);color:var(--teal-dark); }
+  .ptag-lav  { background:var(--lav);color:var(--lav-mid); }
+  .pinfo { display:flex;flex-direction:column;gap:7px; }
+  .pinfo-row { display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--text-mid); }
+  .edit-btn { width:100%;margin-top:14px;background:var(--pink-light);color:var(--pink-dark);
+    border:none;border-radius:50px;padding:10px;font-family:'Quicksand',sans-serif;
+    font-weight:700;font-size:.86rem;cursor:pointer;transition:background .2s; }
+  .edit-btn:hover { background:var(--pink); }
+
+  /* Level card */
+  .lcard { background:linear-gradient(135deg,#3D2C3E,#5B3F5E);border-radius:var(--r);
+    padding:22px;color:white;position:relative;overflow:hidden; }
+  .lcard::before { content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;
+    background:rgba(244,114,182,.15);border-radius:50%; }
+  .lcard::after  { content:'';position:absolute;bottom:-30px;left:-30px;width:100px;height:100px;
+    background:rgba(78,205,196,.12);border-radius:50%; }
+  .ltop { display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;position:relative;z-index:1; }
+  .lbadge { display:flex;align-items:center;gap:8px; }
+  .llabel { font-size:.7rem;opacity:.7;font-weight:600;text-transform:uppercase;letter-spacing:1px; }
+  .lname  { font-family:'Nunito',sans-serif;font-weight:900;font-size:1.05rem;color:var(--pink); }
+  .lnum   { font-family:'Nunito',sans-serif;font-weight:900;font-size:2rem;color:var(--yellow);line-height:1;text-align:right; }
+  .lsub   { font-size:.7rem;opacity:.6;text-align:right; }
+  .xp-labels { display:flex;justify-content:space-between;font-size:.75rem;opacity:.8;margin-bottom:5px;position:relative;z-index:1; }
+  .xp-bar { background:rgba(255,255,255,.15);border-radius:50px;height:10px;overflow:hidden;position:relative;z-index:1; }
+  .xp-fill { height:100%;border-radius:50px;background:linear-gradient(90deg,var(--pink-mid),var(--teal));
+    width:68%;position:relative; }
+  .xp-fill::after { content:'';position:absolute;right:0;top:50%;transform:translate(50%,-50%);
+    width:14px;height:14px;background:white;border-radius:50%;
+    box-shadow:0 0 8px rgba(244,114,182,.8); }
+  .xp-next { font-size:.72rem;opacity:.6;text-align:right;margin-top:6px;position:relative;z-index:1; }
+
+  /* Stats grid */
+  .sgrid { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+  .smini { background:white;border-radius:var(--r-sm);padding:14px;box-shadow:var(--card-shadow);text-align:center; }
+  .smini-icon { font-size:1.25rem;margin-bottom:4px; }
+  .smini-val  { font-family:'Nunito',sans-serif;font-weight:900;font-size:1.35rem;color:var(--text-dark); }
+  .smini-lbl  { font-size:.7rem;color:var(--text-light);font-weight:600; }
+
+  /* Badges */
+  .bcard { background:white;border-radius:var(--r);padding:18px;box-shadow:var(--card-shadow); }
+  .ctitle { font-family:'Nunito',sans-serif;font-weight:800;font-size:.95rem;color:var(--text-dark);margin-bottom:12px; }
+  .bgrid  { display:grid;grid-template-columns:repeat(4,1fr);gap:8px; }
+  .bitem  { aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:3px;cursor:pointer;transition:transform .2s;position:relative; }
+  .bitem:hover { transform:scale(1.08); }
+  .bitem-earned-pink   { background:var(--pink-light); }
+  .bitem-earned-teal   { background:var(--teal-light); }
+  .bitem-earned-lav    { background:var(--lav); }
+  .bitem-earned-yellow { background:var(--yellow); }
+  .bitem-locked { background:#F5F5F5;opacity:.5;filter:grayscale(1); }
+  .bitem-earned::after { content:'✓';position:absolute;top:4px;right:4px;width:12px;height:12px;
+    background:var(--pink-mid);color:white;border-radius:50%;font-size:.52rem;
+    display:flex;align-items:center;justify-content:center;line-height:12px;text-align:center; }
+  .bemoji { font-size:1.3rem; }
+  .bname  { font-size:.58rem;font-weight:700;color:var(--text-mid);text-align:center;line-height:1.2; }
+
+  /* RIGHT */
+  .right { display:flex;flex-direction:column;gap:18px; }
+
+  /* Tabs */
+  .tabs { display:flex;gap:5px;background:white;border-radius:50px;padding:5px;
+    box-shadow:var(--card-shadow);width:fit-content; }
+  .tab { padding:8px 22px;border-radius:50px;border:none;font-family:'Quicksand',sans-serif;
+    font-weight:700;font-size:.86rem;cursor:pointer;transition:all .2s;
+    color:var(--text-light);background:transparent; }
+  .tab-active { background:linear-gradient(135deg,var(--pink-mid),#E879A0);color:white;
+    box-shadow:0 4px 14px rgba(244,114,182,.35); }
+
+  /* Section header */
+  .sec-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:16px; }
+  .sec-head h2 { font-family:'Nunito',sans-serif;font-weight:900;font-size:1.15rem;color:var(--text-dark); }
+  .score-chip { display:flex;align-items:center;gap:5px;
+    background:linear-gradient(135deg,#3D2C3E,#5B3F5E);color:var(--yellow);
+    border-radius:50px;padding:6px 16px;font-family:'Nunito',sans-serif;font-weight:800;font-size:.92rem; }
+
+  /* Mission */
+  .mlist { display:flex;flex-direction:column;gap:10px; }
+  .mlabel { font-size:.75rem;font-weight:700;color:var(--text-light);text-transform:uppercase;
+    letter-spacing:1.5px;margin:12px 0 6px;padding-left:2px; }
+  .mcard { background:white;border-radius:var(--r);padding:16px 18px;box-shadow:var(--card-shadow);
+    display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;
+    transition:transform .2s,box-shadow .2s;cursor:pointer; }
+  .mcard:hover { transform:translateX(4px);box-shadow:0 12px 32px rgba(244,114,182,.16); }
+  .mcard::before { content:'';position:absolute;left:0;top:0;bottom:0;width:4px; }
+  .mcard-done   ::before { background:linear-gradient(180deg,var(--teal),#A8E6CF); }
+  .mcard-active ::before { background:linear-gradient(180deg,var(--pink-mid),var(--pink)); }
+  .mcard-locked ::before { background:#E5E7EB; }
+  .mcard-done   { opacity:.78; }
+  .mcard-done::before   { background:linear-gradient(180deg,var(--teal),#A8E6CF); }
+  .mcard-active::before { background:linear-gradient(180deg,var(--pink-mid),var(--pink)); }
+  .mcard-locked::before { background:#E5E7EB; }
+  .micon { width:46px;height:46px;border-radius:14px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:1.3rem; }
+  .micon-pink   { background:var(--pink-light); }
+  .micon-teal   { background:var(--teal-light); }
+  .micon-lav    { background:var(--lav); }
+  .micon-yellow { background:var(--yellow); }
+  .micon-grey   { background:#F3F4F6; }
+  .minfo { flex:1; }
+  .mtitle { font-family:'Nunito',sans-serif;font-weight:800;font-size:.93rem;color:var(--text-dark);margin-bottom:2px; }
+  .mdesc  { font-size:.78rem;color:var(--text-light);font-weight:600;margin-bottom:7px; }
+  .mprog  { display:flex;align-items:center;gap:10px; }
+  .pbar   { flex:1;background:#F3F4F6;border-radius:50px;height:7px;overflow:hidden; }
+  .pfill  { height:100%;border-radius:50px; }
+  .pfill-pink   { background:linear-gradient(90deg,var(--pink-mid),#F9A8C9); }
+  .pfill-teal   { background:linear-gradient(90deg,var(--teal-dark),var(--teal)); }
+  .pfill-lav    { background:linear-gradient(90deg,var(--lav-mid),#C084FC); }
+  .pfill-yellow { background:linear-gradient(90deg,var(--yellow-mid),#FDE047); }
+  .ptext  { font-size:.7rem;font-weight:700;color:var(--text-light);white-space:nowrap; }
+  .mright { display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0; }
+  .xpreward { display:flex;align-items:center;gap:4px;background:var(--yellow);color:#92400E;
+    border-radius:50px;padding:3px 10px;font-size:.73rem;font-weight:800; }
+  .mstatus { font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:50px; }
+  .mstatus-done   { background:#DCFCE7;color:#166534; }
+  .mstatus-active { background:var(--pink-light);color:var(--pink-dark); }
+  .mstatus-locked { background:#F3F4F6;color:#9CA3AF; }
+
+  /* Rewards */
+  .rgrid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
+  .rcard { background:white;border-radius:var(--r);padding:20px 16px;box-shadow:var(--card-shadow);
+    text-align:center;position:relative;overflow:hidden;cursor:pointer;
+    transition:transform .25s,box-shadow .25s; }
+  .rcard:hover { transform:translateY(-4px);box-shadow:0 14px 36px rgba(244,114,182,.16); }
+  .rcard-claimed::before { content:'CLAIMED';position:absolute;top:10px;right:-18px;
+    background:var(--teal-dark);color:white;font-size:.58rem;font-weight:800;letter-spacing:1px;
+    padding:2px 24px;transform:rotate(35deg); }
+  .rcard-locked { opacity:.55; }
+  .remoji  { font-size:2.1rem;margin-bottom:8px;display:block; }
+  .rname   { font-family:'Nunito',sans-serif;font-weight:800;font-size:.88rem;color:var(--text-dark);margin-bottom:4px; }
+  .rdesc   { font-size:.73rem;color:var(--text-light);line-height:1.4;margin-bottom:10px; }
+  .rcost   { display:inline-flex;align-items:center;gap:4px;background:var(--yellow);color:#92400E;
+    border-radius:50px;padding:3px 13px;font-size:.75rem;font-weight:800; }
+  .rcost-grey { background:#F3F4F6;color:#9CA3AF; }
+  .rbtn { width:100%;margin-top:10px;border:none;border-radius:50px;padding:8px;
+    font-family:'Quicksand',sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;transition:all .2s; }
+  .rbtn-claim   { background:linear-gradient(135deg,var(--pink-mid),#E879A0);color:white; }
+  .rbtn-claim:hover { box-shadow:0 4px 14px rgba(244,114,182,.4); }
+  .rbtn-off     { background:#F3F4F6;color:#9CA3AF;cursor:not-allowed; }
+
+  /* Consultation History */
+  .ch-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:14px; }
+  .ch-card { background:white;border-radius:var(--r);box-shadow:var(--card-shadow);
+    padding:18px 16px 16px;cursor:pointer;position:relative;overflow:hidden;
+    border:1.5px solid var(--pink-light);
+    transition:transform .2s,box-shadow .2s,border-color .2s; }
+  .ch-card:hover { transform:translateY(-4px);box-shadow:0 14px 36px rgba(244,114,182,.18);border-color:var(--pink); }
+  .ch-card::before { content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:linear-gradient(180deg,var(--pink-mid),var(--pink)); }
+  .ch-card.ch-online::before { background:linear-gradient(180deg,var(--teal-dark),var(--teal)); }
+  .ch-card.ch-cancelled::before { background:#E5E7EB; }
+  .ch-date-num { font-family:'Nunito',sans-serif;font-weight:900;font-size:2rem;color:var(--pink-mid);line-height:1; }
+  .ch-card.ch-online .ch-date-num { color:var(--teal-dark); }
+  .ch-card.ch-cancelled .ch-date-num { color:#9CA3AF; }
+  .ch-date-month { font-family:'Nunito',sans-serif;font-weight:700;font-size:.85rem;color:var(--text-mid);margin-bottom:10px; }
+  .ch-divider { height:1px;background:var(--pink-light);margin:10px 0; }
+  .ch-card.ch-online .ch-divider { background:var(--teal-light); }
+  .ch-doctor { font-family:'Nunito',sans-serif;font-weight:800;font-size:.82rem;color:var(--text-dark);
+    margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .ch-time { font-size:.75rem;color:var(--text-light);font-weight:600;margin-bottom:8px; }
+  .ch-badges { display:flex;gap:5px;flex-wrap:wrap; }
+  .ch-badge { font-size:.65rem;font-weight:700;border-radius:50px;padding:2px 9px; }
+  .ch-badge-pink { background:var(--pink-light);color:var(--pink-dark); }
+  .ch-badge-teal { background:var(--teal-light);color:var(--teal-dark); }
+  .ch-badge-grey { background:#F3F4F6;color:#6B7280; }
+  .ch-see-all { display:flex;align-items:center;justify-content:center;
+    background:white;border-radius:var(--r);box-shadow:var(--card-shadow);
+    border:1.5px dashed var(--pink);padding:18px 16px;cursor:pointer;
+    font-family:'Nunito',sans-serif;font-weight:800;font-size:.88rem;color:var(--pink-mid);
+    gap:6px;transition:background .2s; }
+  .ch-see-all:hover { background:var(--pink-light); }
+
+  /* Toast */
+  @keyframes slideUp { from{transform:translateY(80px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .toast { position:fixed;bottom:28px;right:28px;z-index:999;
+    background:linear-gradient(135deg,#3D2C3E,#5B3F5E);color:white;border-radius:16px;
+    padding:13px 20px;display:flex;align-items:center;gap:10px;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);animation:slideUp .4s cubic-bezier(.34,1.56,.64,1); }
+  .toast-text { font-family:'Nunito',sans-serif;font-weight:700;font-size:.88rem; }
+
+  /* Confetti */
+  @keyframes fall { from{transform:translateY(-10px) rotate(0deg);opacity:1} to{transform:translateY(100vh) rotate(720deg);opacity:0} }
+  .confpiece { position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:998;
+    animation:fall 2s ease-in forwards; }
+`;
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function MissionCard({ m }) {
+  const pct = m.total > 0 ? Math.round((m.progress / m.total) * 100) : 0;
+  return (
+    <div className={`mcard mcard-${m.status}`}>
+      <div className={`micon micon-${m.color}`}>{m.icon}</div>
+      <div className="minfo">
+        <div className="mtitle">{m.title}</div>
+        <div className="mdesc">{m.desc}</div>
+        <div className="mprog">
+          <div className="pbar">
+            <div className={`pfill pfill-${m.color}`} style={{ width: `${pct}%` }} />
+          </div>
+          <span className="ptext">{m.status === "done" ? `${m.total}/${m.total} ✓` : m.status === "locked" ? "Terkunci" : `${m.progress}/${m.total}`}</span>
+        </div>
+      </div>
+      <div className="mright">
+        <div className="xpreward">⚡ +{m.xp} XP</div>
+        <div className={`mstatus mstatus-${m.status}`}>
+          {m.status === "done" ? "✓ Selesai" : m.status === "active" ? (pct > 0 && pct < 100 ? "● Progress" : "● Belum") : "🔒 Terkunci"}
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
+
 export default function ProfilePage() {
-    const router = useRouter();
+  const [activeTab, setActiveTab] = useState("missions");
+  const [rewards, setRewards] = useState(REWARDS_INIT);
+  const [toast, setToast] = useState(null);
+  const [confetti, setConfetti] = useState([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [profile, setProfile] = useState({
+    name: "Arinda Putri",
+    handle: "arindaputri",
+    bio: "Sedang belajar lebih mengenal diri sendiri satu hari dalam satu waktu 🌱",
+    location: "Surabaya, Jawa Timur",
+    age: "22 tahun",
+    occupation: "Mahasiswa Psikologi",
+    doctor: "dr. Sari Dewi",
+  });
+  const [form, setForm] = useState(profile);
 
-    const [currentUser, setCurrentUser] = useState(null);
-    const [profileData, setProfileData] = useState({
-        fullName: "",
-        birthDate: "",
-        lastEducation: "",
-        gender: "",
-        domicile: "",
-        username: "",
-        email: "",
-    });
+  const openEdit = () => { setForm(profile); setEditOpen(true); };
+  const saveEdit = () => { setProfile(form); setEditOpen(false); showToast("✅ Profil berhasil diperbarui!"); };
 
-    const [passwordData, setPasswordData] = useState({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-    });
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
 
-    const [showPasswordModal, setShowPasswordModal] = useState(false);
-    const [message, setMessage] = useState("");
+  const launchConfetti = () => {
+    const colors = ["#F472B6","#4ECDC4","#EAB308","#A855F7","#F97316","#22C55E"];
+    const pieces = Array.from({ length: 48 }, (_, i) => ({
+      id: i, left: Math.random() * 100,
+      color: colors[i % colors.length],
+      delay: Math.random() * 1.4,
+      dur: 1.5 + Math.random(),
+    }));
+    setConfetti(pieces);
+    setTimeout(() => setConfetti([]), 2800);
+  };
 
-    useEffect(() => {
-        const storedCurrentUser = JSON.parse(localStorage.getItem("currentUser"));
+  const claimReward = (id, name) => {
+    setRewards(prev => prev.map(r => r.id === id ? { ...r, state: "claimed" } : r));
+    launchConfetti();
+    showToast(`🎉 "${name}" berhasil diklaim!`);
+  };
 
-        const fallbackUser = {
-            username: "Buddy",
-            email: "12345@healinq.com",
-            xp: 1240,
-            password: "12345",
-        };
+  return (
+    <>
+      <style>{css}</style>
 
-        const activeUser = storedCurrentUser || fallbackUser;
-        setCurrentUser(activeUser);
+      {/* Confetti */}
+      {confetti.map(p => (
+        <div key={p.id} className="confpiece" style={{
+          left: `${p.left}vw`, background: p.color,
+          animationDelay: `${p.delay}s`, animationDuration: `${p.dur}s`,
+        }} />
+      ))}
 
-        const savedProfile = JSON.parse(
-            localStorage.getItem(`profileData_${activeUser.email}`)
-        );
+      {/* Toast */}
+      {toast && <div className="toast"><span style={{fontSize:"1.2rem"}}>🎉</span><div className="toast-text">{toast}</div></div>}
 
-        if (savedProfile) {
-            setProfileData(savedProfile);
-        } else {
-            const initialProfile = {
-                fullName: "Buddy",
-                birthDate: "",
-                lastEducation: "",
-                gender: "",
-                domicile: "",
-                username: activeUser.username || "Buddy",
-                email: activeUser.email || "12345@healinq.com",
-            };
+      {/* Nav */}
+      <nav className="nav">
+        <img src="/images/logo.png" alt="HealinQ" className="nav-logo" />
+      </nav>
 
-            setProfileData(initialProfile);
-            localStorage.setItem(
-                `profileData_${activeUser.email}`,
-                JSON.stringify(initialProfile)
-            );
-        }
-    }, []);
+      {/* Page */}
+      <div className="page">
 
-    useEffect(() => {
-        if (!message) return;
+        {/* ── LEFT ── */}
+        <aside className="left">
 
-        const timer = setTimeout(() => {
-            setMessage("");
-        }, 2500);
-
-        return () => clearTimeout(timer);
-    }, [message]);
-
-    const level = useMemo(() => {
-        return calculateLevel(currentUser?.xp || 0);
-    }, [currentUser]);
-
-    const handleProfileChange = (e) => {
-        const { name, value } = e.target;
-        setProfileData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
-    const handleSaveProfile = (e) => {
-        e.preventDefault();
-
-        if (!currentUser?.email) return;
-
-        const updatedUser = {
-            ...currentUser,
-            username: profileData.username,
-            email: profileData.email,
-        };
-
-        setCurrentUser(updatedUser);
-
-        localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-        localStorage.setItem(
-            `profileData_${updatedUser.email}`,
-            JSON.stringify(profileData)
-        );
-
-        setMessage("Profile updated successfully.");
-    };
-
-    const handlePasswordChange = (e) => {
-        e.preventDefault();
-
-        if (!currentUser) return;
-
-        if (
-            !passwordData.currentPassword.trim() ||
-            !passwordData.newPassword.trim() ||
-            !passwordData.confirmPassword.trim()
-        ) {
-            setMessage("Please complete all password fields.");
-            return;
-        }
-
-        if (passwordData.currentPassword !== (currentUser.password || "12345")) {
-            setMessage("Current password is incorrect.");
-            return;
-        }
-
-        if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setMessage("New password and confirmation do not match.");
-            return;
-        }
-
-        const updatedUser = {
-            ...currentUser,
-            password: passwordData.newPassword,
-        };
-
-        setCurrentUser(updatedUser);
-        localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-
-        setPasswordData({
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-        });
-
-        setShowPasswordModal(false);
-        setMessage("Password changed successfully.");
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem("currentUser");
-        router.push("/login");
-    };
-
-    const handleDeleteAccount = () => {
-        const confirmed = window.confirm(
-            "Are you sure you want to delete your account?"
-        );
-
-        if (!confirmed || !currentUser?.email) return;
-
-        localStorage.removeItem(`profileData_${currentUser.email}`);
-        localStorage.removeItem(`journalEntries_${currentUser.email}`);
-        localStorage.removeItem(`moodToday_${currentUser.email}`);
-        localStorage.removeItem("currentUser");
-
-        router.push("/signup");
-    };
-
-    return (
-        <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
-                <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
-                <div className="absolute left-[14%] top-[-7rem] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
-                <div className="absolute right-[20%] top-[16%] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
-                <div className="absolute bottom-[-9rem] left-[-2rem] h-80 w-80 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
-                <div className="absolute bottom-[-5rem] left-[26%] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
+          {/* Profile Card */}
+          <div className="pcard">
+            <div className="pbanner" />
+            <div className="pbody">
+              <div className="av-wrap">
+                <div className="av">🐰</div>
+                <div className="av-online" />
+              </div>
+              <div className="pname">{profile.name}</div>
+              <div className="phandle">@{profile.handle} · Member sejak Jan 2024</div>
+              <div className="pbio">{profile.bio}</div>
+              <div className="ptags">
+                <span className="ptag ptag-pink">😊 Anxiety</span>
+                <span className="ptag ptag-teal">🧘 Meditasi</span>
+                <span className="ptag ptag-lav">📝 Journaling</span>
+              </div>
+              <div className="pinfo">
+                {[["📍", profile.location],["🎂", profile.age],["💼", profile.occupation],["🩺", profile.doctor + " (Psikiaterku)"]].map(([icon, txt]) => (
+                  <div className="pinfo-row" key={txt}><span>{icon}</span>{txt}</div>
+                ))}
+              </div>
+              <button className="edit-btn" onClick={openEdit}>✏️ Edit Profil</button>
             </div>
+          </div>
 
-            <section className="relative z-10 mx-auto w-full max-w-[1100px] px-6 py-10 sm:px-8 lg:px-10">
-                <div className="mb-6">
+          {/* Level Card */}
+          <div className="lcard">
+            <div className="ltop">
+              <div className="lbadge">
+                <span style={{fontSize:"1.7rem"}}>🌟</span>
+                <div>
+                  <div className="llabel">Level saat ini</div>
+                  <div className="lname">Mind Explorer</div>
+                </div>
+              </div>
+              <div>
+                <div className="lnum">12</div>
+                <div className="lsub">dari 50 level</div>
+              </div>
+            </div>
+            <div className="xp-labels"><span>⚡ 2.400 XP</span><span>Target: 3.500 XP</span></div>
+            <div className="xp-bar"><div className="xp-fill" /></div>
+            <div className="xp-next">1.100 XP lagi → Level 13: Soul Seeker ✨</div>
+          </div>
+
+          {/* Stats */}
+          <div className="sgrid">
+            {[["📔","47","Hari Journaling"],["🧠","8","Sesi Konsultasi"],["🔥","14","Streak Hari Ini"],["🏆","9","Badge Diraih"]].map(([icon, val, lbl]) => (
+              <div className="smini" key={lbl}>
+                <div className="smini-icon">{icon}</div>
+                <div className="smini-val">{val}</div>
+                <div className="smini-lbl">{lbl}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Badges */}
+          <div className="bcard">
+            <div className="ctitle">🏅 Badge Koleksiku</div>
+            <div className="bgrid">
+              {BADGES.map((b, i) => (
+                <div key={i} className={b.earned ? `bitem bitem-earned bitem-earned-${b.color}` : "bitem bitem-locked"} title={b.name}>
+                  <span className="bemoji">{b.emoji}</span>
+                  <span className="bname">{b.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </aside>
+
+        {/* ── RIGHT ── */}
+        <main className="right">
+
+          {/* Tabs */}
+          <div className="tabs">
+            {[["missions","🎯 Misi"],["rewards","🎁 Reward"],["history","📋 Riwayat"]].map(([id, label]) => (
+              <button key={id} className={`tab ${activeTab === id ? "tab-active" : ""}`} onClick={() => setActiveTab(id)}>{label}</button>
+            ))}
+          </div>
+
+          {/* ── MISSIONS ── */}
+          {activeTab === "missions" && (
+            <div>
+              <div className="sec-head">
+                <h2>Misi Aktif ⚡</h2>
+                <div className="score-chip">⭐ 2.400 XP</div>
+              </div>
+              <div className="mlist">
+                <div className="mlabel">🌅 Harian</div>
+                {MISSIONS.daily.map(m => <MissionCard key={m.id} m={m} />)}
+                <div className="mlabel">📅 Mingguan</div>
+                {MISSIONS.weekly.map(m => <MissionCard key={m.id} m={m} />)}
+                <div className="mlabel">🌠 Misi Spesial</div>
+                {MISSIONS.special.map(m => <MissionCard key={m.id} m={m} />)}
+              </div>
+            </div>
+          )}
+
+          {/* ── REWARDS ── */}
+          {activeTab === "rewards" && (
+            <div>
+              <div className="sec-head">
+                <h2>Reward Tersedia 🎁</h2>
+                <div className="score-chip">⭐ 2.400 XP</div>
+              </div>
+              <div className="rgrid">
+                {rewards.map(r => (
+                  <div key={r.id} className={`rcard rcard-${r.state}`}>
+                    <span className="remoji">{r.emoji}</span>
+                    <div className="rname">{r.name}</div>
+                    <div className="rdesc">{r.desc}</div>
+                    <div className={r.state === "locked" ? "rcost rcost-grey" : "rcost"}>
+                      {r.state === "locked" ? "🔒 Level 20" : `⚡ ${r.xp} XP`}
+                    </div>
                     <button
-                        onClick={() => router.push("/dashboard/user")}
-                        className="flex items-center gap-3 rounded-full bg-white/80 px-4 py-2 shadow-sm transition hover:bg-white"
+                      className={`rbtn ${r.state === "available" ? "rbtn-claim" : "rbtn-off"}`}
+                      disabled={r.state !== "available"}
+                      onClick={() => r.state === "available" && claimReward(r.id, r.name)}
                     >
-                        <Image
-                            src="/images/icon_back.png"
-                            alt="Back"
-                            width={20}
-                            height={20}
-                            className="object-contain"
-                        />
-                        <span className="text-[14px] font-medium text-[#2a3a4d]">
-                            Back to Dashboard
-                        </span>
+                      {r.state === "claimed" ? "✓ Sudah Diklaim" : r.state === "locked" ? "Belum Terbuka" : "Klaim Sekarang"}
                     </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── HISTORY ── */}
+          {activeTab === "history" && (
+            <div>
+              <div className="sec-head">
+                <h2>Consultation History 🩺</h2>
+                <span style={{fontSize:".8rem",color:"var(--text-light)",fontWeight:700}}>{CONSULTATIONS.length} sesi total</span>
+              </div>
+              <div className="ch-grid">
+                {CONSULTATIONS.map(c => (
+                  <div key={c.id} className={`ch-card ${c.type === "online" ? "ch-online" : ""} ${c.status === "cancelled" ? "ch-cancelled" : ""}`}>
+                    <div className="ch-date-num">{c.day}</div>
+                    <div className="ch-date-month">{c.month}</div>
+                    <div className="ch-divider" />
+                    <div className="ch-doctor">🩺 {c.doctor}</div>
+                    <div className="ch-time">🕐 {c.time}</div>
+                    <div className="ch-badges">
+                      <span className={`ch-badge ${c.type === "online" ? "ch-badge-teal" : "ch-badge-pink"}`}>
+                        {c.type === "online" ? "💻 Online" : "🏥 Offline"}
+                      </span>
+                      <span className={`ch-badge ${c.status === "done" ? "ch-badge-teal" : "ch-badge-grey"}`}>
+                        {c.status === "done" ? "✓ Selesai" : "✕ Batal"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <div className="ch-see-all">
+                  📋 Lihat Semua
                 </div>
-                <div className="mb-8 flex flex-col items-center text-center">
-                    <div className="mb-5 flex items-center justify-center">
-                        <Image
-                            src="/images/icon_profile.png"
-                            alt="Profile"
-                            width={200}
-                            height={200}
-                            className="h-[200px] w-[200px] object-contain"
-                        />
-                    </div>
+              </div>
+            </div>
+          )}
 
-                    <h1 className="text-[42px] font-bold leading-none text-[#2a3a4d]">
-                        {profileData.fullName || "Buddy"}
-                    </h1>
-                    <p className="mt-2 text-[22px] text-[#5d6b7c]">
-                        @{profileData.username || "12345"}
-                    </p>
-                    <p className="mt-2 text-[20px] text-[#9aa0a8]">
-                        {profileData.email || "12345@healinq.com"}
-                    </p>
-
-                    {message && (
-                        <div className="mt-5 rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm">
-                            {message}
-                        </div>
-                    )}
-                </div>
-
-                <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <div className="rounded-[24px] bg-[#bde6e5]/85 p-6 text-center shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                        <p className="text-[15px] text-[#6d6d6d]">Level</p>
-                        <h2 className="mt-2 text-[44px] font-bold text-[#48b9aa]">
-                            {level}
-                        </h2>
-                    </div>
-
-                    <div className="rounded-[24px] bg-[#e7daf0]/85 p-6 text-center shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                        <p className="text-[15px] text-[#6d6d6d]">XP</p>
-                        <h2 className="mt-2 text-[44px] font-bold text-[#db2d8d]">
-                            {currentUser?.xp || 1240}
-                        </h2>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_0.9fr]">
-                    <div className="rounded-[28px] bg-white/85 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                        <div className="mb-6">
-                            <h2 className="text-[28px] font-bold text-[#db2d8d]">
-                                Edit Profile
-                            </h2>
-                            <p className="mt-2 text-[15px] text-[#7a7a7a]">
-                                Complete and update your personal information here
-                            </p>
-                        </div>
-
-                        <form onSubmit={handleSaveProfile} className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div className="md:col-span-2">
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Full Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="fullName"
-                                    value={profileData.fullName}
-                                    onChange={handleProfileChange}
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Date of Birth
-                                </label>
-                                <input
-                                    type="date"
-                                    name="birthDate"
-                                    value={profileData.birthDate}
-                                    onChange={handleProfileChange}
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Last Education
-                                </label>
-                                <select
-                                    name="lastEducation"
-                                    value={profileData.lastEducation}
-                                    onChange={handleProfileChange}
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                >
-                                    <option value="">Select education</option>
-                                    <option value="Kindergarten">Kindergarten</option>
-                                    <option value="Elementary School">Elementary School</option>
-                                    <option value="Junior High School">Junior High School</option>
-                                    <option value="Senior High School">Senior High School</option>
-                                    <option value="Bachelor Degree">Bachelor Degree</option>
-                                    <option value="Master Degree">Master Degree</option>
-                                    <option value="Doctoral Degree">Doctoral Degree</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Gender
-                                </label>
-                                <select
-                                    name="gender"
-                                    value={profileData.gender}
-                                    onChange={handleProfileChange}
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                >
-                                    <option value="">Select gender</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Prefer not to say">Prefer not to say</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Domicile
-                                </label>
-                                <input
-                                    type="text"
-                                    name="domicile"
-                                    value={profileData.domicile}
-                                    onChange={handleProfileChange}
-                                    placeholder="e.g. Jakarta"
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Username
-                                </label>
-                                <input
-                                    type="text"
-                                    name="username"
-                                    value={profileData.username}
-                                    onChange={handleProfileChange}
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2">
-                                <label className="mb-2 block text-[14px] font-medium text-[#666]">
-                                    Email
-                                </label>
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={profileData.email}
-                                    onChange={handleProfileChange}
-                                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                                />
-                            </div>
-
-                            <div className="md:col-span-2 flex flex-wrap justify-end gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPasswordModal(true)}
-                                    className="rounded-full border border-[#db2d8d] bg-white px-5 py-2.5 text-[14px] font-medium text-[#db2d8d] transition hover:bg-[#fff5fa]"
-                                >
-                                    Change Password
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                                >
-                                    Save Profile
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="rounded-[28px] bg-[#bde6e5]/85 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                            <h2 className="text-[24px] font-bold text-[#2a3a4d]">
-                                Account Actions
-                            </h2>
-                            <p className="mt-2 text-[14px] text-[#6f6f6f]">
-                                Manage your account access and security
-                            </p>
-
-                            <div className="mt-5 space-y-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPasswordModal(true)}
-                                    className="w-full rounded-[14px] bg-white/75 px-4 py-4 text-left transition hover:bg-white"
-                                >
-                                    <p className="text-[16px] font-semibold text-[#db2d8d]">
-                                        Change Password
-                                    </p>
-                                    <p className="mt-1 text-[13px] text-[#666]">
-                                        Update your account password securely
-                                    </p>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleLogout}
-                                    className="w-full rounded-[14px] bg-white/75 px-4 py-4 text-left transition hover:bg-white"
-                                >
-                                    <p className="text-[16px] font-semibold text-[#0c72a6]">
-                                        Logout
-                                    </p>
-                                    <p className="mt-1 text-[13px] text-[#666]">
-                                        Sign out from your current account
-                                    </p>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleDeleteAccount}
-                                    className="w-full rounded-[14px] bg-white/75 px-4 py-4 text-left transition hover:bg-white"
-                                >
-                                    <p className="text-[16px] font-semibold text-[#d64b7f]">
-                                        Delete Account
-                                    </p>
-                                    <p className="mt-1 text-[13px] text-[#666]">
-                                        Permanently remove your account data
-                                    </p>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="rounded-[28px] bg-[#e7daf0]/85 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                            <h2 className="text-[24px] font-bold text-[#2a3a4d]">
-                                Account Summary
-                            </h2>
-
-                            <div className="mt-5 space-y-4">
-                                <div className="rounded-[14px] bg-white/60 px-4 py-4">
-                                    <p className="text-[13px] text-[#ea3f97]">Username</p>
-                                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                                        @{profileData.username || "-"}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-[14px] bg-white/60 px-4 py-4">
-                                    <p className="text-[13px] text-[#ea3f97]">Email</p>
-                                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                                        {profileData.email || "-"}
-                                    </p>
-                                </div>
-
-                                <div className="rounded-[14px] bg-white/60 px-4 py-4">
-                                    <p className="text-[13px] text-[#ea3f97]">Current XP</p>
-                                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                                        {currentUser?.xp || 1240}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {showPasswordModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-                    <div className="w-full max-w-[500px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
-                        <div className="mb-5 flex items-start justify-between gap-4">
-                            <div>
-                                <h2 className="text-[26px] font-bold text-[#db2d8d]">
-                                    Change Password
-                                </h2>
-                                <p className="mt-1 text-[14px] text-[#777]">
-                                    Update your password for better account security
-                                </p>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() => setShowPasswordModal(false)}
-                                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        <form onSubmit={handlePasswordChange} className="space-y-4">
-                            <input
-                                type="password"
-                                name="currentPassword"
-                                placeholder="Current password"
-                                value={passwordData.currentPassword}
-                                onChange={(e) =>
-                                    setPasswordData((prev) => ({
-                                        ...prev,
-                                        currentPassword: e.target.value,
-                                    }))
-                                }
-                                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                            />
-
-                            <input
-                                type="password"
-                                name="newPassword"
-                                placeholder="New password"
-                                value={passwordData.newPassword}
-                                onChange={(e) =>
-                                    setPasswordData((prev) => ({
-                                        ...prev,
-                                        newPassword: e.target.value,
-                                    }))
-                                }
-                                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                            />
-
-                            <input
-                                type="password"
-                                name="confirmPassword"
-                                placeholder="Confirm new password"
-                                value={passwordData.confirmPassword}
-                                onChange={(e) =>
-                                    setPasswordData((prev) => ({
-                                        ...prev,
-                                        confirmPassword: e.target.value,
-                                    }))
-                                }
-                                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                            />
-
-                            <div className="flex flex-wrap justify-end gap-3 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPasswordModal(false)}
-                                    className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="submit"
-                                    className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                                >
-                                    Save Password
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </main>
-    );
+      </div>
+      {/* Edit Profile Modal */}
+      {editOpen && (
+        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setEditOpen(false)}>
+          <div className="modal">
+            <div className="modal-head">
+              <div className="modal-title">✏️ Edit Profil</div>
+              <button className="modal-close" onClick={() => setEditOpen(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="field-row">
+                <div className="field">
+                  <label>Nama Lengkap</label>
+                  <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Nama kamu" />
+                </div>
+                <div className="field">
+                  <label>Username</label>
+                  <input value={form.handle} onChange={e => setForm({...form, handle: e.target.value})} placeholder="username" />
+                </div>
+              </div>
+              <div className="field">
+                <label>Bio</label>
+                <textarea value={form.bio} onChange={e => setForm({...form, bio: e.target.value})} placeholder="Ceritakan sedikit tentang dirimu..." />
+              </div>
+              <div className="field-row">
+                <div className="field">
+                  <label>Lokasi</label>
+                  <input value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="Kota, Provinsi" />
+                </div>
+                <div className="field">
+                  <label>Usia</label>
+                  <input value={form.age} onChange={e => setForm({...form, age: e.target.value})} placeholder="cth: 22 tahun" />
+                </div>
+              </div>
+              <div className="field-row">
+                <div className="field">
+                  <label>Pekerjaan / Status</label>
+                  <input value={form.occupation} onChange={e => setForm({...form, occupation: e.target.value})} placeholder="Pekerjaan atau status" />
+                </div>
+                <div className="field">
+                  <label>Nama Psikiater</label>
+                  <input value={form.doctor} onChange={e => setForm({...form, doctor: e.target.value})} placeholder="dr. Nama, Sp.KJ" />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setEditOpen(false)}>Batal</button>
+              <button className="btn-save" onClick={saveEdit}>💾 Simpan Perubahan</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
