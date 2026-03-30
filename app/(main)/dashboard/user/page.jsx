@@ -169,7 +169,7 @@ export default function UserDashboardPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#d7edf7]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0">
         <Image
-          src="/images/Group 31.png"
+          src="/images/header.png"
           alt=""
           width={1920}
           height={281}
