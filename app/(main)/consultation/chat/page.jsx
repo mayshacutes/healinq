@@ -11,8 +11,7 @@ const doctors = [
 ];
 
 const initialMessages = [
-  { id: 1, type: "psikiater", text: "Message from psikiater" },
-  { id: 2, type: "user", text: "Message from user" },
+  { id: 1, type: "psikiater", text: "Halo, adakah yang bisa saya bantu?" },
 ];
 
 const Bubble = ({ text, isUser }) => (
