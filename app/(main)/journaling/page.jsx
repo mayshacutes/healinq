@@ -247,7 +247,7 @@ export default function JournalingPage() {
                 <div className="absolute left-[-6rem] top-[-3rem] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
             </div>
 
-            <div className="absolute top-0 left-0 w-full h-[180px] sm:h-[220px] overflow-hidden z-0">
+            <div className="absolute left-0 top-0 z-0 h-[180px] w-full overflow-hidden sm:h-[220px]">
                 <Image
                     src="/images/header.png"
                     alt="Header"
@@ -257,219 +257,224 @@ export default function JournalingPage() {
                 />
             </div>
 
-            <section className="relative z-10 w-full px-5 pt-[150px] pb-6 sm:px-8 lg:px-10">
-                <div className="relative rounded-[28px] px-5 py-6 sm:px-7 lg:px-10">
-                    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                        <div className="absolute left-[-70px] top-[28%] h-52 w-52 rounded-full bg-[#8dd8d1]/30 blur-[80px]" />
-                        <div className="absolute right-[8%] top-[70%] h-52 w-52 rounded-full bg-[#f6bfdc]/40 blur-[90px]" />
-                        <div className="absolute right-[20%] top-[10%] h-44 w-44 rounded-full bg-[#9dd8f5]/35 blur-[80px]" />
-                    </div>
-
-                    <div className="relative z-10">
-                        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <h1 className="text-[34px] font-bold leading-none text-[#0c72a6] sm:text-[42px]">
-                                    Daily Journaling
-                                </h1>
-                                <p className="mt-2 text-[18px] italic text-[#2086c4]">
-                                    Where thoughts find their words
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-3 rounded-full bg-[#8fd0ef] px-4 py-2 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/60 bg-[#d9f1ff] text-[12px] font-semibold text-[#5a8ec1]">
-                                        XP
-                                    </div>
-
-                                    <span className="text-[18px] font-bold text-white">
-                                        {currentUser?.xp || 1240}
-                                    </span>
-                                </div>
-
-                                <div className="flex items-center gap-2 rounded-full bg-[#efb7d5] px-4 py-2 shadow-[0_4px_10px_rgba(0,0,0,0.08)]">
-                                    <Image
-                                        src="/images/maskot1.png"
-                                        alt="Mascot"
-                                        width={38}
-                                        height={38}
-                                        className="h-9 w-9 object-contain"
-                                    />
-                                    <Image
-                                        src="/images/logo.png"
-                                        alt="HealinQ Logo"
-                                        width={50}
-                                        height={50}
-                                        className="h-auto w-[50px] object-contain"
-                                    />
-                                </div>
-                            </div>
+            <section className="relative z-10 w-full px-5 pb-6 pt-[150px] sm:px-8 lg:px-10">
+                <div className="mx-auto max-w-[1400px]">
+                    <div className="relative rounded-[28px] px-5 py-6 sm:px-7 lg:px-10">
+                        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                            <div className="absolute left-[-70px] top-[28%] h-52 w-52 rounded-full bg-[#8dd8d1]/30 blur-[80px]" />
+                            <div className="absolute right-[8%] top-[70%] h-52 w-52 rounded-full bg-[#f6bfdc]/40 blur-[90px]" />
+                            <div className="absolute right-[20%] top-[10%] h-44 w-44 rounded-full bg-[#9dd8f5]/35 blur-[80px]" />
                         </div>
 
-                        <div className="mb-12 rounded-[18px] bg-white/90 px-4 py-4 shadow-[0_4px_18px_rgba(0,0,0,0.08)] sm:px-5">
-                            <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-                                <div className="text-[18px] font-medium text-[#272727]">
-                                    Track Your Mood Today
+                        <div className="relative z-10">
+                            <div className="mb-8 flex justify-end -mt-20">
+                                <div className="flex items-center gap-4 rounded-full bg-[#8fd0ef] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#79bde4] bg-[#dff4ff] text-[12px] font-semibold text-[#74a4d4]">
+                                            XP
+                                        </div>
+                                        <span className="text-[18px] font-bold text-white">
+                                            {(currentUser?.xp || 1240).toLocaleString("en-US")}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 rounded-full bg-[#efb7d5] px-4 py-2">
+                                        <Image
+                                            src="/images/maskot1.png"
+                                            alt="Mascot"
+                                            width={42}
+                                            height={42}
+                                            className="h-[42px] w-[42px] object-contain"
+                                        />
+                                        <Image
+                                            src="/images/logo.png"
+                                            alt="HealinQ Logo"
+                                            width={56}
+                                            height={28}
+                                            className="h-auto w-[56px] object-contain"
+                                        />
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div className="flex flex-wrap items-center gap-3">
-                                    {moodOptions.map((mood) => {
-                                        const isActive = selectedMood === mood.id;
+                            <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <h1 className="text-[34px] font-bold leading-none text-[#0c72a6] sm:text-[42px]">
+                                        Daily Journaling
+                                    </h1>
+                                    <p className="mt-2 text-[18px] italic text-[#2086c4]">
+                                        Where thoughts find their words
+                                    </p>
+                                </div>
+                            </div>
 
-                                        return (
-                                            <button
-                                                key={mood.id}
-                                                type="button"
-                                                onClick={() => handleMoodClick(mood.id)}
-                                                className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${isActive
-                                                        ? "scale-110 border-[#0c72a6] bg-[#d9edf8] shadow-md"
-                                                        : "border-[#ececec] bg-[#f8f8f8] hover:scale-105"
+                            <div className="mb-12 rounded-[18px] bg-white/90 px-4 py-4 shadow-[0_4px_18px_rgba(0,0,0,0.08)] sm:px-5">
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+                                    <div className="text-[18px] font-medium text-[#272727]">
+                                        Track Your Mood Today
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        {moodOptions.map((mood) => {
+                                            const isActive = selectedMood === mood.id;
+
+                                            return (
+                                                <button
+                                                    key={mood.id}
+                                                    type="button"
+                                                    onClick={() => handleMoodClick(mood.id)}
+                                                    className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${
+                                                        isActive
+                                                            ? "scale-110 border-[#0c72a6] bg-[#d9edf8] shadow-md"
+                                                            : "border-[#ececec] bg-[#f8f8f8] hover:scale-105"
                                                     }`}
-                                                title={mood.label}
-                                            >
-                                                {mood.emoji}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="hidden h-9 w-px bg-[#d9d9d9] lg:block" />
-
-                                <p className="text-[16px] italic text-[#444]">
-                                    {selectedMood
-                                        ? `Today's mood saved: ${moodOptions.find((m) => m.id === selectedMood)?.label
-                                        }`
-                                        : "Tell me how do you feel today..."}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mb-8 flex items-center justify-between gap-3">
-                            <h2 className="text-[30px] font-bold text-[#0c72a6]">
-                                Journaling Notes
-                            </h2>
-
-                            <button
-                                type="button"
-                                onClick={() => setShowEntryForm((prev) => !prev)}
-                                className="rounded-full bg-[#0c72a6] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#0a5f8a]"
-                            >
-                                + New Entry
-                            </button>
-                        </div>
-
-                        {showEntryForm && (
-                            <div className="mb-8 rounded-[20px] bg-white/95 p-5 shadow-[0_4px_18px_rgba(0,0,0,0.08)]">
-                                <div className="flex flex-col gap-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Title (optional)"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        className="h-[46px] rounded-[14px] border border-[#d8d8d8] px-4 text-[14px] text-[#2c2c2c] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20"
-                                    />
-
-                                    <textarea
-                                        placeholder="Write your thoughts here..."
-                                        value={content}
-                                        onChange={(e) => setContent(e.target.value)}
-                                        rows={5}
-                                        className="rounded-[14px] border border-[#d8d8d8] px-4 py-3 text-[14px] text-[#2c2c2c] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20"
-                                    />
-
-                                    <div className="flex flex-wrap gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={handleSaveEntry}
-                                            className="rounded-full bg-[#0c72a6] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#0a5f8a]"
-                                        >
-                                            Save Note
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowEntryForm(false);
-                                                setTitle("");
-                                                setContent("");
-                                            }}
-                                            className="rounded-full border border-[#bdbdbd] bg-white px-5 py-2 text-sm font-medium text-[#4a4a4a] transition hover:bg-[#f7f7f7]"
-                                        >
-                                            Cancel
-                                        </button>
+                                                    title={mood.label}
+                                                >
+                                                    {mood.emoji}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
+
+                                    <div className="hidden h-9 w-px bg-[#d9d9d9] lg:block" />
+
+                                    <p className="text-[16px] italic text-[#444]">
+                                        {selectedMood
+                                            ? `Today's mood saved: ${
+                                                  moodOptions.find((m) => m.id === selectedMood)?.label
+                                              }`
+                                            : "Tell me how do you feel today..."}
+                                    </p>
                                 </div>
                             </div>
-                        )}
 
-                        <div className="space-y-8">
-                            {Object.keys(groupedEntries).map((groupLabel) => (
-                                <div key={groupLabel}>
-                                    <h3 className="mb-4 text-[22px] font-semibold text-[#1f1f1f]">
-                                        {groupLabel}
-                                    </h3>
-
-                                    <div className="space-y-5">
-                                        {groupedEntries[groupLabel].map((entry) => (
-                                            <div
-                                                key={entry.id}
-                                                className="overflow-hidden rounded-[18px] bg-white/95 shadow-[0_4px_18px_rgba(0,0,0,0.08)]"
-                                            >
-                                                <div className="px-5 py-5">
-                                                    {entry.title ? (
-                                                        <h4 className="mb-1 text-[18px] font-semibold text-[#1f1f1f]">
-                                                            {entry.title}
-                                                        </h4>
-                                                    ) : null}
-
-                                                    <p className="text-[16px] leading-7 text-[#2e2e2e]">
-                                                        {entry.content}
-                                                    </p>
-                                                </div>
-
-                                                <div className="border-t border-[#ececec] px-5 py-3 text-sm text-[#b0b0b0]">
-                                                    {formatCardDate(entry.createdAt)}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="mt-14">
-                            <h2 className="text-[34px] font-bold leading-none text-[#0c72a6]">
-                                Jar of Happiness
-                            </h2>
-                            <p className="mt-2 text-[18px] italic text-[#2086c4]">
-                                Pick one to brighten up your day
-                            </p>
-
-                            <div className="mt-6 rounded-[22px] bg-white/95 px-4 py-6 shadow-[0_4px_18px_rgba(0,0,0,0.08)] sm:px-8">
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={handleJarClick}
-                                        className="mb-2 text-[36px] leading-none text-black transition hover:rotate-90"
-                                        title="Shuffle affirmation"
-                                    >
-                                        ↻
-                                    </button>
-                                </div>
+                            <div className="mb-8 flex items-center justify-between gap-3">
+                                <h2 className="text-[30px] font-bold text-[#0c72a6]">
+                                    Journaling Notes
+                                </h2>
 
                                 <button
                                     type="button"
-                                    onClick={handleJarClick}
-                                    className="mx-auto block transition hover:scale-[1.02]"
+                                    onClick={() => setShowEntryForm((prev) => !prev)}
+                                    className="rounded-full bg-[#0c72a6] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#0a5f8a]"
                                 >
-                                    <Image
-                                        src="/images/jar.png"
-                                        alt="Jar of Happiness"
-                                        width={380}
-                                        height={420}
-                                        className="h-auto w-[240px] sm:w-[300px] lg:w-[360px]"
-                                    />
+                                    + New Entry
                                 </button>
+                            </div>
+
+                            {showEntryForm && (
+                                <div className="mb-8 rounded-[20px] bg-white/95 p-5 shadow-[0_4px_18px_rgba(0,0,0,0.08)]">
+                                    <div className="flex flex-col gap-4">
+                                        <input
+                                            type="text"
+                                            placeholder="Title (optional)"
+                                            value={title}
+                                            onChange={(e) => setTitle(e.target.value)}
+                                            className="h-[46px] rounded-[14px] border border-[#d8d8d8] px-4 text-[14px] text-[#2c2c2c] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20"
+                                        />
+
+                                        <textarea
+                                            placeholder="Write your thoughts here..."
+                                            value={content}
+                                            onChange={(e) => setContent(e.target.value)}
+                                            rows={5}
+                                            className="rounded-[14px] border border-[#d8d8d8] px-4 py-3 text-[14px] text-[#2c2c2c] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20"
+                                        />
+
+                                        <div className="flex flex-wrap gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={handleSaveEntry}
+                                                className="rounded-full bg-[#0c72a6] px-5 py-2 text-sm font-medium text-white transition hover:bg-[#0a5f8a]"
+                                            >
+                                                Save Note
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setShowEntryForm(false);
+                                                    setTitle("");
+                                                    setContent("");
+                                                }}
+                                                className="rounded-full border border-[#bdbdbd] bg-white px-5 py-2 text-sm font-medium text-[#4a4a4a] transition hover:bg-[#f7f7f7]"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-8">
+                                {Object.keys(groupedEntries).map((groupLabel) => (
+                                    <div key={groupLabel}>
+                                        <h3 className="mb-4 text-[22px] font-semibold text-[#1f1f1f]">
+                                            {groupLabel}
+                                        </h3>
+
+                                        <div className="space-y-5">
+                                            {groupedEntries[groupLabel].map((entry) => (
+                                                <div
+                                                    key={entry.id}
+                                                    className="overflow-hidden rounded-[18px] bg-white/95 shadow-[0_4px_18px_rgba(0,0,0,0.08)]"
+                                                >
+                                                    <div className="px-5 py-5">
+                                                        {entry.title ? (
+                                                            <h4 className="mb-1 text-[18px] font-semibold text-[#1f1f1f]">
+                                                                {entry.title}
+                                                            </h4>
+                                                        ) : null}
+
+                                                        <p className="text-[16px] leading-7 text-[#2e2e2e]">
+                                                            {entry.content}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="border-t border-[#ececec] px-5 py-3 text-sm text-[#b0b0b0]">
+                                                        {formatCardDate(entry.createdAt)}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="mt-14">
+                                <h2 className="text-[34px] font-bold leading-none text-[#0c72a6]">
+                                    Jar of Happiness
+                                </h2>
+                                <p className="mt-2 text-[18px] italic text-[#2086c4]">
+                                    Pick one to brighten up your day
+                                </p>
+
+                                <div className="mt-6 rounded-[22px] bg-white/95 px-4 py-6 shadow-[0_4px_18px_rgba(0,0,0,0.08)] sm:px-8">
+                                    <div className="flex justify-end">
+                                        <button
+                                            type="button"
+                                            onClick={handleJarClick}
+                                            className="mb-2 text-[36px] leading-none text-black transition hover:rotate-90"
+                                            title="Shuffle affirmation"
+                                        >
+                                            ↻
+                                        </button>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleJarClick}
+                                        className="mx-auto block transition hover:scale-[1.02]"
+                                    >
+                                        <Image
+                                            src="/images/jar.png"
+                                            alt="Jar of Happiness"
+                                            width={380}
+                                            height={420}
+                                            className="h-auto w-[240px] sm:w-[300px] lg:w-[360px]"
+                                        />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
