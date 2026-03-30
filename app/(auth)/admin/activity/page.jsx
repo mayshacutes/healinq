@@ -5,72 +5,78 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const initialTransactions = [
+const initialActivities = [
   {
     id: 1,
-    user: "Alya Putri",
-    counselor: "Dr. Aulia Rahman",
-    amount: 75000,
+    actor: "Alya Putri",
+    role: "User",
+    action: "Created a new journal entry",
+    category: "Self-Healing",
     date: "Mar 28, 2026",
-    status: "Paid",
-    method: "E-Wallet",
-    sessionType: "Chat Counseling",
-    reference: "TRX-1001",
+    time: "09:15 AM",
+    status: "Completed",
+    description:
+      "The user created a new journal entry in the self-healing section.",
   },
   {
     id: 2,
-    user: "Nadhif Ramadhan",
-    counselor: "Dr. Nabila Putri",
-    amount: 100000,
-    date: "Mar 27, 2026",
-    status: "Pending",
-    method: "Bank Transfer",
-    sessionType: "Video Consultation",
-    reference: "TRX-1002",
+    actor: "Dr. Aulia Rahman",
+    role: "Counselor",
+    action: "Completed a counseling session",
+    category: "Consultation",
+    date: "Mar 28, 2026",
+    time: "11:30 AM",
+    status: "Completed",
+    description:
+      "The counselor completed a scheduled counseling session with a user.",
   },
   {
     id: 3,
-    user: "Citra Maharani",
-    counselor: "Dr. Farhan Yusuf",
-    amount: 85000,
-    date: "Mar 26, 2026",
-    status: "Failed",
-    method: "E-Wallet",
-    sessionType: "Voice Session",
-    reference: "TRX-1003",
+    actor: "Admin",
+    role: "Admin",
+    action: "Updated counselor profile",
+    category: "Management",
+    date: "Mar 27, 2026",
+    time: "02:40 PM",
+    status: "Completed",
+    description:
+      "The admin updated counselor information in the management panel.",
   },
   {
     id: 4,
-    user: "Raka Pratama",
-    counselor: "Dr. Keisha Amanda",
-    amount: 120000,
-    date: "Mar 25, 2026",
-    status: "Paid",
-    method: "Credit Card",
-    sessionType: "Video Consultation",
-    reference: "TRX-1004",
+    actor: "Nadhif Ramadhan",
+    role: "User",
+    action: "Payment is still pending",
+    category: "Transactions",
+    date: "Mar 27, 2026",
+    time: "04:10 PM",
+    status: "Pending",
+    description:
+      "The user's payment transaction is pending verification.",
   },
   {
     id: 5,
-    user: "Salwa Nabila",
-    counselor: "Dr. Salma Nadhira",
-    amount: 90000,
-    date: "Mar 24, 2026",
-    status: "Pending",
-    method: "Bank Transfer",
-    sessionType: "Chat Counseling",
-    reference: "TRX-1005",
+    actor: "System",
+    role: "System",
+    action: "Failed payment notification sent",
+    category: "Transactions",
+    date: "Mar 26, 2026",
+    time: "08:20 PM",
+    status: "Failed",
+    description:
+      "The system sent a failed payment notification to the user.",
   },
   {
     id: 6,
-    user: "Kevin Saputra",
-    counselor: "Dr. Rafi Pradana",
-    amount: 110000,
-    date: "Mar 23, 2026",
-    status: "Paid",
-    method: "Credit Card",
-    sessionType: "Video Consultation",
-    reference: "TRX-1006",
+    actor: "Dr. Nabila Putri",
+    role: "Counselor",
+    action: "Updated availability schedule",
+    category: "Counselors",
+    date: "Mar 26, 2026",
+    time: "01:00 PM",
+    status: "Completed",
+    description:
+      "The counselor updated her weekly availability for future sessions.",
   },
 ];
 
@@ -83,12 +89,8 @@ function formatTopDate(date) {
   }).format(date);
 }
 
-function formatCurrency(value) {
-  return `Rp ${value.toLocaleString("id-ID")}`;
-}
-
 function getStatusClass(status) {
-  if (status === "Paid") {
+  if (status === "Completed") {
     return "bg-[#dff7eb] text-[#1f9d62]";
   }
   if (status === "Pending") {
@@ -97,24 +99,24 @@ function getStatusClass(status) {
   return "bg-[#ffe1ea] text-[#d64b7f]";
 }
 
-export default function AdminTransactionsPage() {
+export default function AdminActivityPage() {
   const pathname = usePathname();
   const dropdownRef = useRef(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [transactions] = useState(initialTransactions);
+  const [activities] = useState(initialActivities);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
 
-  const isOverview = pathname === "/dashboard/admin";
-  const isUsers = pathname === "/dashboard/admin/users";
-  const isCounselors = pathname === "/dashboard/admin/counselors";
-  const isTransactions = pathname === "/dashboard/admin/transactions";
-  const isActivity = pathname === "/dashboard/admin/activity";
+  const isOverview = pathname === "/admin";
+  const isUsers = pathname === "/admin/users";
+  const isCounselors = pathname === "/admin/counselors";
+  const isTransactions = pathname === "/admin/transactions";
+  const isActivity = pathname === "/admin/activity";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -147,50 +149,53 @@ export default function AdminTransactionsPage() {
     return () => clearTimeout(timer);
   }, [actionMessage]);
 
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((tx) => {
+  const filteredActivities = useMemo(() => {
+    return activities.filter((activity) => {
       const matchSearch =
-        tx.user.toLowerCase().includes(search.toLowerCase()) ||
-        tx.counselor.toLowerCase().includes(search.toLowerCase()) ||
-        tx.reference.toLowerCase().includes(search.toLowerCase()) ||
-        tx.method.toLowerCase().includes(search.toLowerCase());
+        activity.actor.toLowerCase().includes(search.toLowerCase()) ||
+        activity.action.toLowerCase().includes(search.toLowerCase()) ||
+        activity.category.toLowerCase().includes(search.toLowerCase()) ||
+        activity.role.toLowerCase().includes(search.toLowerCase());
 
       const matchStatus =
-        statusFilter === "All" ? true : tx.status === statusFilter;
+        statusFilter === "All" ? true : activity.status === statusFilter;
 
       return matchSearch && matchStatus;
     });
-  }, [transactions, search, statusFilter]);
+  }, [activities, search, statusFilter]);
 
-  const totalRevenue = transactions
-    .filter((tx) => tx.status === "Paid")
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const paidTransactions = transactions.filter((tx) => tx.status === "Paid").length;
-  const pendingTransactions = transactions.filter((tx) => tx.status === "Pending").length;
-  const failedTransactions = transactions.filter((tx) => tx.status === "Failed").length;
+  const totalActivities = activities.length;
+  const completedActivities = activities.filter(
+    (activity) => activity.status === "Completed"
+  ).length;
+  const pendingActivities = activities.filter(
+    (activity) => activity.status === "Pending"
+  ).length;
+  const failedActivities = activities.filter(
+    (activity) => activity.status === "Failed"
+  ).length;
 
   const handleExportData = () => {
     const rows = [
       [
-        "Reference",
-        "User",
-        "Counselor",
-        "Session Type",
-        "Method",
-        "Amount",
+        "Actor",
+        "Role",
+        "Action",
+        "Category",
         "Date",
+        "Time",
         "Status",
+        "Description",
       ],
-      ...filteredTransactions.map((tx) => [
-        tx.reference,
-        tx.user,
-        tx.counselor,
-        tx.sessionType,
-        tx.method,
-        tx.amount,
-        tx.date,
-        tx.status,
+      ...filteredActivities.map((activity) => [
+        activity.actor,
+        activity.role,
+        activity.action,
+        activity.category,
+        activity.date,
+        activity.time,
+        activity.status,
+        activity.description,
       ]),
     ];
 
@@ -205,29 +210,35 @@ export default function AdminTransactionsPage() {
     const link = document.createElement("a");
 
     link.href = url;
-    link.setAttribute("download", "transaction-history.csv");
+    link.setAttribute("download", "activity-log.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    setActionMessage("Transaction data exported successfully.");
+    setActionMessage("Activity data exported successfully.");
   };
 
-  const handleFilterPaid = () => {
-    setStatusFilter("Paid");
+  const handleFilterCompleted = () => {
+    setStatusFilter("Completed");
     setIsStatusOpen(false);
-    setActionMessage("Showing paid transactions only.");
+    setActionMessage("Showing completed activities only.");
   };
 
   const handleFilterPending = () => {
     setStatusFilter("Pending");
     setIsStatusOpen(false);
-    setActionMessage("Showing pending transactions only.");
+    setActionMessage("Showing pending activities only.");
   };
 
-  const handleViewTransaction = (tx) => {
-    setSelectedTransaction(tx);
+  const handleResetFilters = () => {
+    setStatusFilter("All");
+    setSearch("");
+    setActionMessage("All filters have been reset.");
+  };
+
+  const handleViewActivity = (activity) => {
+    setSelectedActivity(activity);
     setShowViewModal(true);
   };
 
@@ -268,7 +279,7 @@ export default function AdminTransactionsPage() {
 
           <nav className="flex w-full flex-col items-center gap-4">
             <Link
-              href="/dashboard/admin"
+              href="/admin"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isOverview
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -279,7 +290,7 @@ export default function AdminTransactionsPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/users"
+              href="/admin/users"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isUsers
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -290,7 +301,7 @@ export default function AdminTransactionsPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/counselors"
+              href="/admin/counselors"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isCounselors
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -301,7 +312,7 @@ export default function AdminTransactionsPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/transactions"
+              href="/admin/transactions"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isTransactions
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -312,7 +323,7 @@ export default function AdminTransactionsPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/activity"
+              href="/admin/activity"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isActivity
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -329,10 +340,10 @@ export default function AdminTransactionsPage() {
             <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">
-                  Transaction History
+                  Activity Log
                 </h1>
                 <p className="mt-2 text-[18px] text-[#f08bbf]">
-                  Track payments, revenue, and transaction status details
+                  Monitor recent actions, updates, and platform events
                 </p>
               </div>
 
@@ -351,30 +362,30 @@ export default function AdminTransactionsPage() {
 
             <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Total Revenue</p>
+                <p className="text-[14px] text-[#ea3f97]">Total Activities</p>
                 <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {formatCurrency(totalRevenue)}
+                  {totalActivities}
                 </h3>
               </div>
 
               <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Paid Transactions</p>
+                <p className="text-[14px] text-[#ea3f97]">Completed</p>
                 <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {paidTransactions}
+                  {completedActivities}
                 </h3>
               </div>
 
               <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Pending Payments</p>
+                <p className="text-[14px] text-[#ea3f97]">Pending</p>
                 <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {pendingTransactions}
+                  {pendingActivities}
                 </h3>
               </div>
 
               <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Failed Payments</p>
+                <p className="text-[14px] text-[#ea3f97]">Failed</p>
                 <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {failedTransactions}
+                  {failedActivities}
                 </h3>
               </div>
             </div>
@@ -383,17 +394,17 @@ export default function AdminTransactionsPage() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                    Transaction Directory
+                    Activity Directory
                   </h2>
                   <p className="mt-1 text-[12px] text-[#5c5c5c]">
-                    Search and monitor all payment records
+                    Search and review all recorded platform activities
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <input
                     type="text"
-                    placeholder="Search user, counselor, or reference..."
+                    placeholder="Search actor, action, or category..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="h-[44px] min-w-[280px] rounded-full border border-[#e6e6e6] bg-white px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
@@ -415,7 +426,7 @@ export default function AdminTransactionsPage() {
 
                     {isStatusOpen && (
                       <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-[18px] border border-[#f0d8e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                        {["All", "Paid", "Pending", "Failed"].map((status) => (
+                        {["All", "Completed", "Pending", "Failed"].map((status) => (
                           <button
                             key={status}
                             type="button"
@@ -447,17 +458,20 @@ export default function AdminTransactionsPage() {
               </div>
 
               <div className="mt-6 overflow-x-auto">
-                <table className="w-full min-w-[980px] border-collapse">
+                <table className="w-full min-w-[1050px] border-collapse">
                   <thead>
                     <tr className="border-b border-[#ea3f97]">
                       <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        User
+                        Actor
                       </th>
                       <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Counselor
+                        Role
                       </th>
                       <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Amount
+                        Action
+                      </th>
+                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                        Category
                       </th>
                       <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
                         Date
@@ -471,36 +485,39 @@ export default function AdminTransactionsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTransactions.map((tx) => (
+                    {filteredActivities.map((activity) => (
                       <tr
-                        key={tx.id}
+                        key={activity.id}
                         className="border-b border-[#f2f2f2] last:border-b-0"
                       >
                         <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
-                          {tx.user}
+                          {activity.actor}
                         </td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {tx.counselor}
+                          {activity.role}
                         </td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {formatCurrency(tx.amount)}
+                          {activity.action}
                         </td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {tx.date}
+                          {activity.category}
+                        </td>
+                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                          {activity.date}
                         </td>
                         <td className="px-4 py-4">
                           <span
                             className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
-                              tx.status
+                              activity.status
                             )}`}
                           >
-                            {tx.status}
+                            {activity.status}
                           </span>
                         </td>
                         <td className="px-4 py-4">
                           <button
                             type="button"
-                            onClick={() => handleViewTransaction(tx)}
+                            onClick={() => handleViewActivity(activity)}
                             className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90"
                           >
                             View
@@ -509,13 +526,13 @@ export default function AdminTransactionsPage() {
                       </tr>
                     ))}
 
-                    {filteredTransactions.length === 0 && (
+                    {filteredActivities.length === 0 && (
                       <tr>
                         <td
-                          colSpan={6}
+                          colSpan={7}
                           className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
                         >
-                          No transactions found.
+                          No activities found.
                         </td>
                       </tr>
                     )}
@@ -527,33 +544,31 @@ export default function AdminTransactionsPage() {
             <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
               <div className="rounded-[20px] bg-[#e7daf0]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
                 <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                  Payment Insights
+                  Activity Insights
                 </h2>
 
                 <div className="mt-5 space-y-4">
                   <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">Top payment method</p>
+                    <p className="text-[13px] text-[#ea3f97]">Most active role</p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      E-Wallet
+                      User
                     </p>
                   </div>
 
                   <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">Highest transaction</p>
+                    <p className="text-[13px] text-[#ea3f97]">Most recent event</p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {formatCurrency(
-                        Math.max(...transactions.map((tx) => tx.amount))
-                      )}
+                      {activities[0]?.action || "-"}
                     </p>
                   </div>
 
                   <div className="rounded-[14px] bg-white/50 px-4 py-4">
                     <p className="text-[13px] text-[#ea3f97]">Most common status</p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {paidTransactions >= pendingTransactions &&
-                      paidTransactions >= failedTransactions
-                        ? "Paid"
-                        : pendingTransactions >= failedTransactions
+                      {completedActivities >= pendingActivities &&
+                      completedActivities >= failedActivities
+                        ? "Completed"
+                        : pendingActivities >= failedActivities
                         ? "Pending"
                         : "Failed"}
                     </p>
@@ -576,20 +591,20 @@ export default function AdminTransactionsPage() {
                       Export Data
                     </p>
                     <p className="mt-1 text-[12px] text-[#666]">
-                      Download transaction records
+                      Download activity records
                     </p>
                   </button>
 
                   <button
                     type="button"
-                    onClick={handleFilterPaid}
+                    onClick={handleFilterCompleted}
                     className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
                   >
                     <p className="text-[15px] font-semibold text-[#db2d8d]">
-                      Show Paid
+                      Show Completed
                     </p>
                     <p className="mt-1 text-[12px] text-[#666]">
-                      Filter successfully paid transactions
+                      Filter completed activities only
                     </p>
                   </button>
 
@@ -602,24 +617,20 @@ export default function AdminTransactionsPage() {
                       Review Pending
                     </p>
                     <p className="mt-1 text-[12px] text-[#666]">
-                      Check transactions awaiting payment
+                      Check activities with pending status
                     </p>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setStatusFilter("All");
-                      setSearch("");
-                      setActionMessage("All filters have been reset.");
-                    }}
+                    onClick={handleResetFilters}
                     className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
                   >
                     <p className="text-[15px] font-semibold text-[#db2d8d]">
                       Reset Filters
                     </p>
                     <p className="mt-1 text-[12px] text-[#666]">
-                      Show all transaction records again
+                      Show all activity records again
                     </p>
                   </button>
                 </div>
@@ -629,16 +640,16 @@ export default function AdminTransactionsPage() {
         </section>
       </div>
 
-      {showViewModal && selectedTransaction && (
+      {showViewModal && selectedActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[500px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+          <div className="w-full max-w-[520px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-[26px] font-bold text-[#db2d8d]">
-                  Transaction Detail
+                  Activity Detail
                 </h2>
                 <p className="mt-1 text-[14px] text-[#777]">
-                  Detailed payment information for this transaction
+                  Detailed information for this activity log
                 </p>
               </div>
 
@@ -646,7 +657,7 @@ export default function AdminTransactionsPage() {
                 type="button"
                 onClick={() => {
                   setShowViewModal(false);
-                  setSelectedTransaction(null);
+                  setSelectedActivity(null);
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
               >
@@ -656,68 +667,68 @@ export default function AdminTransactionsPage() {
 
             <div className="space-y-4">
               <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                <p className="text-[12px] text-[#ea3f97]">Reference ID</p>
+                <p className="text-[12px] text-[#ea3f97]">Actor</p>
                 <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedTransaction.reference}
+                  {selectedActivity.actor}
                 </p>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
+                  <p className="text-[12px] text-[#0c72a6]">Role</p>
+                  <p className="mt-1 text-[15px] font-semibold text-[#222]">
+                    {selectedActivity.role}
+                  </p>
+                </div>
+
+                <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
+                  <p className="text-[12px] text-[#ea3f97]">Category</p>
+                  <p className="mt-1 text-[15px] font-semibold text-[#222]">
+                    {selectedActivity.category}
+                  </p>
+                </div>
+              </div>
+
               <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
-                <p className="text-[12px] text-[#0c72a6]">User</p>
+                <p className="text-[12px] text-[#0c72a6]">Action</p>
                 <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedTransaction.user}
+                  {selectedActivity.action}
                 </p>
               </div>
 
               <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                <p className="text-[12px] text-[#ea3f97]">Counselor</p>
+                <p className="text-[12px] text-[#ea3f97]">Description</p>
                 <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedTransaction.counselor}
+                  {selectedActivity.description}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
-                  <p className="text-[12px] text-[#0c72a6]">Amount</p>
+                  <p className="text-[12px] text-[#0c72a6]">Date</p>
                   <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                    {formatCurrency(selectedTransaction.amount)}
+                    {selectedActivity.date}
                   </p>
                 </div>
 
                 <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                  <p className="text-[12px] text-[#ea3f97]">Date</p>
+                  <p className="text-[12px] text-[#ea3f97]">Time</p>
                   <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                    {selectedTransaction.date}
+                    {selectedActivity.time}
                   </p>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
-                  <p className="text-[12px] text-[#0c72a6]">Method</p>
-                  <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                    {selectedTransaction.method}
-                  </p>
-                </div>
-
-                <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                  <p className="text-[12px] text-[#ea3f97]">Session Type</p>
-                  <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                    {selectedTransaction.sessionType}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
-                <p className="text-[12px] text-[#0c72a6]">Status</p>
-                <div className="mt-2">
-                  <span
-                    className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
-                      selectedTransaction.status
-                    )}`}
-                  >
-                    {selectedTransaction.status}
-                  </span>
+                  <p className="text-[12px] text-[#0c72a6]">Status</p>
+                  <div className="mt-2">
+                    <span
+                      className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
+                        selectedActivity.status
+                      )}`}
+                    >
+                      {selectedActivity.status}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -726,7 +737,7 @@ export default function AdminTransactionsPage() {
                   type="button"
                   onClick={() => {
                     setShowViewModal(false);
-                    setSelectedTransaction(null);
+                    setSelectedActivity(null);
                   }}
                   className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
                 >

@@ -114,11 +114,11 @@ export default function AdminUsersPage() {
     status: "Active",
   });
 
-  const isOverview = pathname === "/dashboard/admin";
-  const isUsers = pathname === "/dashboard/admin/users";
-  const isCounselors = pathname === "/dashboard/admin/counselors";
-  const isTransactions = pathname === "/dashboard/admin/transactions";
-  const isActivity = pathname === "/dashboard/admin/activity";
+  const isOverview = pathname === "/admin";
+  const isUsers = pathname === "/admin/users";
+  const isCounselors = pathname === "/admin/counselors";
+  const isTransactions = pathname === "/admin/transactions";
+  const isActivity = pathname === "/admin/activity";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -372,7 +372,7 @@ export default function AdminUsersPage() {
 
           <nav className="flex w-full flex-col items-center gap-4">
             <Link
-              href="/dashboard/admin"
+              href="/admin"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isOverview
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -383,7 +383,7 @@ export default function AdminUsersPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/users"
+              href="/admin/users"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isUsers
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -394,7 +394,7 @@ export default function AdminUsersPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/counselors"
+              href="/admin/counselors"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isCounselors
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -405,7 +405,7 @@ export default function AdminUsersPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/transactions"
+              href="/admin/transactions"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isTransactions
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -416,7 +416,7 @@ export default function AdminUsersPage() {
             </Link>
 
             <Link
-              href="/dashboard/admin/activity"
+              href="/admin/activity"
               className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
                 isActivity
                   ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
