@@ -247,7 +247,17 @@ export default function JournalingPage() {
                 <div className="absolute left-[-6rem] top-[-3rem] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
             </div>
 
-            <section className="relative z-10 w-full px-5 py-6 sm:px-8 lg:px-10">
+            <div className="absolute top-0 left-0 w-full h-[180px] sm:h-[220px] overflow-hidden z-0">
+                <Image
+                    src="/images/header.png"
+                    alt="Header"
+                    fill
+                    className="object-cover"
+                    priority
+                />
+            </div>
+
+            <section className="relative z-10 w-full px-5 pt-[150px] pb-6 sm:px-8 lg:px-10">
                 <div className="relative rounded-[28px] px-5 py-6 sm:px-7 lg:px-10">
                     <div className="pointer-events-none absolute inset-0 overflow-hidden">
                         <div className="absolute left-[-70px] top-[28%] h-52 w-52 rounded-full bg-[#8dd8d1]/30 blur-[80px]" />
@@ -311,11 +321,10 @@ export default function JournalingPage() {
                                                 key={mood.id}
                                                 type="button"
                                                 onClick={() => handleMoodClick(mood.id)}
-                                                className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${
-                                                    isActive
+                                                className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${isActive
                                                         ? "scale-110 border-[#0c72a6] bg-[#d9edf8] shadow-md"
                                                         : "border-[#ececec] bg-[#f8f8f8] hover:scale-105"
-                                                }`}
+                                                    }`}
                                                 title={mood.label}
                                             >
                                                 {mood.emoji}
@@ -328,9 +337,8 @@ export default function JournalingPage() {
 
                                 <p className="text-[16px] italic text-[#444]">
                                     {selectedMood
-                                        ? `Today's mood saved: ${
-                                              moodOptions.find((m) => m.id === selectedMood)?.label
-                                          }`
+                                        ? `Today's mood saved: ${moodOptions.find((m) => m.id === selectedMood)?.label
+                                        }`
                                         : "Tell me how do you feel today..."}
                                 </p>
                             </div>
