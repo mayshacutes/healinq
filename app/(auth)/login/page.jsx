@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    alert("Login with Google masih dummy ya.");
+  signIn("google", { callbackUrl: "/dashboard/user" });
   };
 
   const handleSubmit = (e) => {

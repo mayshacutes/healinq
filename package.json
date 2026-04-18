@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",
     "next": "16.1.6",
+    "next-auth": "^4.24.14",
     "phosphor-react": "^1.4.1",
     "react": "19.2.3",
     "react-barcode": "^1.6.1",
