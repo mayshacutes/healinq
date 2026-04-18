@@ -178,7 +178,7 @@ export default function UserDashboardPage() {
         />
       </div>
 
-      <section className="relative z-10 w-full px-4 pb-8 pt-24 md:px-8 xl:px-10">
+      <section className="relative z-0 w-full px-4 pb-8 pt-24 md:px-8 xl:px-10">
         <div className="mb-6 flex items-start justify-end">
           <div className="flex items-center gap-4 rounded-full bg-[#8fd0ef] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
             <div className="flex items-center gap-2">
