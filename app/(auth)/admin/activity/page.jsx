@@ -1,8 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const initialActivities = [
@@ -100,7 +98,6 @@ function getStatusClass(status) {
 }
 
 export default function AdminActivityPage() {
-  const pathname = usePathname();
   const dropdownRef = useRef(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -111,12 +108,6 @@ export default function AdminActivityPage() {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
-
-  const isOverview = pathname === "/admin";
-  const isUsers = pathname === "/admin/users";
-  const isCounselors = pathname === "/admin/counselors";
-  const isTransactions = pathname === "/admin/transactions";
-  const isActivity = pathname === "/admin/activity";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -261,384 +252,309 @@ export default function AdminActivityPage() {
         />
       </div>
 
-      <div className="relative z-10 flex">
-        <aside className="fixed left-0 top-0 z-40 flex h-screen w-[160px] flex-col items-center bg-[#efc6dc] px-4 py-6 shadow-sm">
-          <Link
-            href="/profile"
-            className="mb-10 flex h-[64px] w-[64px] items-center justify-center rounded-full transition hover:scale-105"
-            title="Profile"
-          >
-            <Image
-              src="/images/icon_profile.png"
-              alt="Profile"
-              width={64}
-              height={64}
-              className="h-[64px] w-[64px] object-contain"
-            />
-          </Link>
+      <section className="relative z-10 w-full px-6 pb-6 pt-40 sm:px-8 lg:px-12">
+        <div className="relative">
+          <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">
+                Activity Log
+              </h1>
+              <p className="mt-2 text-[18px] text-[#f08bbf]">
+                Monitor recent actions, updates, and platform events
+              </p>
+            </div>
 
-          <nav className="flex w-full flex-col items-center gap-4">
-            <Link
-              href="/admin"
-              className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
-                isOverview
-                  ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
-                  : "text-white hover:bg-white/20"
-              }`}
-            >
-              Dashboard
-            </Link>
+            <div className="flex flex-col items-end gap-3">
+              <div className="w-fit rounded-full bg-white px-5 py-2 text-[15px] font-medium text-[#e85fa7] shadow-sm">
+                {formatTopDate(currentDate)}
+              </div>
 
-            <Link
-              href="/admin/users"
-              className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
-                isUsers
-                  ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
-                  : "text-white hover:bg-white/20"
-              }`}
-            >
-              Users
-            </Link>
+              {actionMessage && (
+                <div className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm">
+                  {actionMessage}
+                </div>
+              )}
+            </div>
+          </div>
 
-            <Link
-              href="/admin/counselors"
-              className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
-                isCounselors
-                  ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
-                  : "text-white hover:bg-white/20"
-              }`}
-            >
-              Counselors
-            </Link>
+          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <p className="text-[14px] text-[#ea3f97]">Total Activities</p>
+              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
+                {totalActivities}
+              </h3>
+            </div>
 
-            <Link
-              href="/admin/transactions"
-              className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
-                isTransactions
-                  ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
-                  : "text-white hover:bg-white/20"
-              }`}
-            >
-              Transactions
-            </Link>
+            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <p className="text-[14px] text-[#ea3f97]">Completed</p>
+              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
+                {completedActivities}
+              </h3>
+            </div>
 
-            <Link
-              href="/admin/activity"
-              className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
-                isActivity
-                  ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
-                  : "text-white hover:bg-white/20"
-              }`}
-            >
-              Activity
-            </Link>
-          </nav>
-        </aside>
+            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <p className="text-[14px] text-[#ea3f97]">Pending</p>
+              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
+                {pendingActivities}
+              </h3>
+            </div>
 
-        <section className="ml-[160px] w-full px-6 pt-40 pb-6 sm:px-8 lg:px-12">
-          <div className="relative">
-            <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <p className="text-[14px] text-[#ea3f97]">Failed</p>
+              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
+                {failedActivities}
+              </h3>
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-[20px] bg-white/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">
-                  Activity Log
-                </h1>
-                <p className="mt-2 text-[18px] text-[#f08bbf]">
-                  Monitor recent actions, updates, and platform events
+                <h2 className="text-[18px] font-bold text-[#1e1e1e]">
+                  Activity Directory
+                </h2>
+                <p className="mt-1 text-[12px] text-[#5c5c5c]">
+                  Search and review all recorded platform activities
                 </p>
               </div>
 
-              <div className="flex flex-col items-end gap-3">
-                <div className="w-fit rounded-full bg-white px-5 py-2 text-[15px] font-medium text-[#e85fa7] shadow-sm">
-                  {formatTopDate(currentDate)}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="text"
+                  placeholder="Search actor, action, or category..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-[44px] min-w-[280px] rounded-full border border-[#e6e6e6] bg-white px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                />
+
+                <div ref={dropdownRef} className="relative min-w-[180px]">
+                  <button
+                    type="button"
+                    onClick={() => setIsStatusOpen((prev) => !prev)}
+                    className="flex h-[44px] w-full items-center rounded-full border border-[#e6e6e6] bg-white pl-5 pr-4 text-[14px] text-[#333] shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                  >
+                    <span className="flex-1 text-center">
+                      {statusFilter === "All" ? "All Status" : statusFilter}
+                    </span>
+                    <span className="ml-3 shrink-0 text-[12px] text-[#666]">
+                      ▼
+                    </span>
+                  </button>
+
+                  {isStatusOpen && (
+                    <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-[18px] border border-[#f0d8e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                      {["All", "Completed", "Pending", "Failed"].map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => {
+                            setStatusFilter(status);
+                            setIsStatusOpen(false);
+                          }}
+                          className={`w-full px-4 py-3 text-center text-[14px] transition ${
+                            statusFilter === status
+                              ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
+                              : "text-[#333] hover:bg-[#fff5fa]"
+                          }`}
+                        >
+                          {status === "All" ? "All Status" : status}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
-                {actionMessage && (
-                  <div className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm">
-                    {actionMessage}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={handleExportData}
+                  className="h-[44px] rounded-full bg-[#db2d8d] px-5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+                >
+                  Export
+                </button>
               </div>
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Total Activities</p>
-                <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {totalActivities}
-                </h3>
-              </div>
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full min-w-[1050px] border-collapse">
+                <thead>
+                  <tr className="border-b border-[#ea3f97]">
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Actor
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Role
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Action
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredActivities.map((activity) => (
+                    <tr
+                      key={activity.id}
+                      className="border-b border-[#f2f2f2] last:border-b-0"
+                    >
+                      <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
+                        {activity.actor}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {activity.role}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {activity.action}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {activity.category}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {activity.date}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
+                            activity.status
+                          )}`}
+                        >
+                          {activity.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          onClick={() => handleViewActivity(activity)}
+                          className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
 
-              <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Completed</p>
-                <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {completedActivities}
-                </h3>
-              </div>
-
-              <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Pending</p>
-                <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {pendingActivities}
-                </h3>
-              </div>
-
-              <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <p className="text-[14px] text-[#ea3f97]">Failed</p>
-                <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                  {failedActivities}
-                </h3>
-              </div>
+                  {filteredActivities.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
+                      >
+                        No activities found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
+          </div>
 
-            <div className="mb-6 rounded-[20px] bg-white/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                    Activity Directory
-                  </h2>
-                  <p className="mt-1 text-[12px] text-[#5c5c5c]">
-                    Search and review all recorded platform activities
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <div className="rounded-[20px] bg-[#e7daf0]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <h2 className="text-[18px] font-bold text-[#1e1e1e]">
+                Activity Insights
+              </h2>
+
+              <div className="mt-5 space-y-4">
+                <div className="rounded-[14px] bg-white/50 px-4 py-4">
+                  <p className="text-[13px] text-[#ea3f97]">Most active role</p>
+                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                    User
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <input
-                    type="text"
-                    placeholder="Search actor, action, or category..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="h-[44px] min-w-[280px] rounded-full border border-[#e6e6e6] bg-white px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                  />
-
-                  <div ref={dropdownRef} className="relative min-w-[180px]">
-                    <button
-                      type="button"
-                      onClick={() => setIsStatusOpen((prev) => !prev)}
-                      className="flex h-[44px] w-full items-center rounded-full border border-[#e6e6e6] bg-white pl-5 pr-4 text-[14px] text-[#333] shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                    >
-                      <span className="flex-1 text-center">
-                        {statusFilter === "All" ? "All Status" : statusFilter}
-                      </span>
-                      <span className="ml-3 shrink-0 text-[12px] text-[#666]">
-                        ▼
-                      </span>
-                    </button>
-
-                    {isStatusOpen && (
-                      <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-[18px] border border-[#f0d8e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                        {["All", "Completed", "Pending", "Failed"].map((status) => (
-                          <button
-                            key={status}
-                            type="button"
-                            onClick={() => {
-                              setStatusFilter(status);
-                              setIsStatusOpen(false);
-                            }}
-                            className={`w-full px-4 py-3 text-center text-[14px] transition ${
-                              statusFilter === status
-                                ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
-                                : "text-[#333] hover:bg-[#fff5fa]"
-                            }`}
-                          >
-                            {status === "All" ? "All Status" : status}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleExportData}
-                    className="h-[44px] rounded-full bg-[#db2d8d] px-5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                  >
-                    Export
-                  </button>
+                <div className="rounded-[14px] bg-white/50 px-4 py-4">
+                  <p className="text-[13px] text-[#ea3f97]">Most recent event</p>
+                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                    {activities[0]?.action || "-"}
+                  </p>
                 </div>
-              </div>
 
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full min-w-[1050px] border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#ea3f97]">
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Actor
-                      </th>
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Role
-                      </th>
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Action
-                      </th>
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Category
-                      </th>
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredActivities.map((activity) => (
-                      <tr
-                        key={activity.id}
-                        className="border-b border-[#f2f2f2] last:border-b-0"
-                      >
-                        <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
-                          {activity.actor}
-                        </td>
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {activity.role}
-                        </td>
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {activity.action}
-                        </td>
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {activity.category}
-                        </td>
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                          {activity.date}
-                        </td>
-                        <td className="px-4 py-4">
-                          <span
-                            className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
-                              activity.status
-                            )}`}
-                          >
-                            {activity.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4">
-                          <button
-                            type="button"
-                            onClick={() => handleViewActivity(activity)}
-                            className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90"
-                          >
-                            View
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-
-                    {filteredActivities.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
-                        >
-                          No activities found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                <div className="rounded-[14px] bg-white/50 px-4 py-4">
+                  <p className="text-[13px] text-[#ea3f97]">Most common status</p>
+                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                    {completedActivities >= pendingActivities &&
+                    completedActivities >= failedActivities
+                      ? "Completed"
+                      : pendingActivities >= failedActivities
+                      ? "Pending"
+                      : "Failed"}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-              <div className="rounded-[20px] bg-[#e7daf0]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                  Activity Insights
-                </h2>
+            <div className="rounded-[20px] bg-[#bde6e5]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <h2 className="text-[18px] font-bold text-[#1e1e1e]">
+                Quick Actions
+              </h2>
 
-                <div className="mt-5 space-y-4">
-                  <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">Most active role</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      User
-                    </p>
-                  </div>
+              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleExportData}
+                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
+                >
+                  <p className="text-[15px] font-semibold text-[#db2d8d]">
+                    Export Data
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    Download activity records
+                  </p>
+                </button>
 
-                  <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">Most recent event</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {activities[0]?.action || "-"}
-                    </p>
-                  </div>
+                <button
+                  type="button"
+                  onClick={handleFilterCompleted}
+                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
+                >
+                  <p className="text-[15px] font-semibold text-[#db2d8d]">
+                    Show Completed
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    Filter completed activities only
+                  </p>
+                </button>
 
-                  <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">Most common status</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {completedActivities >= pendingActivities &&
-                      completedActivities >= failedActivities
-                        ? "Completed"
-                        : pendingActivities >= failedActivities
-                        ? "Pending"
-                        : "Failed"}
-                    </p>
-                  </div>
-                </div>
-              </div>
+                <button
+                  type="button"
+                  onClick={handleFilterPending}
+                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
+                >
+                  <p className="text-[15px] font-semibold text-[#db2d8d]">
+                    Review Pending
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    Check activities with pending status
+                  </p>
+                </button>
 
-              <div className="rounded-[20px] bg-[#bde6e5]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                  Quick Actions
-                </h2>
-
-                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={handleExportData}
-                    className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                  >
-                    <p className="text-[15px] font-semibold text-[#db2d8d]">
-                      Export Data
-                    </p>
-                    <p className="mt-1 text-[12px] text-[#666]">
-                      Download activity records
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleFilterCompleted}
-                    className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                  >
-                    <p className="text-[15px] font-semibold text-[#db2d8d]">
-                      Show Completed
-                    </p>
-                    <p className="mt-1 text-[12px] text-[#666]">
-                      Filter completed activities only
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleFilterPending}
-                    className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                  >
-                    <p className="text-[15px] font-semibold text-[#db2d8d]">
-                      Review Pending
-                    </p>
-                    <p className="mt-1 text-[12px] text-[#666]">
-                      Check activities with pending status
-                    </p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleResetFilters}
-                    className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                  >
-                    <p className="text-[15px] font-semibold text-[#db2d8d]">
-                      Reset Filters
-                    </p>
-                    <p className="mt-1 text-[12px] text-[#666]">
-                      Show all activity records again
-                    </p>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
+                >
+                  <p className="text-[15px] font-semibold text-[#db2d8d]">
+                    Reset Filters
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    Show all activity records again
+                  </p>
+                </button>
               </div>
             </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
       {showViewModal && selectedActivity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">

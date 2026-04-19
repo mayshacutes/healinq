@@ -1,21 +1,63 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { getDailyLyric } from "@/lib/dailyLyric";
 
-const questions = [
-  "Seberapa sering Anda menikmati memecahkan teka-teki atau masalah rumit?",
-  "Seberapa sering Anda tertarik mencoba hal baru yang belum pernah dilakukan?",
-  "Seberapa sering Anda merasa senang membantu atau mendengarkan orang lain?",
-  "Seberapa sering Anda menikmati bekerja dalam tim dibanding sendirian?",
-  "Seberapa sering Anda suka membuat rencana atau mengatur sesuatu dengan detail?",
-  "Seberapa sering Anda mengekspresikan diri lewat gambar, tulisan, musik, atau desain?",
-  "Seberapa sering Anda penasaran dengan cara kerja sesuatu?",
-  "Seberapa sering Anda merasa puas saat menyelesaikan tantangan sampai tuntas?",
-  "Seberapa sering Anda menikmati berbicara di depan orang lain?",
-  "Seberapa sering Anda memperhatikan perasaan orang di sekitar Anda?",
+const defaultQuestions = [
+  {
+    id: 1,
+    text: "Seberapa sering Anda menikmati memecahkan teka-teki atau masalah rumit?",
+    category: "analytical",
+  },
+  {
+    id: 2,
+    text: "Seberapa sering Anda tertarik mencoba hal baru yang belum pernah dilakukan?",
+    category: "explorative",
+  },
+  {
+    id: 3,
+    text: "Seberapa sering Anda merasa senang membantu atau mendengarkan orang lain?",
+    category: "helping",
+  },
+  {
+    id: 4,
+    text: "Seberapa sering Anda menikmati bekerja dalam tim dibanding sendirian?",
+    category: "social",
+  },
+  {
+    id: 5,
+    text: "Seberapa sering Anda suka membuat rencana atau mengatur sesuatu dengan detail?",
+    category: "planning",
+  },
+  {
+    id: 6,
+    text: "Seberapa sering Anda mengekspresikan diri lewat gambar, tulisan, musik, atau desain?",
+    category: "creative",
+  },
+  {
+    id: 7,
+    text: "Seberapa sering Anda penasaran dengan cara kerja sesuatu?",
+    category: "analytical",
+  },
+  {
+    id: 8,
+    text: "Seberapa sering Anda merasa puas saat menyelesaikan tantangan sampai tuntas?",
+    category: "analytical",
+  },
+  {
+    id: 9,
+    text: "Seberapa sering Anda menikmati berbicara di depan orang lain?",
+    category: "social",
+  },
+  {
+    id: 10,
+    text: "Seberapa sering Anda memperhatikan perasaan orang di sekitar Anda?",
+    category: "helping",
+  },
 ];
+
+const QUESTIONS_STORAGE_KEY = "healinq_admin_fyp_questions";
 
 const answerOptions = [
   { label: "Tidak Pernah", value: 1 },
@@ -25,42 +67,165 @@ const answerOptions = [
   { label: "Selalu", value: 5 },
 ];
 
-const resultMap = [
-  "Psychologist",
-  "Counselor",
-  "Writer",
-  "Designer",
-  "Researcher",
-  "Teacher",
-  "Strategist",
-  "Creative Thinker",
-  "Problem Solver",
-  "Communicator",
-];
+const categoryProfiles = {
+  analytical: {
+    label: "Analytical",
+    primary: ["Researcher", "Problem Solver", "Strategist"],
+    secondary: ["Planner", "Critical Thinker", "Investigator"],
+    strengths: ["Logic", "Curiosity", "Problem Solving"],
+  },
+  explorative: {
+    label: "Explorative",
+    primary: ["Explorer", "Innovator", "Creative Thinker"],
+    secondary: ["Trend Seeker", "Initiator", "Opportunity Finder"],
+    strengths: ["Adaptability", "Curiosity", "Initiative"],
+  },
+  helping: {
+    label: "Helping",
+    primary: ["Counselor", "Psychologist", "Mentor"],
+    secondary: ["Teacher", "Support Specialist", "Listener"],
+    strengths: ["Empathy", "Care", "Guidance"],
+  },
+  social: {
+    label: "Social",
+    primary: ["Communicator", "Presenter", "Team Leader"],
+    secondary: ["Teacher", "Public Relations", "Facilitator"],
+    strengths: ["Communication", "Teamwork", "Confidence"],
+  },
+  planning: {
+    label: "Planning",
+    primary: ["Planner", "Project Coordinator", "Strategist"],
+    secondary: ["Organizer", "Operations Thinker", "Manager"],
+    strengths: ["Structure", "Detail", "Consistency"],
+  },
+  creative: {
+    label: "Creative",
+    primary: ["Designer", "Writer", "Content Creator"],
+    secondary: ["Artist", "Creative Thinker", "Storyteller"],
+    strengths: ["Expression", "Imagination", "Originality"],
+  },
+};
 
-function buildResults(answers) {
-  const total = answers.reduce((sum, value) => sum + (value || 0), 0);
-
-  if (total <= 15) {
-    return ["Calm Thinker", "Observer", "Reflective", "Listener"];
-  }
-  if (total <= 25) {
-    return ["Supportive", "Curious", "Communicator", "Team Player", "Empathetic"];
-  }
-  if (total <= 35) {
-    return ["Researcher", "Problem Solver", "Strategist", "Planner", "Creative Thinker", "Listener"];
-  }
-  if (total <= 45) {
-    return ["Counselor", "Psychologist", "Communicator", "Leader", "Creative Thinker", "Problem Solver", "Empathetic"];
+function normalizeStoredQuestions(parsedQuestions) {
+  if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
+    return defaultQuestions;
   }
 
-  return resultMap;
+  const fallbackCategories = defaultQuestions.map((item) => item.category);
+
+  const normalized = parsedQuestions
+    .map((item, index) => {
+      if (typeof item === "string") {
+        return {
+          id: index + 1,
+          text: item,
+          category: fallbackCategories[index] || "explorative",
+        };
+      }
+
+      if (item && typeof item.text === "string") {
+        return {
+          id: item.id || index + 1,
+          text: item.text,
+          category: item.category || fallbackCategories[index] || "explorative",
+        };
+      }
+
+      return null;
+    })
+    .filter((item) => item && item.text.trim() !== "");
+
+  return normalized.length > 0 ? normalized : defaultQuestions;
+}
+
+function getStoredQuestions() {
+  if (typeof window === "undefined") {
+    return defaultQuestions;
+  }
+
+  try {
+    const storedQuestions = localStorage.getItem(QUESTIONS_STORAGE_KEY);
+
+    if (!storedQuestions) {
+      return defaultQuestions;
+    }
+
+    const parsedQuestions = JSON.parse(storedQuestions);
+    return normalizeStoredQuestions(parsedQuestions);
+  } catch (error) {
+    console.error("Failed to load FYP questions:", error);
+    return defaultQuestions;
+  }
+}
+
+function buildSegmentedResults(questions, answers) {
+  const scoreMap = {
+    analytical: 0,
+    explorative: 0,
+    helping: 0,
+    social: 0,
+    planning: 0,
+    creative: 0,
+  };
+
+  questions.forEach((question, index) => {
+    const answerValue = answers[index] || 0;
+    const category = question.category || "explorative";
+    scoreMap[category] = (scoreMap[category] || 0) + answerValue;
+  });
+
+  const rankedCategories = Object.entries(scoreMap)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, score]) => ({ key, score }));
+
+  const topCategory = rankedCategories[0];
+  const secondCategory = rankedCategories[1];
+  const thirdCategory = rankedCategories[2];
+
+  const topProfile = categoryProfiles[topCategory.key];
+  const secondProfile = categoryProfiles[secondCategory.key];
+  const thirdProfile = categoryProfiles[thirdCategory.key];
+
+  const resultCards = [
+    ...topProfile.primary.slice(0, 2),
+    ...secondProfile.primary.slice(0, 1),
+    ...topProfile.secondary.slice(0, 2),
+    ...secondProfile.secondary.slice(0, 1),
+    ...topProfile.strengths.slice(0, 2),
+    ...thirdProfile.strengths.slice(0, 2),
+  ];
+
+  const uniqueResultCards = [...new Set(resultCards)].slice(0, 10);
+
+  return {
+    scoreMap,
+    rankedCategories,
+    summary: {
+      primaryLabel: topProfile.label,
+      secondaryLabel: secondProfile.label,
+      topMatch: topProfile.primary[0],
+      secondaryMatch: secondProfile.primary[0],
+      strengths: [...new Set([
+        ...topProfile.strengths,
+        ...secondProfile.strengths.slice(0, 1),
+      ])].slice(0, 3),
+    },
+    cards: uniqueResultCards,
+  };
 }
 
 export default function FypPage() {
   const dailyLyric = useMemo(() => getDailyLyric(), []);
-  const [answers, setAnswers] = useState(Array(questions.length).fill(null));
+  const [questions, setQuestions] = useState(defaultQuestions);
+  const [answers, setAnswers] = useState(Array(defaultQuestions.length).fill(null));
   const [results, setResults] = useState([]);
+  const [summaryResult, setSummaryResult] = useState(null);
+
+  useEffect(() => {
+    const loadedQuestions = getStoredQuestions();
+    setQuestions(loadedQuestions);
+    setAnswers(Array(loadedQuestions.length).fill(null));
+  }, []);
 
   const handleSelect = (questionIndex, value) => {
     setAnswers((prev) => {
@@ -73,17 +238,19 @@ export default function FypPage() {
   const handleShuffle = () => {
     setAnswers(Array(questions.length).fill(null));
     setResults([]);
+    setSummaryResult(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = () => {
-    if (answers.some((answer) => answer === null)) {
+    if (answers.length === 0 || answers.some((answer) => answer === null)) {
       alert("Mohon isi semua pertanyaan dulu ya.");
       return;
     }
 
-    const matchedResults = buildResults(answers);
-    setResults(matchedResults);
+    const segmentedResult = buildSegmentedResults(questions, answers);
+    setResults(segmentedResult.cards);
+    setSummaryResult(segmentedResult.summary);
 
     setTimeout(() => {
       const resultSection = document.getElementById("match-results");
@@ -170,11 +337,11 @@ export default function FypPage() {
             <div className="space-y-6">
               {questions.map((question, questionIndex) => (
                 <div
-                  key={questionIndex}
+                  key={question.id || questionIndex}
                   className="rounded-[12px] bg-white p-4 shadow-[0_4px_10px_rgba(0,0,0,0.18)] md:p-6"
                 >
                   <p className="mb-5 text-[18px] font-medium text-[#2b2b2b] md:text-[20px]">
-                    {question}
+                    {question.text}
                   </p>
 
                   <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
@@ -227,6 +394,64 @@ export default function FypPage() {
               <h2 className="mb-6 text-center text-[34px] font-extrabold text-[#ea1e8c]">
                 Your Match Results
               </h2>
+
+              {summaryResult && (
+                <div className="mb-8 rounded-[12px] bg-white px-5 py-5 shadow-sm">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-[13px] font-semibold uppercase tracking-wide text-[#ea1e8c]">
+                        Primary Interest
+                      </p>
+                      <p className="mt-1 text-[22px] font-bold text-[#333]">
+                        {summaryResult.primaryLabel}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[13px] font-semibold uppercase tracking-wide text-[#ea1e8c]">
+                        Secondary Interest
+                      </p>
+                      <p className="mt-1 text-[22px] font-bold text-[#333]">
+                        {summaryResult.secondaryLabel}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[13px] font-semibold uppercase tracking-wide text-[#ea1e8c]">
+                        Top Match
+                      </p>
+                      <p className="mt-1 text-[20px] font-semibold text-[#444]">
+                        {summaryResult.topMatch}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[13px] font-semibold uppercase tracking-wide text-[#ea1e8c]">
+                        Secondary Match
+                      </p>
+                      <p className="mt-1 text-[20px] font-semibold text-[#444]">
+                        {summaryResult.secondaryMatch}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <p className="text-[13px] font-semibold uppercase tracking-wide text-[#ea1e8c]">
+                      Strength Areas
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {summaryResult.strengths.map((strength) => (
+                        <span
+                          key={strength}
+                          className="rounded-full bg-[#dff4ff] px-4 py-2 text-[14px] font-medium text-[#3578a8]"
+                        >
+                          {strength}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-wrap justify-center gap-4">
                 {(results.length > 0 ? results : Array(10).fill("")).map((item, index) => (
