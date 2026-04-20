@@ -1,408 +1,590 @@
 "use client";
 
-import { useState } from "react";
-
-// ── DATA ──────────────────────────────────────────────────────────────────────
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { signOut } from "next-auth/react";
 
 const MISSIONS = {
   daily: [
-    { id: 1, icon: "📔", color: "teal", title: "Tulis Jurnal Hari Ini", desc: "Ungkapkan perasaanmu dalam tulisan bebas minimal 50 kata", progress: 1, total: 1, xp: 50, status: "done" },
-    { id: 2, icon: "🧘", color: "pink", title: "Sesi Meditasi 10 Menit", desc: "Luangkan waktu untuk bernapas dan hadir di momen ini", progress: 0, total: 1, xp: 30, status: "active" },
-    { id: 3, icon: "🌞", color: "yellow", title: "Mood Check-in Pagi", desc: "Catat bagaimana perasaanmu di awal hari", progress: 1, total: 1, xp: 20, status: "done" },
+    { id: 1, icon: "📔", title: "Tulis Jurnal Hari Ini", desc: "Ungkapkan perasaanmu dalam tulisan bebas minimal 50 kata", progress: 1, total: 1, xp: 50, status: "done" },
+    { id: 2, icon: "🧘", title: "Sesi Meditasi 10 Menit", desc: "Luangkan waktu untuk bernapas dan hadir di momen ini", progress: 0, total: 1, xp: 30, status: "active" },
+    { id: 3, icon: "🌞", title: "Mood Check-in Pagi", desc: "Catat bagaimana perasaanmu di awal hari", progress: 1, total: 1, xp: 20, status: "done" },
   ],
   weekly: [
-    { id: 4, icon: "💬", color: "lav", title: "Sesi Konsultasi Minggu Ini", desc: "Jadwalkan & hadiri sesi bersama psikiatermu", progress: 0, total: 1, xp: 150, status: "active" },
-    { id: 5, icon: "🍀", color: "pink", title: "Tambah 3 Momen di Jar of Happiness", desc: "Simpan hal-hal kecil yang membuatmu bahagia minggu ini", progress: 2, total: 3, xp: 80, status: "active" },
-    { id: 6, icon: "🔥", color: "teal", title: "Jaga Streak 7 Hari", desc: "Login dan lakukan aktivitas selama 7 hari berturut-turut", progress: 7, total: 7, xp: 200, status: "done" },
+    { id: 4, icon: "💬", title: "Sesi Konsultasi Minggu Ini", desc: "Jadwalkan & hadiri sesi bersama psikiatermu", progress: 0, total: 1, xp: 150, status: "active" },
+    { id: 5, icon: "🍀", title: "Tambah 3 Momen di Jar of Happiness", desc: "Simpan hal-hal kecil yang membuatmu bahagia minggu ini", progress: 2, total: 3, xp: 80, status: "active" },
+    { id: 6, icon: "🔥", title: "Jaga Streak 7 Hari", desc: "Login dan lakukan aktivitas selama 7 hari berturut-turut", progress: 7, total: 7, xp: 200, status: "done" },
   ],
   special: [
-    { id: 7, icon: "📚", color: "lav", title: "Baca 5 Artikel Kesehatan Mental", desc: "Perkaya pengetahuanmu lewat konten edukasi di HealinQ", progress: 3, total: 5, xp: 100, status: "active" },
-    { id: 8, icon: "🔒", color: "grey", title: "Capai Level 15", desc: "Lanjutkan perjalananmu untuk membuka misi ini", progress: 0, total: 1, xp: 500, status: "locked" },
+    { id: 7, icon: "📚", title: "Baca 5 Artikel Kesehatan Mental", desc: "Perkaya pengetahuanmu lewat konten edukasi di HealinQ", progress: 3, total: 5, xp: 100, status: "active" },
+    { id: 8, icon: "🔒", title: "Capai Level 15", desc: "Lanjutkan perjalananmu untuk membuka misi ini", progress: 0, total: 1, xp: 500, status: "locked" },
   ],
 };
 
-const REWARDS_INIT = [
-  { id: 1, emoji: "🖼️", name: "Frame Profil Bunga", desc: "Hiasi profilmu dengan border bunga cherry blossom yang cantik", xp: 200, state: "claimed" },
-  { id: 2, emoji: "🐰", name: "Avatar Kelinci Sakura", desc: "Avatar eksklusif kelinci dengan mahkota bunga sakura", xp: 300, state: "available" },
-  { id: 3, emoji: "💊", name: "Diskon Konsultasi 20%", desc: "Dapatkan potongan harga 20% untuk sesi konsultasi berikutnya", xp: 500, state: "available" },
-  { id: 4, emoji: "🌙", name: "Theme Malam Berbintang", desc: "Ubah tampilan aplikasi dengan tema gelap indigo dan bintang", xp: 400, state: "available" },
-  { id: 5, emoji: "✨", name: "Afirmasi Premium", desc: "Akses 30 afirmasi positif eksklusif yang dikurasi psikolog", xp: 250, state: "available" },
-  { id: 6, emoji: "👑", name: "Mahkota Legend", desc: "Badge eksklusif untuk pengguna yang mencapai Level 20", xp: null, state: "locked" },
-];
-
-const CONSULTATIONS = [
-  { id: 1, day: 28, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "15:00 • 60 menit", type: "online",  status: "done",      note: "Teknik grounding & CBT" },
-  { id: 2, day: 16, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "10:00 • 45 menit", type: "offline", status: "done",      note: "Evaluasi perkembangan" },
-  { id: 3, day: 15, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "13:00 • 60 menit", type: "online",  status: "done",      note: "Manajemen kecemasan" },
-  { id: 4, day: 14, month: "March", doctor: "dr. Budi Santoso, Sp.KJ", time: "09:00 • 30 menit", type: "online", status: "cancelled", note: "Dibatalkan pasien" },
-  { id: 5, day: 13, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "14:00 • 60 menit", type: "offline", status: "done",      note: "Sesi relaksasi" },
-  { id: 6, day: 12, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "11:00 • 45 menit", type: "online",  status: "done",      note: "Journal review" },
-  { id: 7, day: 11, month: "March", doctor: "dr. Budi Santoso, Sp.KJ", time: "15:30 • 60 menit", type: "online", status: "done",    note: "Mindfulness & breathing" },
-  { id: 8, day: 10, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "10:00 • 60 menit", type: "offline", status: "done",      note: "Sesi perdana" },
-];
-
 const BADGES = [
-  { emoji: "📝", name: "First Word", earned: true, color: "pink" },
-  { emoji: "🔥", name: "On Fire", earned: true, color: "teal" },
-  { emoji: "💬", name: "Open Up", earned: true, color: "lav" },
-  { emoji: "🌟", name: "Star Habit", earned: true, color: "yellow" },
-  { emoji: "🧘", name: "Calm Mind", earned: true, color: "pink" },
-  { emoji: "🍀", name: "Happy Jar", earned: true, color: "teal" },
-  { emoji: "🌈", name: "Good Vibes", earned: true, color: "lav" },
-  { emoji: "💪", name: "Resilient", earned: true, color: "yellow" },
+  { emoji: "📝", name: "First Word", earned: true },
+  { emoji: "🔥", name: "On Fire", earned: true },
+  { emoji: "💬", name: "Open Up", earned: true },
+  { emoji: "🌟", name: "Star Habit", earned: true },
+  { emoji: "🧘", name: "Calm Mind", earned: true },
+  { emoji: "🍀", name: "Happy Jar", earned: true },
+  { emoji: "🌈", name: "Good Vibes", earned: true },
+  { emoji: "💪", name: "Resilient", earned: true },
   { emoji: "🦋", name: "Transform", earned: false },
   { emoji: "🌙", name: "Night Owl", earned: false },
   { emoji: "👑", name: "Legend", earned: false },
   { emoji: "🚀", name: "Max Level", earned: false },
 ];
 
-// ── STYLES ────────────────────────────────────────────────────────────────────
+const CONSULTATIONS = [
+  { id: 1, day: 28, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "15:00 • 60 menit", type: "online", status: "done", note: "Teknik grounding & CBT" },
+  { id: 2, day: 16, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "10:00 • 45 menit", type: "offline", status: "done", note: "Evaluasi perkembangan" },
+  { id: 3, day: 15, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "13:00 • 60 menit", type: "online", status: "done", note: "Manajemen kecemasan" },
+  { id: 4, day: 14, month: "March", doctor: "dr. Budi Santoso, Sp.KJ", time: "09:00 • 30 menit", type: "online", status: "cancelled", note: "Dibatalkan pasien" },
+];
 
-const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+const REWARDS = [
+  { id: 1, emoji: "🖼️", name: "Frame Profil Bunga", desc: "Hiasi profilmu dengan border bunga cherry blossom", xp: 200, state: "claimed" },
+  { id: 2, emoji: "🐰", name: "Avatar Kelinci Sakura", desc: "Avatar eksklusif kelinci dengan mahkota bunga sakura", xp: 300, state: "available" },
+  { id: 3, emoji: "💊", name: "Diskon Konsultasi 20%", desc: "Dapatkan potongan harga 20% untuk sesi konsultasi", xp: 500, state: "available" },
+];
 
-  :root {
-    --pink: #efb7d5;
-    --pink-light: #fde8f3;
-    --pink-mid: #ea1e8c;
-    --pink-dark: #db2d8d;
+function formatTopDate(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
 
-    --teal: #8fd0ef;
-    --teal-light: #dff4ff;
-    --teal-dark: #0c72a6;
+function getMissionStatusColor(status) {
+  if (status === "done") return "bg-[#dff7eb] text-[#1f9d62]";
+  if (status === "active") return "bg-[#fde8f3] text-[#db2d8d]";
+  return "bg-[#f3f3f3] text-[#7b7b7b]";
+}
 
-    --lav: #eef6ff;
-    --lav-mid: #2086c4;
+export default function UserProfilePage() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [activeTab, setActiveTab] = useState("missions");
+  const [actionMessage, setActionMessage] = useState("");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [rewards, setRewards] = useState(REWARDS);
 
-    --yellow: #fff1a8;
-    --yellow-mid: #e2b93b;
+  const [profile, setProfile] = useState({
+    name: "Arinda Putri",
+    username: "arindaputri",
+    bio: "Sedang belajar lebih mengenal diri sendiri satu hari dalam satu waktu 🌱",
+    telp_number: "+62 812-3456-7890",
+    birth_date: "2002-05-14",
+    last_edu: "Mahasiswa Psikologi",
+    gender: "Perempuan",
+    address: "Surabaya, Jawa Timur",
+    doctor: "dr. Sari Dewi",
+    image: "/images/icon_profile.png",
+  });
 
-    --orange: #ffd9c2;
-    --orange-mid: #f28a50;
+  const [editForm, setEditForm] = useState(profile);
 
-    --soft-bg: #d9edf8;
-    --text-dark: #0c72a6;
-    --text-mid: #2086c4;
-    --text-light: #6eaed1;
-    --text-neutral: #3f5f73;
+  const calcAge = (dateStr) => {
+    if (!dateStr) return "-";
+    const birth = new Date(dateStr);
+    const age = new Date().getFullYear() - birth.getFullYear();
+    return `${age} tahun`;
+  };
 
-    --card-shadow: 0 4px 18px rgba(0,0,0,0.08);
-    --card-shadow-hover: 0 10px 28px rgba(0,0,0,0.12);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 1000);
 
-    --r: 20px;
-    --r-sm: 12px;
-  }
+    return () => clearInterval(timer);
+  }, []);
 
-  * { margin:0; padding:0; box-sizing:border-box; }
+  useEffect(() => {
+    if (!actionMessage) return;
+    const timer = setTimeout(() => {
+      setActionMessage("");
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [actionMessage]);
 
-  html, body { min-height: 100%; }
+  const handleOpenEditModal = () => {
+    setEditForm(profile);
+    setShowEditModal(true);
+  };
 
-  body {
-    font-family: 'Poppins', sans-serif;
-    background: var(--soft-bg);
-    color: var(--text-dark);
-  }
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    if (!editForm.name.trim() || !editForm.username.trim()) {
+      setActionMessage("Please complete required fields.");
+      return;
+    }
+    setProfile(editForm);
+    setShowEditModal(false);
+    setActionMessage("Profile updated successfully.");
+  };
 
-  /* NAV */
-  .nav {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(255,255,255,.88);
-    backdrop-filter: blur(14px);
-    border-bottom: 1px solid #dff4ff;
-    padding: 0 36px;
-    display: flex; align-items: center; justify-content: space-between;
-    height: 62px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-  }
-  .nav-logo { height: 36px; width: auto; object-fit: contain; }
+  const claimReward = (id, name) => {
+    setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, state: "claimed" } : r)));
+    setActionMessage(`🎉 "${name}" berhasil diklaim!`);
+  };
 
-  /* MODAL OVERLAY */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(12,114,166,.22);
-    backdrop-filter: blur(4px);
-    z-index: 200;
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-  }
-  .modal {
-    background: white; border-radius: var(--r);
-    box-shadow: 0 24px 60px rgba(0,0,0,.18);
-    width: 100%; max-width: 520px;
-    overflow: hidden;
-    max-height: 90vh; overflow-y: auto;
-  }
-  .modal-head {
-    background: linear-gradient(135deg, var(--teal) 0%, var(--pink) 100%);
-    padding: 20px 24px;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 1;
-  }
-  .modal-title { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.1rem; color: white; }
-  .modal-close {
-    background: rgba(255,255,255,.24); border: none; border-radius: 50%;
-    width: 32px; height: 32px; color: white; font-size: 1.1rem; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; transition: background .2s;
-  }
-  .modal-close:hover { background: rgba(255,255,255,.36); }
-  .modal-body { padding: 24px; }
-  .field { margin-bottom: 16px; }
-  .field label {
-    display: block; font-size: .8rem; font-weight: 700;
-    color: var(--text-mid); margin-bottom: 6px;
-  }
-  .field input, .field textarea, .field select {
-    width: 100%; border: 1.5px solid #cfe8f7; border-radius: var(--r-sm);
-    padding: 10px 14px; font-family: 'Poppins', sans-serif;
-    font-size: .88rem; color: var(--text-neutral);
-    background: #f8fcff; outline: none;
-    transition: border-color .2s, box-shadow .2s;
-  }
-  .field input:focus, .field textarea:focus, .field select:focus {
-    border-color: var(--teal);
-    box-shadow: 0 0 0 3px rgba(143,208,239,.18);
-  }
-  .field textarea { resize: vertical; min-height: 72px; }
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .modal-footer { display: flex; gap: 10px; padding: 0 24px 24px; }
-  .btn-save {
-    flex: 1; background: linear-gradient(135deg, var(--teal), var(--pink));
-    color: white; border: none; border-radius: 50px; padding: 11px;
-    font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .9rem;
-    cursor: pointer; transition: box-shadow .2s, transform .2s;
-  }
-  .btn-save:hover { box-shadow: 0 6px 18px rgba(143,208,239,.35); transform: translateY(-1px); }
-  .btn-cancel {
-    flex: 0 0 auto; background: var(--pink-light); color: var(--pink-dark);
-    border: none; border-radius: 50px; padding: 11px 20px;
-    font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .9rem;
-    cursor: pointer; transition: background .2s;
-  }
-  .btn-cancel:hover { background: #f8d5e9; }
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-  /* LAYOUT */
-  .page {
-    max-width: 1160px; margin: 0 auto; padding: 28px 20px 60px;
-    display: grid; grid-template-columns: 290px 1fr; gap: 22px;
-    margin-left: 80px;
-  }
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
+        <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
+        <div className="absolute left-[14%] top-[-7rem] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
+        <div className="absolute right-[20%] top-[16%] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
+        <div className="absolute bottom-[-9rem] left-[-2rem] h-80 w-80 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
+        <div className="absolute bottom-[-5rem] left-[26%] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
+        <div className="absolute left-[-6rem] top-[-3rem] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
+        <Image
+          src="/images/header.png"
+          alt="Header Decoration"
+          width={1600}
+          height={200}
+          className="absolute top-0 left-0 w-full object-cover opacity-80"
+        />
+      </div>
 
-  /* LEFT */
-  .left { display: flex; flex-direction: column; gap: 18px; }
+      <section className="relative z-10 w-full px-6 pb-6 pt-40 sm:px-8 lg:px-12">
+        <div className="relative">
+          <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">
+                My Profile
+              </h1>
+              <p className="mt-2 text-[18px] text-[#f08bbf]">
+                Kelola informasi dan aktivitasmu
+              </p>
+            </div>
 
-  /* Profile card */
-  .pcard { background: white; border-radius: var(--r); box-shadow: var(--card-shadow); overflow: hidden; }
-  .pbanner {
-    height: 88px;
-    background: linear-gradient(135deg, var(--teal) 0%, var(--pink) 100%);
-    position: relative;
-  }
-  .pbanner::after {
-    content: '🌸 🌿 ✨'; position: absolute; bottom: 8px; right: 12px;
-    font-size: .8rem; opacity: .45; letter-spacing: 4px;
-  }
-  .pbody { padding: 0 22px 22px; }
-  .av-wrap { margin-top: -30px; margin-bottom: 12px; position: relative; display: inline-block; }
-  .av {
-    width: 62px; height: 62px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--pink-light), var(--teal-light));
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.7rem; border: 3px solid white;
-    box-shadow: 0 4px 14px rgba(143,208,239,.22);
-  }
-  .av-online {
-    position: absolute; bottom: 3px; right: 3px;
-    width: 13px; height: 13px; background: #22C55E;
-    border-radius: 50%; border: 2px solid white;
-  }
-  .pname { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.15rem; color: var(--text-dark); }
-  .phandle { font-size: .8rem; color: var(--text-light); font-weight: 600; margin: 2px 0 9px; }
-  .pbio { font-size: .83rem; color: var(--text-mid); line-height: 1.6; margin-bottom: 14px; }
-  .ptags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-  .ptag { border-radius: 50px; padding: 3px 11px; font-size: .72rem; font-weight: 700; }
-  .ptag-pink { background: var(--pink-light); color: var(--pink-dark); }
-  .ptag-teal { background: var(--teal-light); color: var(--teal-dark); }
-  .ptag-lav  { background: var(--lav); color: var(--lav-mid); }
-  .pinfo { display: flex; flex-direction: column; gap: 7px; }
-  .pinfo-row { display: flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--text-mid); }
-  .edit-btn {
-    width: 100%; margin-top: 14px; background: var(--teal); color: white;
-    border: none; border-radius: 50px; padding: 10px;
-    font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .86rem;
-    cursor: pointer; transition: background .2s, transform .2s;
-  }
-  .edit-btn:hover { background: #7bc4e7; transform: translateY(-1px); }
+            <div className="flex flex-col items-end gap-3">
+              <div className="w-fit rounded-full bg-white px-5 py-2 text-[15px] font-medium text-[#e85fa7] shadow-sm">
+                {formatTopDate(currentDate)}
+              </div>
 
-  /* Level card */
-  .lcard {
-    background: linear-gradient(135deg, #77c4e8 0%, #efb7d5 100%);
-    border-radius: var(--r); padding: 22px; color: white;
-    position: relative; overflow: hidden; box-shadow: var(--card-shadow);
-  }
-  .lcard::before {
-    content: ''; position: absolute; top: -40px; right: -40px;
-    width: 130px; height: 130px; background: rgba(255,255,255,.14); border-radius: 50%;
-  }
-  .lcard::after {
-    content: ''; position: absolute; bottom: -30px; left: -30px;
-    width: 100px; height: 100px; background: rgba(255,255,255,.12); border-radius: 50%;
-  }
-  .ltop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; position: relative; z-index: 1; }
-  .lbadge { display: flex; align-items: center; gap: 8px; }
-  .llabel { font-size: .7rem; opacity: .9; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,.9); }
-  .lname { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.05rem; color: white; }
-  .lnum { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 2rem; color: #fff7d1; line-height: 1; text-align: right; }
-  .lsub { font-size: .7rem; opacity: .85; text-align: right; }
-  .xp-labels { display: flex; justify-content: space-between; font-size: .75rem; opacity: .95; margin-bottom: 5px; position: relative; z-index: 1; }
-  .xp-bar { background: rgba(255,255,255,.25); border-radius: 50px; height: 10px; overflow: hidden; position: relative; z-index: 1; }
-  .xp-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, #ffffff, #fff1a8); width: 68%; position: relative; }
-  .xp-fill::after {
-    content: ''; position: absolute; right: 0; top: 50%; transform: translate(50%,-50%);
-    width: 14px; height: 14px; background: white; border-radius: 50%;
-    box-shadow: 0 0 8px rgba(255,255,255,.7);
-  }
-  .xp-next { font-size: .72rem; opacity: .95; text-align: right; margin-top: 6px; position: relative; z-index: 1; }
+              {actionMessage && (
+                <div className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm">
+                  {actionMessage}
+                </div>
+              )}
+            </div>
+          </div>
 
-  /* Stats grid */
-  .sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .smini { background: white; border-radius: var(--r-sm); padding: 14px; box-shadow: var(--card-shadow); text-align: center; }
-  .smini-icon { font-size: 1.25rem; margin-bottom: 4px; }
-  .smini-val { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.35rem; color: var(--text-dark); }
-  .smini-lbl { font-size: .7rem; color: var(--text-light); font-weight: 600; }
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+            {/* Left Section - Profile Info */}
+            <div className="space-y-5">
+              {/* Profile Card */}
+              <div className="rounded-[22px] bg-white/90 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+                <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+                  <div className="flex h-[110px] w-[110px] items-center justify-center rounded-full bg-[#f7d3e4] p-3">
+                    <span className="text-[80px]">🐰</span>
+                  </div>
 
-  /* Badges */
-  .bcard { background: white; border-radius: var(--r); padding: 18px; box-shadow: var(--card-shadow); }
-  .ctitle { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .95rem; color: var(--text-dark); margin-bottom: 12px; }
-  .bgrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
-  .bitem { aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; transition: transform .2s; position: relative; }
-  .bitem:hover { transform: scale(1.08); }
-  .bitem-earned-pink   { background: var(--pink-light); }
-  .bitem-earned-teal   { background: var(--teal-light); }
-  .bitem-earned-lav    { background: var(--lav); }
-  .bitem-earned-yellow { background: #fff6cc; }
-  .bitem-locked { background: #f4f7f9; opacity: .55; filter: grayscale(1); }
-  .bitem-earned::after {
-    content: '✓'; position: absolute; top: 4px; right: 4px;
-    width: 12px; height: 12px; background: var(--pink-mid); color: white;
-    border-radius: 50%; font-size: .52rem;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 12px; text-align: center;
-  }
-  .bemoji { font-size: 1.3rem; }
-  .bname { font-size: .58rem; font-weight: 700; color: var(--text-mid); text-align: center; line-height: 1.2; }
+                  <div>
+                    <h2 className="text-[28px] font-bold text-[#222]">
+                      {profile.name}
+                    </h2>
+                    <p className="mt-1 text-[16px] text-[#666]">@{profile.username}</p>
+                    <p className="mt-2 text-[14px] text-[#888]">{profile.bio}</p>
+                  </div>
+                </div>
 
-  /* RIGHT */
-  .right { display: flex; flex-direction: column; gap: 18px; }
+                <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
+                    <p className="text-[13px] text-[#ea3f97]">📍 Lokasi</p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                      {profile.address}
+                    </p>
+                  </div>
 
-  /* Tabs */
-  .tabs { display: flex; gap: 5px; background: white; border-radius: 50px; padding: 5px; box-shadow: var(--card-shadow); width: fit-content; }
-  .tab { padding: 8px 22px; border-radius: 50px; border: none; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .86rem; cursor: pointer; transition: all .2s; color: var(--text-light); background: transparent; }
-  .tab-active { background: linear-gradient(135deg, var(--teal), var(--pink)); color: white; box-shadow: 0 4px 14px rgba(143,208,239,.35); }
+                  <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
+                    <p className="text-[13px] text-[#0c72a6]">🎂 Usia</p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                      {calcAge(profile.birth_date)}
+                    </p>
+                  </div>
 
-  /* Section header */
-  .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .sec-head h2 { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 1.15rem; color: var(--text-dark); }
-  .score-chip { display: flex; align-items: center; gap: 5px; background: linear-gradient(135deg, var(--teal), var(--pink)); color: white; border-radius: 50px; padding: 6px 16px; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .92rem; box-shadow: 0 4px 12px rgba(143,208,239,.28); }
+                  <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
+                    <p className="text-[13px] text-[#ea3f97]">⚧️ Jenis Kelamin</p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                      {profile.gender}
+                    </p>
+                  </div>
 
-  /* Mission */
-  .mlist { display: flex; flex-direction: column; gap: 10px; }
-  .mlabel { font-size: .75rem; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 1.5px; margin: 12px 0 6px; padding-left: 2px; }
-  .mcard { background: white; border-radius: var(--r); padding: 16px 18px; box-shadow: var(--card-shadow); display: flex; align-items: center; gap: 14px; position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s; cursor: pointer; }
-  .mcard:hover { transform: translateX(4px); box-shadow: var(--card-shadow-hover); }
-  .mcard::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
-  .mcard-done { opacity: .82; }
-  .mcard-done::before   { background: linear-gradient(180deg, var(--teal), #b7e9fb); }
-  .mcard-active::before { background: linear-gradient(180deg, var(--pink-mid), var(--pink)); }
-  .mcard-locked::before { background: #d8e5ee; }
-  .micon { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
-  .micon-pink   { background: var(--pink-light); }
-  .micon-teal   { background: var(--teal-light); }
-  .micon-lav    { background: var(--lav); }
-  .micon-yellow { background: #fff6cc; }
-  .micon-grey   { background: #f3f7fa; }
-  .minfo { flex: 1; }
-  .mtitle { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .93rem; color: var(--text-dark); margin-bottom: 2px; }
-  .mdesc  { font-size: .78rem; color: var(--text-mid); font-weight: 600; margin-bottom: 7px; }
-  .mprog  { display: flex; align-items: center; gap: 10px; }
-  .pbar   { flex: 1; background: #edf5fa; border-radius: 50px; height: 7px; overflow: hidden; }
-  .pfill  { height: 100%; border-radius: 50px; }
-  .pfill-pink   { background: linear-gradient(90deg, var(--pink-mid), #f4b7d6); }
-  .pfill-teal   { background: linear-gradient(90deg, var(--teal-dark), var(--teal)); }
-  .pfill-lav    { background: linear-gradient(90deg, var(--lav-mid), #7fbce2); }
-  .pfill-yellow { background: linear-gradient(90deg, var(--yellow-mid), #f6dd78); }
-  .ptext  { font-size: .7rem; font-weight: 700; color: var(--text-light); white-space: nowrap; }
-  .mright { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
-  .xpreward { display: flex; align-items: center; gap: 4px; background: #fff4bf; color: #9b6b00; border-radius: 50px; padding: 3px 10px; font-size: .73rem; font-weight: 800; }
-  .mstatus { font-size: .7rem; font-weight: 700; padding: 3px 10px; border-radius: 50px; }
-  .mstatus-done   { background: #dff8ea; color: #1d7a50; }
-  .mstatus-active { background: var(--pink-light); color: var(--pink-dark); }
-  .mstatus-locked { background: #f1f5f8; color: #94a3b8; }
+                  <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
+                    <p className="text-[13px] text-[#0c72a6]">🎓 Pendidikan</p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                      {profile.last_edu}
+                    </p>
+                  </div>
 
-  /* Rewards */
-  .rgrid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
-  .rcard { background: white; border-radius: var(--r); padding: 20px 16px; box-shadow: var(--card-shadow); text-align: center; position: relative; overflow: hidden; cursor: pointer; transition: transform .25s, box-shadow .25s; }
-  .rcard:hover { transform: translateY(-4px); box-shadow: var(--card-shadow-hover); }
-  .rcard-claimed::before { content: 'CLAIMED'; position: absolute; top: 10px; right: -18px; background: var(--teal-dark); color: white; font-size: .58rem; font-weight: 800; letter-spacing: 1px; padding: 2px 24px; transform: rotate(35deg); }
-  .rcard-locked { opacity: .58; }
-  .remoji  { font-size: 2.1rem; margin-bottom: 8px; display: block; }
-  .rname   { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .88rem; color: var(--text-dark); margin-bottom: 4px; }
-  .rdesc   { font-size: .73rem; color: var(--text-mid); line-height: 1.4; margin-bottom: 10px; }
-  .rcost   { display: inline-flex; align-items: center; gap: 4px; background: #fff4bf; color: #9b6b00; border-radius: 50px; padding: 3px 13px; font-size: .75rem; font-weight: 800; }
-  .rcost-grey { background: #f1f5f8; color: #94a3b8; }
-  .rbtn { width: 100%; margin-top: 10px; border: none; border-radius: 50px; padding: 8px; font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .8rem; cursor: pointer; transition: all .2s; }
-  .rbtn-claim { background: linear-gradient(135deg, var(--teal), var(--pink)); color: white; }
-  .rbtn-claim:hover { box-shadow: 0 4px 14px rgba(143,208,239,.35); }
-  .rbtn-off { background: #f1f5f8; color: #94a3b8; cursor: not-allowed; }
+                  <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
+                    <p className="text-[13px] text-[#ea3f97]">📞 Telepon</p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                      {profile.telp_number}
+                    </p>
+                  </div>
 
-  /* Consultation History */
-  .ch-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
-  .ch-card { background: white; border-radius: var(--r); box-shadow: var(--card-shadow); padding: 18px 16px 16px; cursor: pointer; position: relative; overflow: hidden; border: 1.5px solid #d8ebf7; transition: transform .2s, box-shadow .2s, border-color .2s; }
-  .ch-card:hover { transform: translateY(-4px); box-shadow: var(--card-shadow-hover); border-color: var(--teal); }
-  .ch-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, var(--pink-mid), var(--pink)); }
-  .ch-card.ch-online::before { background: linear-gradient(180deg, var(--teal-dark), var(--teal)); }
-  .ch-card.ch-cancelled::before { background: #d8e5ee; }
-  .ch-date-num { font-family: 'Poppins', sans-serif; font-weight: 900; font-size: 2rem; color: var(--pink-mid); line-height: 1; }
-  .ch-card.ch-online .ch-date-num { color: var(--teal-dark); }
-  .ch-card.ch-cancelled .ch-date-num { color: #9fb6c8; }
-  .ch-date-month { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .85rem; color: var(--text-mid); margin-bottom: 10px; }
-  .ch-divider { height: 1px; background: #dff0fa; margin: 10px 0; }
-  .ch-doctor { font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .82rem; color: var(--text-dark); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .ch-time { font-size: .75rem; color: var(--text-mid); font-weight: 600; margin-bottom: 8px; }
-  .ch-badges { display: flex; gap: 5px; flex-wrap: wrap; }
-  .ch-badge { font-size: .65rem; font-weight: 700; border-radius: 50px; padding: 2px 9px; }
-  .ch-badge-pink { background: var(--pink-light); color: var(--pink-dark); }
-  .ch-badge-teal { background: var(--teal-light); color: var(--teal-dark); }
-  .ch-badge-grey { background: #f1f5f8; color: #6b8ba3; }
-  .ch-see-all { display: flex; align-items: center; justify-content: center; background: white; border-radius: var(--r); box-shadow: var(--card-shadow); border: 1.5px dashed var(--teal); padding: 18px 16px; cursor: pointer; font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .88rem; color: var(--teal-dark); gap: 6px; transition: background .2s; }
-  .ch-see-all:hover { background: var(--teal-light); }
+                  <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
+                    <p className="text-[13px] text-[#0c72a6]">🩺 Psikiater</p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                      {profile.doctor}
+                    </p>
+                  </div>
+                </div>
 
-  /* Toast */
-  @keyframes slideUp { from { transform: translateY(80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  .toast { position: fixed; bottom: 28px; right: 28px; z-index: 999; background: linear-gradient(135deg, var(--teal-dark), var(--pink-dark)); color: white; border-radius: 16px; padding: 13px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.18); animation: slideUp .4s cubic-bezier(.34,1.56,.64,1); }
-  .toast-text { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .88rem; }
+                <button
+                  type="button"
+                  onClick={handleOpenEditModal}
+                  className="mt-6 w-full rounded-full bg-[#db2d8d] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#c8277e]"
+                >
+                  ✏️ Edit Profile
+                </button>
+              </div>
 
-  /* Confetti */
-  @keyframes fall { from { transform: translateY(-10px) rotate(0deg); opacity: 1; } to { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
-  .confpiece { position: fixed; width: 8px; height: 8px; border-radius: 2px; pointer-events: none; z-index: 998; animation: fall 2s ease-in forwards; }
+              {/* Level & Stats */}
+              <div className="rounded-[22px] bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[40px]">🌟</span>
+                    <div>
+                      <p className="text-[12px] font-bold text-white/80 uppercase tracking-wider">Level Saat Ini</p>
+                      <p className="text-[22px] font-bold text-white">Mind Explorer</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[32px] font-bold text-[#fff1a8]">12</p>
+                    <p className="text-[12px] text-white/80">dari 50 level</p>
+                  </div>
+                </div>
 
-  /* Responsive */
-  @media (max-width: 980px) {
-    .page { grid-template-columns: 1fr; }
-    .ch-grid, .rgrid { grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 640px) {
-    .nav { padding: 0 18px; }
-    .page { padding: 20px 14px 48px; }
-    .field-row, .ch-grid, .rgrid, .sgrid { grid-template-columns: 1fr; }
-    .tabs { width: 100%; flex-wrap: wrap; border-radius: 20px; }
-    .tab { flex: 1 1 calc(33.333% - 4px); text-align: center; padding: 10px 12px; }
-    .sec-head { flex-direction: column; align-items: flex-start; gap: 10px; }
-    .mcard { flex-direction: column; align-items: flex-start; }
-    .mright { width: 100%; align-items: flex-start; }
-  }
-`;
+                <div className="mb-3 flex justify-between text-[12px] font-bold text-white/90">
+                  <span>⚡ 2.400 XP</span>
+                  <span>Target: 3.500 XP</span>
+                </div>
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+                <div className="mb-3 h-[10px] rounded-full bg-white/25 overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-white to-[#fff1a8]" style={{ width: "68%" }} />
+                </div>
+
+                <p className="text-[12px] text-white/90">1.100 XP lagi → Level 13: Soul Seeker ✨</p>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                {[
+                  { icon: "📔", val: "47", label: "Hari Journaling" },
+                  { icon: "🧠", val: "8", label: "Sesi Konsultasi" },
+                  { icon: "🔥", val: "14", label: "Streak Hari" },
+                  { icon: "🏆", val: "9", label: "Badge" },
+                ].map((stat, i) => (
+                  <div key={i} className="rounded-[16px] bg-white/90 p-4 text-center shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+                    <p className="text-[28px] mb-2">{stat.icon}</p>
+                    <p className="text-[20px] font-bold text-[#222]">{stat.val}</p>
+                    <p className="text-[12px] text-[#666] mt-1">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Section - Tabs & Content */}
+            <div className="space-y-5">
+              {/* Tab Navigation */}
+              <div className="flex gap-2 rounded-full bg-white/90 p-2 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+                {[
+                  { id: "missions", label: "🎯 Misi" },
+                  { id: "rewards", label: "🎁 Reward" },
+                  { id: "history", label: "📋 Riwayat" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 rounded-full px-4 py-2.5 text-[13px] font-bold transition ${
+                      activeTab === tab.id
+                        ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                        : "text-[#666] hover:text-[#222]"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Missions Tab */}
+              {activeTab === "missions" && (
+                <div className="space-y-4">
+                  {Object.entries(MISSIONS).map(([section, missions]) => (
+                    <div key={section}>
+                      <h3 className="text-[14px] font-bold text-[#0c72a6] uppercase tracking-wider mb-3 px-2">
+                        {section === "daily" && "🌅 Harian"}
+                        {section === "weekly" && "📅 Mingguan"}
+                        {section === "special" && "🌠 Misi Spesial"}
+                      </h3>
+                      <div className="space-y-3">
+                        {missions.map((m) => {
+                          const pct = m.total > 0 ? Math.round((m.progress / m.total) * 100) : 0;
+                          return (
+                            <div key={m.id} className="rounded-[16px] bg-white/90 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+                              <div className="flex items-start gap-4">
+                                <span className="text-[28px]">{m.icon}</span>
+                                <div className="flex-1">
+                                  <p className="text-[14px] font-bold text-[#222]">{m.title}</p>
+                                  <p className="text-[12px] text-[#666] mt-1">{m.desc}</p>
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <div className="flex-1 h-[6px] bg-[#edf5fa] rounded-full overflow-hidden">
+                                      <div className="h-full bg-gradient-to-r from-[#ea1e8c] to-[#8fd0ef]" style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <span className="text-[11px] font-bold text-[#0c72a6]">
+                                      {m.status === "done" ? "✓" : `${m.progress}/${m.total}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
+                                  <span className="text-[12px] font-bold bg-[#fff4bf] text-[#9b6b00] px-3 py-1 rounded-full">
+                                    ⚡ +{m.xp}
+                                  </span>
+                                  <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${getMissionStatusColor(m.status)}`}>
+                                    {m.status === "done" ? "✓ Done" : m.status === "active" ? "● Progress" : "🔒 Locked"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Rewards Tab */}
+              {activeTab === "rewards" && (
+                <div className="grid grid-cols-1 gap-4">
+                  {rewards.map((r) => (
+                    <div key={r.id} className="rounded-[16px] bg-white/90 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] transition">
+                      <div className="flex items-start gap-4">
+                        <span className="text-[40px]">{r.emoji}</span>
+                        <div className="flex-1">
+                          <p className="text-[15px] font-bold text-[#222]">{r.name}</p>
+                          <p className="text-[13px] text-[#666] mt-1">{r.desc}</p>
+                          <div className="mt-3 flex items-center gap-2">
+                            <span className={`text-[12px] font-bold px-3 py-1 rounded-full ${r.state === "locked" ? "bg-[#f1f5f8] text-[#94a3b8]" : "bg-[#fff4bf] text-[#9b6b00]"}`}>
+                              {r.state === "locked" ? "🔒 Level 20" : `⚡ ${r.xp} XP`}
+                            </span>
+                            <button
+                              onClick={() => r.state === "available" && claimReward(r.id, r.name)}
+                              disabled={r.state !== "available"}
+                              className={`ml-auto px-4 py-2 rounded-full text-[12px] font-bold transition ${
+                                r.state === "available"
+                                  ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white hover:shadow-lg"
+                                  : "bg-[#f1f5f8] text-[#94a3b8] cursor-not-allowed"
+                              }`}
+                            >
+                              {r.state === "claimed" ? "✓ Claimed" : r.state === "locked" ? "Locked" : "Claim"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Consultation History Tab */}
+              {activeTab === "history" && (
+                <div className="space-y-3">
+                  {CONSULTATIONS.map((c) => (
+                    <div key={c.id} className="rounded-[16px] bg-white/90 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] transition border-l-[4px] border-[#8fd0ef]">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[20px] font-bold text-[#ea1e8c]">{c.day}</span>
+                            <span className="text-[13px] font-bold text-[#0c72a6]">{c.month}</span>
+                          </div>
+                          <p className="text-[14px] font-bold text-[#222]">🩺 {c.doctor}</p>
+                          <p className="text-[12px] text-[#666] mt-1">🕐 {c.time}</p>
+                          <div className="flex gap-2 mt-3">
+                            <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.type === "online" ? "bg-[#dff4ff] text-[#0c72a6]" : "bg-[#fde8f3] text-[#db2d8d]"}`}>
+                              {c.type === "online" ? "💻 Online" : "🏥 Offline"}
+                            </span>
+                            <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.status === "done" ? "bg-[#dff7eb] text-[#1f9d62]" : "bg-[#f3f3f3] text-[#7b7b7b]"}`}>
+                              {c.status === "done" ? "✓ Done" : "✕ Cancelled"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Badges Section */}
+              <div className="rounded-[22px] bg-white/90 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+                <h3 className="text-[16px] font-bold text-[#222] mb-4">🏅 Badges</h3>
+                <div className="grid grid-cols-4 gap-3">
+                  {BADGES.map((b, i) => (
+                    <div
+                      key={i}
+                      className={`aspect-square flex flex-col items-center justify-center rounded-[14px] cursor-pointer transition ${
+                        b.earned
+                          ? "bg-gradient-to-br from-[#fde8f3] to-[#dff4ff]"
+                          : "bg-[#f3f3f3] opacity-50"
+                      }`}
+                      title={b.name}
+                    >
+                      <span className="text-[24px]">{b.emoji}</span>
+                      {b.earned && <span className="text-[10px] font-bold text-[#db2d8d] mt-1">✓</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[26px] font-bold text-[#db2d8d]">
+                  Edit Profile
+                </h2>
+                <p className="mt-1 text-[14px] text-[#777]">
+                  Update informasi pribadi kamu
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <input
+                type="text"
+                name="name"
+                placeholder="Nama lengkap"
+                value={editForm.name}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <input
+                type="text"
+                name="username"
+                placeholder="Username"
+                value={editForm.username}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <textarea
+                name="bio"
+                placeholder="Bio singkat tentang dirimu"
+                value={editForm.bio}
+                onChange={handleEditFormChange}
+                className="w-full rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                rows={2}
+              />
+
+              <input
+                type="date"
+                name="birth_date"
+                value={editForm.birth_date}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <select
+                name="gender"
+                value={editForm.gender}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              >
+                <option value="Perempuan">Perempuan</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+
+              <input
+                type="tel"
+                name="telp_number"
+                placeholder="Nomor telepon"
+                value={editForm.telp_number}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <input
+                type="text"
+                name="last_edu"
+                placeholder="Pendidikan terakhir"
+                value={editForm.last_edu}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <input
+                type="text"
+                name="address"
+                placeholder="Alamat"
+                value={editForm.address}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <input
+                type="text"
+                name="doctor"
+                placeholder="Nama psikiater/konselor"
+                value={editForm.doctor}
+                onChange={handleEditFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
 
 function MissionCard({ m }) {
   const pct = m.total > 0 ? Math.round((m.progress / m.total) * 100) : 0;
@@ -433,7 +615,7 @@ function MissionCard({ m }) {
 
 // ── MAIN COMPONENT ────────────────────────────────────────────────────────────
 
-export default function ProfilePage() {
+function ProfilePage() {
   const [activeTab, setActiveTab] = useState("missions");
   const [rewards, setRewards] = useState(REWARDS_INIT);
   const [toast, setToast] = useState(null);
@@ -538,6 +720,10 @@ export default function ProfilePage() {
                 ))}
               </div>
               <button className="edit-btn" onClick={openEdit}>✏️ Edit Profil</button>
+              <div className="pinfo" style={{ marginTop: "12px", gap: "8px" }}>
+                <button className="edit-btn" style={{ background: "#f28a50", fontSize: "0.8rem" }} onClick={() => alert("Fitur ubah password akan segera hadir!")}>🔑 Ubah Password</button>
+                <button className="edit-btn" style={{ background: "#ea1e8c", fontSize: "0.8rem" }} onClick={() => signOut()}>🚪 Sign Out</button>
+              </div>
             </div>
           </div>
 
@@ -576,12 +762,10 @@ export default function ProfilePage() {
           <div className="bcard">
             <div className="ctitle">🏅 Badge Koleksiku</div>
             <div className="bgrid">
-              {BADGES.map((b, i) => (
-                <div key={i} className={b.earned ? `bitem bitem-earned bitem-earned-${b.color}` : "bitem bitem-locked"} title={b.name}>
-                  <span className="bemoji">{b.emoji}</span>
-                  <span className="bname">{b.name}</span>
-                </div>
-              ))}
+              <div className="bitem bitem-earned bitem-earned-pink">
+                <span className="bemoji">🏆</span>
+                <span className="bname">{BADGES.filter(b => b.earned).length} Badge Diraih</span>
+              </div>
             </div>
           </div>
 
