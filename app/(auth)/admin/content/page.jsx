@@ -4,6 +4,99 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { lyricsByDay as defaultLyrics } from "@/lib/dailyLyric";
 
+const defaultJarOfHappiness = [
+  {
+    id: 1,
+    title: "Gentle Growth",
+    content: "You are allowed to grow slowly. Small progress is still progress.",
+    category: "Self-Compassion & Healing"
+  },
+  {
+    id: 2,
+    title: "Breath of Calm",
+    content: "Take a deep breath. You do not have to solve everything today.",
+    category: "Mindfulness & Presence"
+  },
+  {
+    id: 3,
+    title: "Gratitude Reflection",
+    content: "Write down 3 things you survived before this moment.",
+    category: "Gratitude & Resilience"
+  },
+  {
+    id: 4,
+    title: "Self-Care Moment",
+    content: "Drink a glass of water and stretch for 2 minutes.",
+    category: "Gratitude & Resilience"
+  },
+  {
+    id: 5,
+    title: "Rest is Healing",
+    content: "Rest is not laziness. Rest is part of healing.",
+    category: "Self-Compassion & Healing"
+  },
+  {
+    id: 6,
+    title: "Kind Words to Self",
+    content: "Today's challenge: say one kind thing to yourself out loud.",
+    category: "Gratitude & Resilience"
+  },
+  {
+    id: 7,
+    title: "Inner Worth",
+    content: "You are still worthy, even on low-energy days.",
+    category: "Gratitude & Resilience"
+  },
+  {
+    id: 8,
+    title: "Emotional Awareness",
+    content: "Try naming one emotion you feel right now without judging it.",
+    category: "Mindfulness & Presence"
+  },
+  {
+    id: 9,
+    title: "Pause & Breathe",
+    content: "It is okay to pause. You are not falling behind.",
+    category: "Mindfulness & Presence"
+  },
+  {
+    id: 10,
+    title: "Gentle Steps",
+    content: "One gentle step is enough for today.",
+    category: "Self-Compassion & Healing"
+  },
+  {
+    id: 11,
+    title: "Valid Feelings",
+    content: "Your feelings are valid, even when they are hard to explain.",
+    category: "Gratitude & Resilience"
+  },
+  {
+    id: 12,
+    title: "Digital Detox",
+    content: "Challenge: leave your screen for 5 minutes and breathe slowly.",
+    category: "Mindfulness & Presence"
+  },
+  {
+    id: 13,
+    title: "Peace Deserved",
+    content: "You do not need to be productive to deserve peace.",
+    category: "Self-Compassion & Healing"
+  },
+  {
+    id: 14,
+    title: "Non-Linear Healing",
+    content: "Healing is not linear, and that is completely okay.",
+    category: "Self-Compassion & Healing"
+  },
+  {
+    id: 15,
+    title: "Past Strength",
+    content: "You have made it through difficult days before.",
+    category: "Gratitude & Resilience"
+  },
+];
+
 const defaultQuestions = [
   {
     id: 1,
@@ -59,6 +152,7 @@ const defaultQuestions = [
 
 const LYRICS_STORAGE_KEY = "healinq_admin_lyrics";
 const QUESTIONS_STORAGE_KEY = "healinq_admin_fyp_questions";
+const JAR_OF_HAPPINESS_STORAGE_KEY = "healinq_admin_jar_of_happiness";
 
 const categoryOptions = [
   { value: "analytical", label: "Analytical" },
@@ -67,6 +161,12 @@ const categoryOptions = [
   { value: "social", label: "Social" },
   { value: "planning", label: "Planning" },
   { value: "creative", label: "Creative" },
+];
+
+const jarOfHappinessCategories = [
+  { value: "Self-Compassion & Healing", label: "Self-Compassion & Healing" },
+  { value: "Mindfulness & Presence", label: "Mindfulness & Presence" },
+  { value: "Gratitude & Resilience", label: "Gratitude & Resilience" },
 ];
 
 function formatTopDate(date) {
@@ -89,10 +189,17 @@ export default function AdminContentPage() {
 
   const [lyrics, setLyrics] = useState([]);
   const [questions, setQuestions] = useState([]);
+  const [jarOfHappiness, setJarOfHappiness] = useState([]);
 
   const [lyricForm, setLyricForm] = useState({
     title: "",
     lyric: "",
+  });
+
+  const [jarOfHappinessForm, setJarOfHappinessForm] = useState({
+    title: "",
+    content: "",
+    category: "Self-Compassion & Healing",
   });
 
   const [questionForm, setQuestionForm] = useState({
@@ -101,10 +208,13 @@ export default function AdminContentPage() {
   });
 
   const [editingLyric, setEditingLyric] = useState(null);
+  const [editingJarOfHappiness, setEditingJarOfHappiness] = useState(null);
   const [editingQuestion, setEditingQuestion] = useState(null);
 
   const [showAddLyricModal, setShowAddLyricModal] = useState(false);
   const [showEditLyricModal, setShowEditLyricModal] = useState(false);
+  const [showAddJarOfHappinessModal, setShowAddJarOfHappinessModal] = useState(false);
+  const [showEditJarOfHappinessModal, setShowEditJarOfHappinessModal] = useState(false);
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
 
@@ -119,6 +229,7 @@ export default function AdminContentPage() {
   useEffect(() => {
     const storedLyrics = localStorage.getItem(LYRICS_STORAGE_KEY);
     const storedQuestions = localStorage.getItem(QUESTIONS_STORAGE_KEY);
+    const storedJarOfHappiness = localStorage.getItem(JAR_OF_HAPPINESS_STORAGE_KEY);
 
     if (storedLyrics) {
       try {
@@ -225,6 +336,38 @@ export default function AdminContentPage() {
         JSON.stringify(defaultQuestions)
       );
     }
+
+    if (storedJarOfHappiness) {
+      try {
+        const parsedJarOfHappiness = JSON.parse(storedJarOfHappiness);
+        if (Array.isArray(parsedJarOfHappiness) && parsedJarOfHappiness.length > 0) {
+          // Force reload with default data to ensure new affirmations are loaded
+          setJarOfHappiness(defaultJarOfHappiness);
+          localStorage.setItem(
+            JAR_OF_HAPPINESS_STORAGE_KEY,
+            JSON.stringify(defaultJarOfHappiness)
+          );
+        } else {
+          setJarOfHappiness(defaultJarOfHappiness);
+          localStorage.setItem(
+            JAR_OF_HAPPINESS_STORAGE_KEY,
+            JSON.stringify(defaultJarOfHappiness)
+          );
+        }
+      } catch {
+        setJarOfHappiness(defaultJarOfHappiness);
+        localStorage.setItem(
+          JAR_OF_HAPPINESS_STORAGE_KEY,
+          JSON.stringify(defaultJarOfHappiness)
+        );
+      }
+    } else {
+      setJarOfHappiness(defaultJarOfHappiness);
+      localStorage.setItem(
+        JAR_OF_HAPPINESS_STORAGE_KEY,
+        JSON.stringify(defaultJarOfHappiness)
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -239,11 +382,17 @@ export default function AdminContentPage() {
 
   const totalLyrics = lyrics.length;
   const totalQuestions = questions.length;
+  const totalJarOfHappiness = jarOfHappiness.length;
 
   const lyricPreview = useMemo(() => {
     if (lyrics.length === 0) return null;
     return lyrics[0];
   }, [lyrics]);
+
+  const jarOfHappinessPreview = useMemo(() => {
+    if (jarOfHappiness.length === 0) return null;
+    return jarOfHappiness[0];
+  }, [jarOfHappiness]);
 
   const questionPreview = useMemo(() => {
     if (questions.length === 0) return null;
@@ -253,6 +402,11 @@ export default function AdminContentPage() {
   const saveLyricsToStorage = (updatedLyrics) => {
     setLyrics(updatedLyrics);
     localStorage.setItem(LYRICS_STORAGE_KEY, JSON.stringify(updatedLyrics));
+  };
+
+  const saveJarOfHappinessToStorage = (updatedJarOfHappiness) => {
+    setJarOfHappiness(updatedJarOfHappiness);
+    localStorage.setItem(JAR_OF_HAPPINESS_STORAGE_KEY, JSON.stringify(updatedJarOfHappiness));
   };
 
   const saveQuestionsToStorage = (updatedQuestions) => {
@@ -266,6 +420,14 @@ export default function AdminContentPage() {
   const handleLyricFormChange = (e) => {
     const { name, value } = e.target;
     setLyricForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleJarOfHappinessFormChange = (e) => {
+    const { name, value } = e.target;
+    setJarOfHappinessForm((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -357,6 +519,87 @@ export default function AdminContentPage() {
     }
   };
 
+  const handleAddJarOfHappiness = (e) => {
+    e.preventDefault();
+
+    if (!jarOfHappinessForm.title.trim() || !jarOfHappinessForm.content.trim()) {
+      setActionMessage("Please complete the title and content first.");
+      return;
+    }
+
+    const newItem = {
+      id: Date.now(),
+      title: jarOfHappinessForm.title.trim(),
+      content: jarOfHappinessForm.content.trim(),
+      category: jarOfHappinessForm.category,
+    };
+
+    const updatedJarOfHappiness = [newItem, ...jarOfHappiness];
+    saveJarOfHappinessToStorage(updatedJarOfHappiness);
+
+    setJarOfHappinessForm({
+      title: "",
+      content: "",
+      category: "Self-Compassion & Healing",
+    });
+    setShowAddJarOfHappinessModal(false);
+    setActionMessage("New Jar of Happiness item added successfully.");
+  };
+
+  const handleOpenEditJarOfHappiness = (item) => {
+    setEditingJarOfHappiness({ ...item });
+    setShowEditJarOfHappinessModal(true);
+  };
+
+  const handleEditJarOfHappinessChange = (e) => {
+    const { name, value } = e.target;
+    setEditingJarOfHappiness((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSaveEditJarOfHappiness = (e) => {
+    e.preventDefault();
+
+    if (!editingJarOfHappiness.title.trim() || !editingJarOfHappiness.content.trim()) {
+      setActionMessage("Please complete all fields first.");
+      return;
+    }
+
+    const updatedJarOfHappiness = jarOfHappiness.map((item) =>
+      item.id === editingJarOfHappiness.id
+        ? {
+            ...editingJarOfHappiness,
+            title: editingJarOfHappiness.title.trim(),
+            content: editingJarOfHappiness.content.trim(),
+            category: editingJarOfHappiness.category,
+          }
+        : item
+    );
+
+    saveJarOfHappinessToStorage(updatedJarOfHappiness);
+    setShowEditJarOfHappinessModal(false);
+    setEditingJarOfHappiness(null);
+    setActionMessage("Jar of Happiness item updated successfully.");
+  };
+
+  const handleDeleteJarOfHappiness = (itemId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this Jar of Happiness item?"
+    );
+    if (!confirmed) return;
+
+    const updatedJarOfHappiness = jarOfHappiness.filter((item) => item.id !== itemId);
+    saveJarOfHappinessToStorage(updatedJarOfHappiness);
+    setActionMessage("Jar of Happiness item deleted successfully.");
+
+    if (editingJarOfHappiness?.id === itemId) {
+      setShowEditJarOfHappinessModal(false);
+      setEditingJarOfHappiness(null);
+    }
+  };
+
   const handleAddQuestion = (e) => {
     e.preventDefault();
 
@@ -436,7 +679,7 @@ export default function AdminContentPage() {
 
   const handleResetToDefault = () => {
     const confirmed = window.confirm(
-      "Reset all lyrics and FYP questions to default data?"
+      "Reset all lyrics, Jar of Happiness items, and FYP questions to default data?"
     );
     if (!confirmed) return;
 
@@ -447,6 +690,7 @@ export default function AdminContentPage() {
     }));
 
     saveLyricsToStorage(normalizedDefaultLyrics);
+    saveJarOfHappinessToStorage(defaultJarOfHappiness);
     saveQuestionsToStorage(defaultQuestions);
     setActionMessage("Content has been reset to default.");
   };
@@ -478,7 +722,7 @@ export default function AdminContentPage() {
                 Content Management
               </h1>
               <p className="mt-2 text-[18px] text-[#f08bbf]">
-                Manage lyrics and FYP questions for the user experience
+                Manage lyrics, Jar of Happiness items, and FYP questions for the user experience
               </p>
             </div>
 
@@ -504,6 +748,13 @@ export default function AdminContentPage() {
             </div>
 
             <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <p className="text-[14px] text-[#ea3f97]">Total Jar of Happiness</p>
+              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
+                {totalJarOfHappiness}
+              </h3>
+            </div>
+
+            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
               <p className="text-[14px] text-[#ea3f97]">Total FYP Questions</p>
               <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
                 {totalQuestions}
@@ -514,13 +765,6 @@ export default function AdminContentPage() {
               <p className="text-[14px] text-[#ea3f97]">Lyric Preview</p>
               <h3 className="mt-2 line-clamp-1 text-[18px] font-bold text-[#0c72a6]">
                 {lyricPreview?.title || "-"}
-              </h3>
-            </div>
-
-            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <p className="text-[14px] text-[#ea3f97]">Question Preview</p>
-              <h3 className="mt-2 line-clamp-2 text-[16px] font-bold text-[#0c72a6]">
-                {questionPreview?.text || "-"}
               </h3>
             </div>
           </div>
@@ -606,6 +850,101 @@ export default function AdminContentPage() {
                         className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
                       >
                         No lyrics available.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-[20px] bg-white/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-[18px] font-bold text-[#1e1e1e]">
+                  Jar of Happiness Management
+                </h2>
+                <p className="mt-1 text-[12px] text-[#5c5c5c]">
+                  Manage daily affirmations shown in Jar of Happiness - users can cycle through these messages
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAddJarOfHappinessModal(true)}
+                className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+              >
+                + Add Affirmation
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[900px] border-collapse">
+                <thead>
+                  <tr className="border-b border-[#ea3f97]">
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      No
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Title
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Content
+                    </th>
+                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jarOfHappiness.map((item, index) => (
+                    <tr
+                      key={item.id}
+                      className="border-b border-[#f2f2f2] last:border-b-0"
+                    >
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {index + 1}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
+                        {item.title}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {item.category || "Self-Compassion & Healing"}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        <div className="max-w-[400px] line-clamp-3">{item.content}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditJarOfHappiness(item)}
+                            className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteJarOfHappiness(item.id)}
+                            className="rounded-full bg-[#f3f3f3] px-3 py-1.5 text-[12px] font-medium text-[#666] transition hover:opacity-90"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {jarOfHappiness.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
+                      >
+                        No items available.
                       </td>
                     </tr>
                   )}
@@ -718,6 +1057,13 @@ export default function AdminContentPage() {
                 </div>
 
                 <div className="rounded-[14px] bg-white/50 px-4 py-4">
+                  <p className="text-[13px] text-[#ea3f97]">Latest Jar of Happiness</p>
+                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
+                    {jarOfHappiness[0]?.title || "-"}
+                  </p>
+                </div>
+
+                <div className="rounded-[14px] bg-white/50 px-4 py-4">
                   <p className="text-[13px] text-[#ea3f97]">Latest question</p>
                   <p className="mt-1 text-[16px] font-semibold text-[#222]">
                     {questions[questions.length - 1]?.text || "-"}
@@ -749,6 +1095,19 @@ export default function AdminContentPage() {
                   </p>
                   <p className="mt-1 text-[12px] text-[#666]">
                     Create a new lyric entry
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddJarOfHappinessModal(true)}
+                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
+                >
+                  <p className="text-[15px] font-semibold text-[#db2d8d]">
+                    Add Affirmation
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    Create a new daily affirmation
                   </p>
                 </button>
 
@@ -1075,6 +1434,172 @@ export default function AdminContentPage() {
                     Save Changes
                   </button>
                 </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showAddJarOfHappinessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[26px] font-bold text-[#db2d8d]">
+                  Add Jar of Happiness Item
+                </h2>
+                <p className="mt-1 text-[14px] text-[#777]">
+                  Add a new daily affirmation for users to discover
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAddJarOfHappinessModal(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleAddJarOfHappiness} className="space-y-4">
+              <input
+                type="text"
+                name="title"
+                placeholder="Affirmation title (e.g., Gentle Growth)"
+                value={jarOfHappinessForm.title}
+                onChange={handleJarOfHappinessFormChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <div>
+                <label className="mb-2 block text-[13px] font-medium text-[#666]">
+                  Category
+                </label>
+                <select
+                  name="category"
+                  value={jarOfHappinessForm.category}
+                  onChange={handleJarOfHappinessFormChange}
+                  className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                >
+                  {jarOfHappinessCategories.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <textarea
+                name="content"
+                placeholder="Write the affirmation message here..."
+                value={jarOfHappinessForm.content}
+                onChange={handleJarOfHappinessFormChange}
+                rows={6}
+                className="w-full rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddJarOfHappinessModal(false)}
+                  className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+                >
+                  Save Item
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEditJarOfHappinessModal && editingJarOfHappiness && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[26px] font-bold text-[#db2d8d]">
+                  Edit Jar of Happiness Item
+                </h2>
+                <p className="mt-1 text-[14px] text-[#777]">
+                  Update the daily affirmation
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEditJarOfHappinessModal(false);
+                  setEditingJarOfHappiness(null);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
+              >
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditJarOfHappiness} className="space-y-4">
+              <input
+                type="text"
+                name="title"
+                placeholder="Affirmation title (e.g., Gentle Growth)"
+                value={editingJarOfHappiness.title}
+                onChange={handleEditJarOfHappinessChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <div>
+                <label className="mb-2 block text-[13px] font-medium text-[#666]">
+                  Category
+                </label>
+                <select
+                  name="category"
+                  value={editingJarOfHappiness.category}
+                  onChange={handleEditJarOfHappinessChange}
+                  className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                >
+                  {jarOfHappinessCategories.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <textarea
+                name="content"
+                placeholder="Write the affirmation message here..."
+                value={editingJarOfHappiness.content}
+                onChange={handleEditJarOfHappinessChange}
+                rows={6}
+                className="w-full rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              />
+
+              <div className="flex flex-wrap justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditJarOfHappinessModal(false);
+                    setEditingJarOfHappiness(null);
+                  }}
+                  className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
+                >
+                  Save Changes
+                </button>
               </div>
             </form>
           </div>
