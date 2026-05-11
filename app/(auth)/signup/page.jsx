@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function SignUp() {
   const router = useRouter();
@@ -21,7 +22,11 @@ export default function SignUp() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
     setErrors((prev) => ({
       ...prev,
       [name]: "",
@@ -57,16 +62,19 @@ export default function SignUp() {
     return newErrors;
   };
 
+  // GOOGLE REGISTER
   const handleGoogleRegister = async () => {
     await signIn("google", {
-      callbackUrl: "/",
+      callbackUrl: "/dashboard/user",
     });
   };
 
-  const handleSubmit = (e) => {
+  // REGISTER SUPABASE
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -75,34 +83,60 @@ export default function SignUp() {
     setIsSubmitting(true);
 
     try {
-      const existingUsers = JSON.parse(localStorage.getItem("users")) || [];
+      // REGISTER KE AUTH SUPABASE
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username,
+          },
+        },
+      });
 
-      const emailUsed = existingUsers.some(
-        (user) => user.email.toLowerCase() === formData.email.toLowerCase()
-      );
-
-      if (emailUsed) {
+      if (error) {
         setErrors({
-          email: "Email sudah terdaftar. Gunakan email lain.",
+          general: error.message,
         });
+
         setIsSubmitting(false);
         return;
       }
 
-      const newUser = {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password,
-      };
+      const user = data.user;
 
-      localStorage.setItem("users", JSON.stringify([...existingUsers, newUser]));
+      // SIMPAN KE TABLE profiles
+      if (user) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .insert([
+            {
+              id: user.id,
+              username: formData.username,
+              email: formData.email,
+            },
+          ]);
+
+        if (profileError) {
+          setErrors({
+            general: profileError.message,
+          });
+
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      alert("Registrasi berhasil!");
+
       router.push("/login");
-    } catch {
+    } catch (err) {
       setErrors({
-        general: "Terjadi kesalahan saat menyimpan data.",
+        general: "Terjadi kesalahan saat registrasi.",
       });
-      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
   };
 
   return (
@@ -119,7 +153,7 @@ export default function SignUp() {
       </div>
 
       <section className="relative z-10 min-h-screen w-full overflow-hidden px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
-        {/* illustration as right-side layer */}
+        {/* illustration */}
         <div className="absolute inset-y-0 right-0 hidden w-[80vw] xl:block">
           <img
             src="/images/Group-1054.png"
@@ -128,7 +162,7 @@ export default function SignUp() {
           />
         </div>
 
-        {/* content wrapper */}
+        {/* content */}
         <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1600px] items-center">
           <div className="w-full max-w-[460px] lg:ml-8">
             <div className="rounded-[20px] bg-white px-5 py-8 shadow-[0_0_18px_rgba(0,0,0,0.18)] sm:px-6 sm:py-10 lg:px-8 lg:py-12">
@@ -136,7 +170,12 @@ export default function SignUp() {
                 Sign Up
               </h1>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col gap-6"
+                noValidate
+              >
+                {/* USERNAME */}
                 <div>
                   <input
                     type="text"
@@ -145,8 +184,9 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Username"
                     autoComplete="username"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
                   />
+
                   {errors.username && (
                     <p className="mt-1.5 ml-3 text-[12px] text-red-500">
                       {errors.username}
@@ -154,6 +194,7 @@ export default function SignUp() {
                   )}
                 </div>
 
+                {/* EMAIL */}
                 <div>
                   <input
                     type="email"
@@ -162,8 +203,9 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Email"
                     autoComplete="email"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
                   />
+
                   {errors.email && (
                     <p className="mt-1.5 ml-3 text-[12px] text-red-500">
                       {errors.email}
@@ -171,6 +213,7 @@ export default function SignUp() {
                   )}
                 </div>
 
+                {/* PASSWORD */}
                 <div>
                   <input
                     type="password"
@@ -179,8 +222,9 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Password"
                     autoComplete="new-password"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
                   />
+
                   {errors.password && (
                     <p className="mt-1.5 ml-3 text-[12px] text-red-500">
                       {errors.password}
@@ -188,6 +232,7 @@ export default function SignUp() {
                   )}
                 </div>
 
+                {/* CONFIRM PASSWORD */}
                 <div>
                   <input
                     type="password"
@@ -196,8 +241,9 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Konfirmasi Password"
                     autoComplete="new-password"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
                   />
+
                   {errors.confirmPassword && (
                     <p className="mt-1.5 ml-3 text-[12px] text-red-500">
                       {errors.confirmPassword}
@@ -205,44 +251,50 @@ export default function SignUp() {
                   )}
                 </div>
 
+                {/* OR */}
                 <div className="flex items-center gap-4 pt-1">
                   <div className="h-px flex-1 bg-neutral-500" />
                   <span className="text-[14px] text-[#2c2c2c]">or</span>
                   <div className="h-px flex-1 bg-neutral-500" />
                 </div>
 
+                {/* GOOGLE */}
                 <button
                   type="button"
                   onClick={handleGoogleRegister}
-                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white px-6 text-[14px] font-normal text-[#2c2c2c] transition-colors hover:bg-neutral-50"
+                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white px-6 text-[14px]"
                 >
                   <img
                     className="h-5 w-5 object-contain"
                     alt="Google"
                     src="/images/image-11.png"
                   />
+
                   <span>Register with Google</span>
                 </button>
 
+                {/* SUBMIT */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-[40px] w-full rounded-full bg-[#0c72a6] px-6 text-[14px] font-medium text-white transition-colors hover:bg-[#0a5f8a] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="h-[40px] w-full rounded-full bg-[#0c72a6] px-6 text-[14px] font-medium text-white"
                 >
                   {isSubmitting ? "Signing Up..." : "Sign Up"}
                 </button>
 
+                {/* ERROR */}
                 {errors.general && (
                   <p className="text-center text-[12px] text-red-500">
                     {errors.general}
                   </p>
                 )}
 
+                {/* LOGIN */}
                 <p className="pt-1 text-center text-[14px] text-[#0c72a6]">
                   Already have an account?{" "}
                   <Link
                     href="/login"
-                    className="font-medium underline transition-colors hover:text-[#0a5f8a]"
+                    className="font-medium underline"
                   >
                     Sign In
                   </Link>
@@ -252,7 +304,7 @@ export default function SignUp() {
           </div>
         </div>
 
-        {/* mobile fallback image hidden by default desktop logic */}
+        {/* mobile image */}
         <div className="mt-8 block xl:hidden">
           <img
             src="/images/Group-1054.png"
