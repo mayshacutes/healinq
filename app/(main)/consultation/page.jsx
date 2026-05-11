@@ -25,13 +25,11 @@ export default function ConsultationPage() {
 
   return (
     <div className="relative min-h-screen bg-[#d4eefb] flex flex-col items-center overflow-hidden">
-
       {/* ================= HEADER ================= */}
       <div className="w-full h-[200px] relative flex items-center justify-center text-center">
-
         {/* BACKGROUND IMAGE */}
         <Image
-          src="/images/bg_consul.png" 
+          src="/images/bg_consul.png"
           alt="header"
           fill
           className="object-cover"
@@ -40,9 +38,16 @@ export default function ConsultationPage() {
         {/* OVERLAY */}
         <div className="absolute inset-0 bg-black/10" />
 
+        {/* MY BOOKINGS BUTTON */}
+        <button
+          onClick={() => router.push("/consultation/my-bookings")}
+          className="absolute top-5 left-5 z-20 bg-white text-[#0c72a6] px-5 py-2 rounded-full shadow font-semibold hover:opacity-90"
+        >
+          My Bookings
+        </button>
+
         {/* XP & ICON */}
         <div className="absolute top-5 right-5 flex items-center gap-3 z-20">
-
           {/* XP */}
           <div className="bg-blue-100 px-4 py-1 rounded-full flex items-center gap-2 shadow">
             <span className="text-sm font-semibold text-blue-700">XP</span>
@@ -58,6 +63,7 @@ export default function ConsultationPage() {
               height={30}
               className="block"
             />
+
             <Image
               src="/images/logo.png"
               alt="logo"
@@ -66,7 +72,6 @@ export default function ConsultationPage() {
               className="block"
             />
           </div>
-
         </div>
 
         {/* TEXT */}
@@ -74,6 +79,7 @@ export default function ConsultationPage() {
           <h1 className="text-4xl font-bold">
             Need Someone to Talk?
           </h1>
+
           <p className="text-lg italic mt-2">
             Flexible consultations, safe and private
           </p>
@@ -99,7 +105,6 @@ export default function ConsultationPage() {
 
       {/* ================= CONTENT ================= */}
       <div className="relative z-10 w-full flex flex-col items-center px-6">
-
         {/* TITLE */}
         <h2 className="text-2xl font-semibold text-[#0c72a6] mt-10 mb-8">
           We're Here to Listen
@@ -107,7 +112,6 @@ export default function ConsultationPage() {
 
         {/* CARDS */}
         <div className="flex flex-wrap gap-8 justify-center">
-
           {consultationCards.map((card, index) => (
             <div
               key={index}
@@ -125,8 +129,14 @@ export default function ConsultationPage() {
 
               {/* TEXT */}
               <h3 className="text-xl font-bold">{card.title}</h3>
-              <p className="italic text-sm">{card.subtitle}</p>
-              <p className="text-gray-600">{card.desc}</p>
+
+              <p className="italic text-sm">
+                {card.subtitle}
+              </p>
+
+              <p className="text-gray-600">
+                {card.desc}
+              </p>
 
               {/* BUTTON */}
               <button
@@ -139,7 +149,6 @@ export default function ConsultationPage() {
               </button>
             </div>
           ))}
-
         </div>
       </div>
     </div>

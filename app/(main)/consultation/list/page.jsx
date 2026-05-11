@@ -2,12 +2,13 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import BackIconButton from "@/components/BackIconButton";
 
 export default function ListPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 🔥 AMBIL TYPE DARI HALAMAN SEBELUMNYA
+  // AMBIL TYPE DARI HALAMAN SEBELUMNYA
   const type = searchParams.get("type") || "online";
 
   const counselors = [
@@ -35,10 +36,8 @@ export default function ListPage() {
 
   return (
     <div className="relative min-h-screen bg-[#d4effc] overflow-hidden">
-
       {/* ================= HEADER (STICKY) ================= */}
       <div className="sticky top-0 z-50 w-full h-[200px] flex items-center justify-center text-center">
-
         <Image
           src="/images/bg_consul.png"
           alt="header"
@@ -48,17 +47,32 @@ export default function ListPage() {
 
         <div className="absolute inset-0 bg-black/10" />
 
+        {/* BACK BUTTON */}
+        <div className="absolute top-5 left-5 z-20">
+          <BackIconButton to="/consultation" />
+        </div>
+
         {/* XP + ICON */}
         <div className="absolute top-5 right-5 flex items-center gap-3 z-20">
-
           <div className="bg-blue-100 px-4 py-1 rounded-full flex items-center gap-2 shadow">
             <span className="text-sm font-semibold text-[#0C72A6]">XP</span>
             <span className="text-sm font-bold">1,240</span>
           </div>
 
           <div className="bg-pink-100 px-4 py-2 rounded-full shadow flex items-center gap-2">
-            <Image src="/images/maskot1.png" alt="maskot" width={30} height={30} />
-            <Image src="/images/logo.png" alt="logo" width={40} height={40} />
+            <Image
+              src="/images/maskot1.png"
+              alt="maskot"
+              width={30}
+              height={30}
+            />
+
+            <Image
+              src="/images/logo.png"
+              alt="logo"
+              width={40}
+              height={40}
+            />
           </div>
         </div>
 
@@ -67,6 +81,7 @@ export default function ListPage() {
           <h1 className="text-4xl font-bold">
             Need Someone to Talk?
           </h1>
+
           <p className="text-lg italic mt-2">
             Flexible consultations, safe and private
           </p>
@@ -81,6 +96,7 @@ export default function ListPage() {
         height={500}
         className="absolute bottom-0 left-0"
       />
+
       <Image
         src="/images/Ellipse.png"
         alt="ellipse"
@@ -91,18 +107,23 @@ export default function ListPage() {
 
       {/* ================= CONTENT ================= */}
       <div className="relative z-10 p-10 flex flex-col items-center">
-
-        {/* TITLE + MESSAGE BUTTON */}
+        {/* TITLE + MY BOOKINGS BUTTON */}
         <div className="w-[80%] flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-bold text-[#0C72A6]">
-            Select Counselor
-          </h1>
+          <div>
+            <h1 className="text-3xl font-bold text-[#0C72A6]">
+              Select Counselor
+            </h1>
+
+            <p className="text-sm text-gray-600 mt-1 capitalize">
+              Consultation type: {type}
+            </p>
+          </div>
 
           <button
-            onClick={() => router.push("/chat")}
+            onClick={() => router.push("/consultation/my-bookings")}
             className="px-5 py-2 border border-[#0C72A6] text-[#0C72A6] rounded-lg hover:bg-[#0C72A6] hover:text-white"
           >
-            Message
+            My Bookings
           </button>
         </div>
 
@@ -127,13 +148,14 @@ export default function ListPage() {
 
                 <div>
                   <h2 className="font-bold">{counselor.name}</h2>
+
                   <p className="text-sm italic text-gray-500">
                     {counselor.clients}
                   </p>
                 </div>
               </div>
 
-              {/* 🔥 KIRIM TYPE KE HALAMAN BERIKUTNYA */}
+              {/* KIRIM TYPE KE HALAMAN BERIKUTNYA */}
               <button
                 onClick={() =>
                   router.push(

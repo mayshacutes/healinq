@@ -1,27 +1,81 @@
 "use client";
 
-import { useSearchParams, useParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import Barcode from "react-barcode";
+import BackIconButton from "@/components/BackIconButton";
 
-export default function TicketPage() {
+function normalizeHour(hour) {
+  return hour?.replace(".", ":") || "00:00";
+}
+
+function getSessionStatus(date, hour, duration = 60) {
+  const formattedHour = normalizeHour(hour);
+  const start = new Date(`${date}T${formattedHour}:00`);
+  const end = new Date(start.getTime() + duration * 60 * 1000);
+  const now = new Date();
+
+  if (now < start) return "upcoming";
+  if (now >= start && now <= end) return "ongoing";
+  return "finished";
+}
+
+export default function TicketOnlinePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { type } = useParams();
 
-  const name =
-    searchParams.get("name") || "Dr. Diandra Aliyya Khoirunnisa";
-  const date = searchParams.get("date") || "2026-03-05";
-  const hour = searchParams.get("hour") || "10:00";
+  const bookingCodeFromUrl = searchParams.get("bookingCode");
 
+  const [ticketData, setTicketData] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
 
-  // 🔥 FORMAT JAM (biar 10.00 → 10:00)
-  const formattedHour = hour.replace(".", ":");
+  useEffect(() => {
+    const savedBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
+    const savedLatestTicket = localStorage.getItem("latestTicket");
 
-  // 🔥 COUNTDOWN
+    if (bookingCodeFromUrl) {
+      const selectedBooking = savedBookings.find(
+        (booking) => booking.bookingCode === bookingCodeFromUrl
+      );
+
+      if (selectedBooking) {
+        setTicketData(selectedBooking);
+        localStorage.setItem("latestTicket", JSON.stringify(selectedBooking));
+        return;
+      }
+    }
+
+    if (savedLatestTicket) {
+      setTicketData(JSON.parse(savedLatestTicket));
+    }
+  }, [bookingCodeFromUrl]);
+
+  const name =
+    ticketData?.counselorName ||
+    searchParams.get("name") ||
+    "Dr. Diandra Aliyya Khoirunnisa";
+
+  const date =
+    ticketData?.date ||
+    searchParams.get("date") ||
+    "2026-03-05";
+
+  const hour =
+    ticketData?.hour ||
+    searchParams.get("hour") ||
+    "10.00";
+
+  const bookingCode =
+    ticketData?.bookingCode ||
+    bookingCodeFromUrl ||
+    "123.456.789.123";
+
+  const topic = ticketData?.topic || "";
+  const duration = ticketData?.sessionDuration || 60;
+
+  const formattedHour = normalizeHour(hour);
+
   useEffect(() => {
     const interval = setInterval(() => {
       const target = new Date(`${date}T${formattedHour}:00`);
@@ -29,7 +83,14 @@ export default function TicketPage() {
       const diff = target - now;
 
       if (diff <= 0) {
-        setTimeLeft("Session Started");
+        const sessionStatus = getSessionStatus(date, hour, duration);
+
+        if (sessionStatus === "ongoing") {
+          setTimeLeft("Session Ongoing");
+        } else {
+          setTimeLeft("Session Ended");
+        }
+
         return;
       }
 
@@ -46,15 +107,18 @@ export default function TicketPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [date, formattedHour]);
+  }, [date, hour, formattedHour, duration]);
+
+  const sessionStatus = getSessionStatus(date, hour, duration);
+  const canEnterChat = sessionStatus === "ongoing";
 
   return (
-    <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center justify-center">
-
+    <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center justify-center py-10">
+      <div className="absolute top-6 left-6">
+      <BackIconButton to="/consultation" />
+      </div>
       {/* ================= TICKET ================= */}
       <div className="relative w-[900px]">
-
-        {/* BACKGROUND */}
         <Image
           src="/images/ticket.png"
           alt="ticket"
@@ -62,40 +126,29 @@ export default function TicketPage() {
           height={420}
         />
 
-        {/* CONTENT */}
         <div className="absolute inset-0 flex px-10 py-8">
-
-          {/* ================= LEFT ================= */}
+          {/* LEFT */}
           <div className="w-[68%] pr-6">
-
-            {/* HEADER */}
             <div className="bg-pink-500 text-white text-center py-2 rounded-t-xl font-semibold">
               Booking Confirmed!
             </div>
 
-            {/* MAIN CARD */}
             <div className="bg-[#f3f3f3] p-4 rounded-b-xl space-y-4">
-
               <div className="flex gap-4">
-
-                {/* PROFILE */}
                 <div className="w-16 h-16 bg-gray-300 rounded-full" />
 
-                {/* INFO */}
                 <div className="flex-1">
                   <p className="font-bold">{name}</p>
                   <p className="text-sm text-gray-600">
-                    Psikolog Klinis | {type}
+                    Psikolog Klinis | Online
                   </p>
 
                   <span className="inline-block mt-2 px-3 py-1 bg-green-100 text-green-600 text-xs rounded-full">
-                    ✔ Verified
+                    ✔ Paid & Verified
                   </span>
                 </div>
 
-                {/* DATE + TIME BOX */}
                 <div className="flex gap-2">
-
                   <div className="bg-pink-100 px-3 py-2 rounded-lg text-xs">
                     <p className="font-semibold">Tanggal</p>
                     <p>{date}</p>
@@ -105,46 +158,43 @@ export default function TicketPage() {
                     <p className="font-semibold">Time Session</p>
                     <p>{hour} WIB</p>
                   </div>
-
                 </div>
               </div>
 
-              {/* BOOKING CODE */}
               <div className="bg-pink-100 px-3 py-2 rounded-lg text-xs">
                 <p className="font-semibold">Booking Code</p>
                 <p className="text-pink-600 font-semibold">
-                  123.456.789.123
+                  {bookingCode}
                 </p>
               </div>
 
-              {/* PREVIEW */}
               <div>
                 <p className="text-sm mb-1">
                   ☐ Consultation Preview
                 </p>
-                <div className="h-16 bg-gray-200 rounded-lg" />
-              </div>
 
+                <div className="h-16 bg-gray-200 rounded-lg p-2 text-xs text-gray-600 overflow-hidden">
+                  {topic || "No topic written."}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ================= RIGHT (BARCODE) ================= */}
+          {/* RIGHT */}
           <div className="w-[32%] flex items-center justify-center border-l-2 border-dashed border-pink-300">
-
             <div className="rotate-90">
               <Barcode
-                value="123456789"
+                value={bookingCode}
                 height={80}
                 width={1.5}
                 displayValue={false}
               />
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* ================= COUNTDOWN ================= */}
+      {/* ================= COUNTDOWN + BUTTONS ================= */}
       <div className="mt-12 text-center">
         <p className="text-xl font-medium">
           Your session will be started at:
@@ -155,13 +205,31 @@ export default function TicketPage() {
         </h1>
 
         <button
-          onClick={() => router.push("/consultation/chat")}
-          className="mt-5 px-6 py-2 bg-pink-300 text-pink-700 rounded-full font-semibold hover:opacity-90"
+          onClick={() => {
+            if (!canEnterChat) return;
+            router.push(`/consultation/chat?bookingCode=${bookingCode}`);
+          }}
+          disabled={!canEnterChat}
+          className={`mt-5 px-6 py-2 rounded-full font-semibold ${
+            canEnterChat
+              ? "bg-pink-300 text-pink-700 hover:opacity-90"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
         >
-          Go to Room Chat
+          {sessionStatus === "upcoming"
+            ? "Room Chat Not Started Yet"
+            : sessionStatus === "finished"
+            ? "Session Ended"
+            : "Go to Room Chat"}
+        </button>
+
+        <button
+          onClick={() => router.push("/consultation/my-bookings")}
+          className="block mx-auto mt-3 px-6 py-2 bg-white text-[#0C72A6] rounded-full font-semibold hover:opacity-90"
+        >
+          My Bookings
         </button>
       </div>
-
     </div>
   );
 }
