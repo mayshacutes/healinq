@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function SignUp() {
   const router = useRouter();
@@ -56,8 +57,10 @@ export default function SignUp() {
     return newErrors;
   };
 
-  const handleGoogleRegister = () => {
-    alert("Register with Google masih dummy ya.");
+  const handleGoogleRegister = async () => {
+    await signIn("google", {
+      callbackUrl: "/",
+    });
   };
 
   const handleSubmit = (e) => {
