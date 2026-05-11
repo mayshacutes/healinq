@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import { signIn } from "next-auth/react";
+
+// =====================
+// SUPABASE CLIENT
+// =====================
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,7 +40,7 @@ export default function LoginPage() {
     const newErrors = {};
 
     if (!formData.identifier.trim()) {
-      newErrors.identifier = "Username atau email wajib diisi.";
+      newErrors.identifier = "Email wajib diisi.";
     }
 
     if (!formData.password) {
@@ -41,11 +50,17 @@ export default function LoginPage() {
     return newErrors;
   };
 
+  // =====================
+  // GOOGLE LOGIN (NEXT-AUTH)
+  // =====================
   const handleGoogleLogin = () => {
-  signIn("google", { callbackUrl: "/dashboard/user" });
+    signIn("google", { callbackUrl: "/dashboard/user" });
   };
 
-  const handleSubmit = (e) => {
+  // =====================
+  // SUPABASE LOGIN
+  // =====================
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
@@ -57,45 +72,27 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const existingUsers = JSON.parse(localStorage.getItem("users")) || [];
-
-      const matchedUser = existingUsers.find((user) => {
-        const identifier = formData.identifier.toLowerCase();
-        return (
-          user.username.toLowerCase() === identifier ||
-          user.email.toLowerCase() === identifier
-        );
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.identifier,
+        password: formData.password,
       });
 
-      if (!matchedUser) {
+      if (error) {
         setErrors({
-          identifier: "Username atau email tidak ditemukan.",
+          general: error.message || "Login gagal",
         });
         setIsSubmitting(false);
         return;
       }
 
-      if (matchedUser.password !== formData.password) {
-        setErrors({
-          password: "Password salah.",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      localStorage.setItem(
-        "currentUser",
-        JSON.stringify({
-          username: matchedUser.username,
-          email: matchedUser.email,
-        })
-      );
-
+      // SUCCESS LOGIN
       router.push("/dashboard/user");
-    } catch {
+
+    } catch (err) {
       setErrors({
         general: "Terjadi kesalahan saat login.",
       });
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -114,7 +111,7 @@ export default function LoginPage() {
       </div>
 
       <section className="relative z-10 min-h-screen w-full overflow-hidden px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
-        {/* illustration as right-side layer */}
+        {/* illustration */}
         <div className="absolute inset-y-0 right-0 hidden w-[80vw] xl:block">
           <img
             src="/images/Group-1054.png"
@@ -123,10 +120,12 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* content wrapper */}
+        {/* form */}
         <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1600px] items-center">
           <div className="w-full max-w-[460px] lg:ml-8">
             <div className="rounded-[20px] bg-white px-5 py-8 shadow-[0_0_18px_rgba(0,0,0,0.18)] sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+              
+              {/* LOGO */}
               <div className="mb-5 flex justify-center">
                 <img
                   src="/images/logo.png"
@@ -135,28 +134,30 @@ export default function LoginPage() {
                 />
               </div>
 
-              <h1 className="mb-8 text-center text-[34px] font-bold leading-none text-[#0c72a6] sm:text-[42px] lg:mb-10 lg:text-[48px]">
+              <h1 className="mb-8 text-center text-[34px] font-bold text-[#0c72a6] sm:text-[42px] lg:text-[48px]">
                 Welcome!
               </h1>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6" noValidate>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+
+                {/* EMAIL */}
                 <div>
                   <input
-                    type="text"
+                    type="email"
                     name="identifier"
                     value={formData.identifier}
                     onChange={handleChange}
-                    placeholder="Username/Email"
-                    autoComplete="username"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                    placeholder="Email"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 px-5 text-[14px] focus:outline-none"
                   />
                   {errors.identifier && (
-                    <p className="mt-1.5 ml-3 text-[12px] text-red-500">
+                    <p className="mt-1 text-[12px] text-red-500">
                       {errors.identifier}
                     </p>
                   )}
                 </div>
 
+                {/* PASSWORD */}
                 <div>
                   <input
                     type="password"
@@ -164,70 +165,59 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Password"
-                    autoComplete="current-password"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] text-[#2c2c2c] placeholder:text-[14px] placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#0c72a6]/20 sm:px-6 lg:px-7"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 px-5 text-[14px] focus:outline-none"
                   />
                   {errors.password && (
-                    <p className="mt-1.5 ml-3 text-[12px] text-red-500">
+                    <p className="mt-1 text-[12px] text-red-500">
                       {errors.password}
                     </p>
                   )}
                 </div>
 
-                <div className="flex items-center gap-4 pt-1">
+                {/* OR */}
+                <div className="flex items-center gap-4">
                   <div className="h-px flex-1 bg-neutral-500" />
-                  <span className="text-[14px] text-[#2c2c2c]">or</span>
+                  <span className="text-[14px]">or</span>
                   <div className="h-px flex-1 bg-neutral-500" />
                 </div>
 
+                {/* GOOGLE */}
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white px-6 text-[14px] font-normal text-[#2c2c2c] transition-colors hover:bg-neutral-50"
+                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400"
                 >
-                  <img
-                    className="h-5 w-5 object-contain"
-                    alt="Google"
-                    src="/images/image-11.png"
-                  />
-                  <span>Login with Google</span>
+                  <img src="/images/image-11.png" className="h-5 w-5" />
+                  Login with Google
                 </button>
 
+                {/* LOGIN */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-[40px] w-full rounded-full bg-[#0c72a6] px-6 text-[14px] font-medium text-white transition-colors hover:bg-[#0a5f8a] disabled:cursor-not-allowed disabled:opacity-70"
+                  className="h-[40px] w-full rounded-full bg-[#0c72a6] text-white"
                 >
                   {isSubmitting ? "Logging in..." : "Login"}
                 </button>
 
+                {/* ERROR */}
                 {errors.general && (
                   <p className="text-center text-[12px] text-red-500">
                     {errors.general}
                   </p>
                 )}
 
-                <p className="pt-1 text-center text-[14px] text-[#0c72a6]">
+                {/* SIGNUP */}
+                <p className="text-center text-[14px] text-[#0c72a6]">
                   Don&apos;t have account?{" "}
-                  <Link
-                    href="/auth/signup"
-                    className="font-medium underline transition-colors hover:text-[#0a5f8a]"
-                  >
+                  <Link href="/auth/signup" className="underline">
                     Sign Up
                   </Link>
                 </p>
+
               </form>
             </div>
           </div>
-        </div>
-
-        {/* mobile fallback image */}
-        <div className="mt-8 block xl:hidden">
-          <img
-            src="/images/Group-1054.png"
-            alt="Group"
-            className="mx-auto h-auto w-full max-w-[700px] object-contain"
-          />
         </div>
       </section>
     </main>

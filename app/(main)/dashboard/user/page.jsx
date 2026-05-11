@@ -4,6 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getDailyLyric } from "@/lib/dailyLyric";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 const counselors = [
   { id: 1, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.5 },
@@ -129,33 +135,46 @@ export default function UserDashboardPage() {
   }, []);
 
   useEffect(() => {
-    const storedCurrentUser = JSON.parse(localStorage.getItem("currentUser"));
+    const loadUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    const fallbackUser = {
-      username: "Buddy",
-      email: "buddy@example.com",
-      xp: 1240,
-      streak: 7,
-      level: 8,
-      nextLevelXp: 260,
+      if (!user) {
+        router.push("/auth/login");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      const activeUser = {
+        username: profile?.username || "Buddy",
+        email: user.email,
+        xp: profile?.xp ?? 1240,
+        streak: profile?.streak ?? 7,
+        level: profile?.level ?? 8,
+        nextLevelXp: profile?.nextLevelXp ?? 260,
+      };
+
+      setCurrentUser(activeUser);
+
+      // JOURNAL TETAP LOCALSTORAGE (UI TETAP SAMA)
+      const journalKey = `journalEntries_${user.email}`;
+      const existingEntries = JSON.parse(localStorage.getItem(journalKey));
+
+      if (existingEntries?.length > 0) {
+        setRecentEntries(existingEntries.slice(0, 4));
+      } else {
+        localStorage.setItem(journalKey, JSON.stringify(fallbackJournalEntries));
+        setRecentEntries(fallbackJournalEntries.slice(0, 4));
+      }
     };
 
-    const activeUser = storedCurrentUser || fallbackUser;
-
-    setCurrentUser({
-      ...fallbackUser,
-      ...activeUser,
-    });
-
-    const journalKey = `journalEntries_${activeUser?.email || fallbackUser.email}`;
-    const existingEntries = JSON.parse(localStorage.getItem(journalKey));
-
-    if (existingEntries && Array.isArray(existingEntries) && existingEntries.length > 0) {
-      setRecentEntries(existingEntries.slice(0, 4));
-    } else {
-      localStorage.setItem(journalKey, JSON.stringify(fallbackJournalEntries));
-      setRecentEntries(fallbackJournalEntries.slice(0, 4));
-    }
+    loadUser();
   }, []);
 
   const dailyLyric = useMemo(() => getDailyLyric(), []);
