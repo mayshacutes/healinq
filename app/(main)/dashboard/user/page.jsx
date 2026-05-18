@@ -141,7 +141,7 @@ export default function UserDashboardPage() {
       } = await supabase.auth.getUser();
 
       if (!user) {
-        router.push("/auth/login");
+        router.push("/login");
         return;
       }
 
