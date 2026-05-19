@@ -3,16 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
-import { signIn } from "next-auth/react";
-
-// =====================
-// SUPABASE CLIENT
-// =====================
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,7 +19,11 @@ export default function LoginPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
     setErrors((prev) => ({
       ...prev,
       [name]: "",
@@ -51,19 +46,38 @@ export default function LoginPage() {
   };
 
   // =====================
-  // GOOGLE LOGIN (NEXT-AUTH)
+  // GOOGLE LOGIN - SUPABASE AUTH
   // =====================
-  const handleGoogleLogin = () => {
-    signIn("google", { callbackUrl: "/dashboard/user" });
+  const handleGoogleLogin = async () => {
+    setErrors({});
+    setIsSubmitting(true);
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/user`,
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
+    });
+
+    if (error) {
+      setErrors({
+        general: error.message || "Login Google gagal.",
+      });
+      setIsSubmitting(false);
+    }
   };
 
   // =====================
-  // SUPABASE LOGIN
+  // MANUAL LOGIN - SUPABASE AUTH
   // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validationErrors = validateForm();
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -79,15 +93,16 @@ export default function LoginPage() {
 
       if (error) {
         setErrors({
-          general: error.message || "Login gagal",
+          general: error.message || "Login gagal.",
         });
         setIsSubmitting(false);
         return;
       }
 
-      // SUCCESS LOGIN
-      router.push("/dashboard/user");
-
+      if (data?.user) {
+        router.push("/dashboard/user");
+        router.refresh();
+      }
     } catch (err) {
       setErrors({
         general: "Terjadi kesalahan saat login.",
@@ -99,7 +114,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
-      {/* background blur blobs */}
+      {/* BACKGROUND BLUR */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
         <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
@@ -111,7 +126,7 @@ export default function LoginPage() {
       </div>
 
       <section className="relative z-10 min-h-screen w-full overflow-hidden px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
-        {/* illustration */}
+        {/* ILLUSTRATION */}
         <div className="absolute inset-y-0 right-0 hidden w-[80vw] xl:block">
           <img
             src="/images/Group-1054.png"
@@ -120,11 +135,11 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* form */}
+        {/* FORM */}
         <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1600px] items-center">
           <div className="w-full max-w-[460px] lg:ml-8">
             <div className="rounded-[20px] bg-white px-5 py-8 shadow-[0_0_18px_rgba(0,0,0,0.18)] sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-              
+
               {/* LOGO */}
               <div className="mb-5 flex justify-center">
                 <img
@@ -139,7 +154,6 @@ export default function LoginPage() {
               </h1>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-
                 {/* EMAIL */}
                 <div>
                   <input
@@ -148,8 +162,10 @@ export default function LoginPage() {
                     value={formData.identifier}
                     onChange={handleChange}
                     placeholder="Email"
+                    autoComplete="email"
                     className="h-[40px] w-full rounded-full border border-neutral-400 px-5 text-[14px] focus:outline-none"
                   />
+
                   {errors.identifier && (
                     <p className="mt-1 text-[12px] text-red-500">
                       {errors.identifier}
@@ -165,8 +181,10 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Password"
+                    autoComplete="current-password"
                     className="h-[40px] w-full rounded-full border border-neutral-400 px-5 text-[14px] focus:outline-none"
                   />
+
                   {errors.password && (
                     <p className="mt-1 text-[12px] text-red-500">
                       {errors.password}
@@ -181,21 +199,26 @@ export default function LoginPage() {
                   <div className="h-px flex-1 bg-neutral-500" />
                 </div>
 
-                {/* GOOGLE */}
+                {/* GOOGLE LOGIN */}
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
-                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400"
+                  disabled={isSubmitting}
+                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <img src="/images/image-11.png" className="h-5 w-5" />
-                  Login with Google
+                  <img
+                    src="/images/image-11.png"
+                    alt="Google"
+                    className="h-5 w-5"
+                  />
+                  {isSubmitting ? "Redirecting..." : "Login with Google"}
                 </button>
 
-                {/* LOGIN */}
+                {/* MANUAL LOGIN */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-[40px] w-full rounded-full bg-[#0c72a6] text-white"
+                  className="h-[40px] w-full rounded-full bg-[#0c72a6] text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? "Logging in..." : "Login"}
                 </button>
@@ -214,7 +237,6 @@ export default function LoginPage() {
                     Sign Up
                   </Link>
                 </p>
-
               </form>
             </div>
           </div>

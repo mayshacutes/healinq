@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SignUp() {
@@ -62,14 +61,42 @@ export default function SignUp() {
     return newErrors;
   };
 
-  // GOOGLE REGISTER
+  // =====================
+  // GOOGLE REGISTER - SUPABASE AUTH
+  // =====================
   const handleGoogleRegister = async () => {
-    await signIn("google", {
-      callbackUrl: "/dashboard/user",
-    });
+    setErrors({});
+    setIsSubmitting(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          // sesuai flow kamu: register Google -> balik ke halaman login
+          redirectTo: `${window.location.origin}/auth/callback?next=/login`,
+          queryParams: {
+            prompt: "select_account",
+          },
+        },
+      });
+
+      if (error) {
+        setErrors({
+          general: error.message || "Register Google gagal.",
+        });
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      setErrors({
+        general: "Terjadi kesalahan saat register Google.",
+      });
+      setIsSubmitting(false);
+    }
   };
 
-  // REGISTER SUPABASE
+  // =====================
+  // MANUAL REGISTER - SUPABASE AUTH
+  // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -83,7 +110,6 @@ export default function SignUp() {
     setIsSubmitting(true);
 
     try {
-      // REGISTER KE AUTH SUPABASE
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -96,52 +122,57 @@ export default function SignUp() {
 
       if (error) {
         setErrors({
-          general: error.message,
+          general: error.message || "Registrasi gagal.",
         });
-
         setIsSubmitting(false);
         return;
       }
 
-      const user = data.user;
+      const user = data?.user;
 
-      // SIMPAN KE TABLE profiles
+      // Simpan / update data user ke tabel profiles
       if (user) {
         const { error: profileError } = await supabase
           .from("profiles")
-          .insert([
+          .upsert(
             {
               id: user.id,
               username: formData.username,
               email: formData.email,
+              exp: 0,
+              streak: 0,
+              level: 1,
+              nextLevelXp: 260,
             },
-          ]);
+            {
+              onConflict: "id",
+            }
+          );
 
         if (profileError) {
           setErrors({
-            general: profileError.message,
+            general: profileError.message || "Gagal menyimpan profile user.",
           });
-
           setIsSubmitting(false);
           return;
         }
       }
 
-      alert("Registrasi berhasil!");
-
+      alert("Registrasi berhasil! Silakan login.");
       router.push("/login");
+      router.refresh();
     } catch (err) {
       setErrors({
         general: "Terjadi kesalahan saat registrasi.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSubmitting(false);
   };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
-      {/* background blur blobs */}
+      {/* BACKGROUND BLUR */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
         <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
@@ -153,7 +184,7 @@ export default function SignUp() {
       </div>
 
       <section className="relative z-10 min-h-screen w-full overflow-hidden px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
-        {/* illustration */}
+        {/* ILLUSTRATION */}
         <div className="absolute inset-y-0 right-0 hidden w-[80vw] xl:block">
           <img
             src="/images/Group-1054.png"
@@ -162,7 +193,7 @@ export default function SignUp() {
           />
         </div>
 
-        {/* content */}
+        {/* CONTENT */}
         <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1600px] items-center">
           <div className="w-full max-w-[460px] lg:ml-8">
             <div className="rounded-[20px] bg-white px-5 py-8 shadow-[0_0_18px_rgba(0,0,0,0.18)] sm:px-6 sm:py-10 lg:px-8 lg:py-12">
@@ -184,7 +215,7 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Username"
                     autoComplete="username"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] focus:outline-none"
                   />
 
                   {errors.username && (
@@ -203,7 +234,7 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Email"
                     autoComplete="email"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] focus:outline-none"
                   />
 
                   {errors.email && (
@@ -222,7 +253,7 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Password"
                     autoComplete="new-password"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] focus:outline-none"
                   />
 
                   {errors.password && (
@@ -241,7 +272,7 @@ export default function SignUp() {
                     onChange={handleChange}
                     placeholder="Konfirmasi Password"
                     autoComplete="new-password"
-                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px]"
+                    className="h-[40px] w-full rounded-full border border-neutral-400 bg-white px-5 text-[14px] focus:outline-none"
                   />
 
                   {errors.confirmPassword && (
@@ -258,11 +289,12 @@ export default function SignUp() {
                   <div className="h-px flex-1 bg-neutral-500" />
                 </div>
 
-                {/* GOOGLE */}
+                {/* GOOGLE REGISTER */}
                 <button
                   type="button"
                   onClick={handleGoogleRegister}
-                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white px-6 text-[14px]"
+                  disabled={isSubmitting}
+                  className="flex h-[40px] w-full items-center justify-center gap-3 rounded-full border border-neutral-400 bg-white px-6 text-[14px] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <img
                     className="h-5 w-5 object-contain"
@@ -270,14 +302,16 @@ export default function SignUp() {
                     src="/images/image-11.png"
                   />
 
-                  <span>Register with Google</span>
+                  <span>
+                    {isSubmitting ? "Redirecting..." : "Register with Google"}
+                  </span>
                 </button>
 
                 {/* SUBMIT */}
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="h-[40px] w-full rounded-full bg-[#0c72a6] px-6 text-[14px] font-medium text-white"
+                  className="h-[40px] w-full rounded-full bg-[#0c72a6] px-6 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {isSubmitting ? "Signing Up..." : "Sign Up"}
                 </button>
@@ -292,10 +326,7 @@ export default function SignUp() {
                 {/* LOGIN */}
                 <p className="pt-1 text-center text-[14px] text-[#0c72a6]">
                   Already have an account?{" "}
-                  <Link
-                    href="/login"
-                    className="font-medium underline"
-                  >
+                  <Link href="/login" className="font-medium underline">
                     Sign In
                   </Link>
                 </p>
@@ -304,7 +335,7 @@ export default function SignUp() {
           </div>
         </div>
 
-        {/* mobile image */}
+        {/* MOBILE IMAGE */}
         <div className="mt-8 block xl:hidden">
           <img
             src="/images/Group-1054.png"

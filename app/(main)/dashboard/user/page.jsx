@@ -135,38 +135,97 @@ export default function UserDashboardPage() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const waitForSession = async () => {
+      // Coba cek session beberapa kali, karena OAuth kadang butuh waktu sebentar
+      for (let i = 0; i < 10; i++) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          return session.user;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+
+      return null;
+    };
+
     const loadUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const user = await waitForSession();
+
+      if (!isMounted) return;
 
       if (!user) {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
 
-      const { data: profile } = await supabase
+      let { data: profile, error: profileFetchError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
+
+      if (profileFetchError) {
+        console.error("Gagal mengambil profile:", profileFetchError.message);
+      }
+
+      // Kalau user login Google dan belum ada data profile, buat otomatis
+      if (!profile) {
+        const username =
+          user.user_metadata?.username ||
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "Buddy";
+
+        const { data: newProfile, error: profileCreateError } = await supabase
+          .from("profiles")
+          .upsert(
+            {
+              id: user.id,
+              username,
+              email: user.email,
+              exp: 0,
+              streak: 0,
+              level: 1,
+              nextLevelXp: 260,
+            },
+            {
+              onConflict: "id",
+            }
+          )
+          .select("*")
+          .single();
+
+        if (profileCreateError) {
+          console.error("Gagal membuat profile:", profileCreateError.message);
+        }
+
+        profile = newProfile;
+      }
+
+      if (!isMounted) return;
 
       const activeUser = {
         username: profile?.username || "Buddy",
         email: user.email,
-        xp: profile?.xp ?? 1240,
-        streak: profile?.streak ?? 7,
-        level: profile?.level ?? 8,
+        xp: profile?.exp ?? 0,
+        streak: profile?.streak ?? 0,
+        level: profile?.level ?? 1,
         nextLevelXp: profile?.nextLevelXp ?? 260,
       };
 
       setCurrentUser(activeUser);
 
-      // JOURNAL TETAP LOCALSTORAGE (UI TETAP SAMA)
+      // JOURNAL TETAP LOCALSTORAGE
       const journalKey = `journalEntries_${user.email}`;
-      const existingEntries = JSON.parse(localStorage.getItem(journalKey));
+      const existingEntries = JSON.parse(localStorage.getItem(journalKey) || "[]");
 
-      if (existingEntries?.length > 0) {
+      if (existingEntries.length > 0) {
         setRecentEntries(existingEntries.slice(0, 4));
       } else {
         localStorage.setItem(journalKey, JSON.stringify(fallbackJournalEntries));
@@ -175,7 +234,11 @@ export default function UserDashboardPage() {
     };
 
     loadUser();
-  }, []);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const dailyLyric = useMemo(() => getDailyLyric(), []);
   const xpValue = currentUser?.xp || 1240;

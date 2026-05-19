@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 const MISSIONS = {
   daily: [
@@ -70,6 +71,17 @@ export default function UserProfilePage() {
   const [actionMessage, setActionMessage] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
   const [rewards, setRewards] = useState(REWARDS);
+
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    router.replace("/login");
+  };
 
   const [profile, setProfile] = useState({
     name: "Arinda Putri",
@@ -252,6 +264,15 @@ export default function UserProfilePage() {
                 >
                   ✏️ Edit Profile
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mt-3 w-full rounded-full border border-[#db2d8d] bg-white px-5 py-3 text-[14px] font-bold text-[#db2d8d] transition hover:bg-[#fff0f8]"
+                >
+                  🚪 Logout
+                </button>
+
               </div>
 
               {/* Level & Stats */}
@@ -311,11 +332,10 @@ export default function UserProfilePage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 rounded-full px-4 py-2.5 text-[13px] font-bold transition ${
-                      activeTab === tab.id
-                        ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
-                        : "text-[#666] hover:text-[#222]"
-                    }`}
+                    className={`flex-1 rounded-full px-4 py-2.5 text-[13px] font-bold transition ${activeTab === tab.id
+                      ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+                      : "text-[#666] hover:text-[#222]"
+                      }`}
                   >
                     {tab.label}
                   </button>
@@ -386,11 +406,10 @@ export default function UserProfilePage() {
                             <button
                               onClick={() => r.state === "available" && claimReward(r.id, r.name)}
                               disabled={r.state !== "available"}
-                              className={`ml-auto px-4 py-2 rounded-full text-[12px] font-bold transition ${
-                                r.state === "available"
-                                  ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white hover:shadow-lg"
-                                  : "bg-[#f1f5f8] text-[#94a3b8] cursor-not-allowed"
-                              }`}
+                              className={`ml-auto px-4 py-2 rounded-full text-[12px] font-bold transition ${r.state === "available"
+                                ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white hover:shadow-lg"
+                                : "bg-[#f1f5f8] text-[#94a3b8] cursor-not-allowed"
+                                }`}
                             >
                               {r.state === "claimed" ? "✓ Claimed" : r.state === "locked" ? "Locked" : "Claim"}
                             </button>
@@ -437,11 +456,10 @@ export default function UserProfilePage() {
                   {BADGES.map((b, i) => (
                     <div
                       key={i}
-                      className={`aspect-square flex flex-col items-center justify-center rounded-[14px] cursor-pointer transition ${
-                        b.earned
-                          ? "bg-gradient-to-br from-[#fde8f3] to-[#dff4ff]"
-                          : "bg-[#f3f3f3] opacity-50"
-                      }`}
+                      className={`aspect-square flex flex-col items-center justify-center rounded-[14px] cursor-pointer transition ${b.earned
+                        ? "bg-gradient-to-br from-[#fde8f3] to-[#dff4ff]"
+                        : "bg-[#f3f3f3] opacity-50"
+                        }`}
                       title={b.name}
                     >
                       <span className="text-[24px]">{b.emoji}</span>
@@ -749,7 +767,7 @@ function ProfilePage() {
 
           {/* Stats */}
           <div className="sgrid">
-            {[["📔","47","Hari Journaling"],["🧠","8","Sesi Konsultasi"],["🔥","14","Streak Hari Ini"],["🏆","9","Badge Diraih"]].map(([icon, val, lbl]) => (
+            {[["📔", "47", "Hari Journaling"], ["🧠", "8", "Sesi Konsultasi"], ["🔥", "14", "Streak Hari Ini"], ["🏆", "9", "Badge Diraih"]].map(([icon, val, lbl]) => (
               <div className="smini" key={lbl}>
                 <div className="smini-icon">{icon}</div>
                 <div className="smini-val">{val}</div>
@@ -776,7 +794,7 @@ function ProfilePage() {
 
           {/* Tabs */}
           <div className="tabs">
-            {[["missions","🎯 Misi"],["rewards","🎁 Reward"],["history","📋 Riwayat"]].map(([id, label]) => (
+            {[["missions", "🎯 Misi"], ["rewards", "🎁 Reward"], ["history", "📋 Riwayat"]].map(([id, label]) => (
               <button key={id} className={`tab ${activeTab === id ? "tab-active" : ""}`} onClick={() => setActiveTab(id)}>
                 {label}
               </button>
