@@ -14,7 +14,7 @@ const initialCounselorsData = [
     joined: "Mar 28, 2026",
     status: "Active",
     sessions: 128,
-    role: "Counselor",
+    role: "counselor",
   },
   {
     id: 2,
@@ -25,7 +25,7 @@ const initialCounselorsData = [
     joined: "Mar 27, 2026",
     status: "Active",
     sessions: 114,
-    role: "Counselor",
+    role: "counselor",
   },
   {
     id: 3,
@@ -36,7 +36,7 @@ const initialCounselorsData = [
     joined: "Mar 26, 2026",
     status: "Inactive",
     sessions: 102,
-    role: "Counselor",
+    role: "counselor",
   },
   {
     id: 4,
@@ -47,7 +47,7 @@ const initialCounselorsData = [
     joined: "Mar 25, 2026",
     status: "Active",
     sessions: 96,
-    role: "Counselor",
+    role: "counselor",
   },
   {
     id: 5,
@@ -58,7 +58,7 @@ const initialCounselorsData = [
     joined: "Mar 24, 2026",
     status: "Pending",
     sessions: 0,
-    role: "Counselor",
+    role: "counselor",
   },
   {
     id: 6,
@@ -69,7 +69,7 @@ const initialCounselorsData = [
     joined: "Mar 23, 2026",
     status: "Active",
     sessions: 87,
-    role: "Counselor",
+    role: "counselor",
   },
 ];
 
@@ -104,7 +104,7 @@ export default function AdminCounselorsPage() {
   const dropdownRef = useRef(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [counselors, setCounselors] = useState(initialCounselorsData);
+  const [counselors, setCounselors] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -118,7 +118,7 @@ export default function AdminCounselorsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const [newCounselorForm, setNewCounselorForm] = useState({
-    name: "",
+    full_name: "",
     email: "",
     specialty: "",
     address: "",
@@ -133,6 +133,24 @@ export default function AdminCounselorsPage() {
 
     return () => clearInterval(timer);
   }, []);
+
+useEffect(() => {
+  const fetchCounselors = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "counselor");
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    setCounselors(data);
+  };
+
+  fetchCounselors();
+}, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -160,11 +178,21 @@ export default function AdminCounselorsPage() {
   const filteredCounselors = useMemo(() => {
     return counselors.filter((counselor) => {
       const matchSearch =
-        counselor.name.toLowerCase().includes(search.toLowerCase()) ||
-        counselor.email.toLowerCase().includes(search.toLowerCase()) ||
-        counselor.address.toLowerCase().includes(search.toLowerCase()) ||
-        counselor.specialty.toLowerCase().includes(search.toLowerCase());
+        (counselor.full_name || "")
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
 
+        (counselor.email || "")
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+
+        (counselor.address || "")
+          .toLowerCase()
+          .includes(search.toLowerCase()) ||
+
+        (counselor.specialty || "")
+          .toLowerCase()
+          .includes(search.toLowerCase());
       const matchStatus =
         statusFilter === "All" ? true : counselor.status === statusFilter;
 
@@ -195,7 +223,7 @@ export default function AdminCounselorsPage() {
     e.preventDefault();
 
     if (
-      !newCounselorForm.name.trim() ||
+      !newCounselorForm.full_name.trim() ||
       !newCounselorForm.email.trim() ||
       !newCounselorForm.specialty.trim() ||
       !newCounselorForm.address.trim()
@@ -205,19 +233,19 @@ export default function AdminCounselorsPage() {
     }
 
     const { data, error } = await supabase
-      .from("counselors")
-      .insert([
-        {
-          name: newCounselorForm.name,
-          email: newCounselorForm.email,
-          specialty: newCounselorForm.specialty,
-          address: newCounselorForm.address,
-          status: newCounselorForm.status,
-          sessions: Number(newCounselorForm.sessions),
-          role: true,
-        },
-      ])
-      .select();
+    .from("profiles")
+    .insert([
+      {
+        full_name: newCounselorForm.full_name,
+        email: newCounselorForm.email,
+        specialty: newCounselorForm.specialty,
+        address: newCounselorForm.address,
+        status: newCounselorForm.status,
+        sessions: Number(newCounselorForm.sessions),
+        role: "counselor",
+      },
+    ])
+    .select();
 
     console.log(error);
 
@@ -231,7 +259,7 @@ export default function AdminCounselorsPage() {
     setShowAddModal(false);
 
     setNewCounselorForm({
-      name: "",
+      full_name: "",
       email: "",
       specialty: "",
       address: "",
@@ -255,7 +283,7 @@ export default function AdminCounselorsPage() {
         "Role",
       ],
       ...filteredCounselors.map((counselor) => [
-        counselor.name,
+        counselor.full_name,
         counselor.email,
         counselor.specialty,
         counselor.address,
@@ -316,35 +344,43 @@ export default function AdminCounselorsPage() {
     }));
   };
 
-  const handleSaveEditCounselor = (e) => {
+  const handleSaveEditCounselor = async (e) => {
     e.preventDefault();
 
     if (
-      !editingCounselor.name.trim() ||
-      !editingCounselor.email.trim() ||
-      !editingCounselor.specialty.trim() ||
-      !editingCounselor.address.trim()
+      !editingCounselor.full_name?.trim() ||
+      !editingCounselor.email?.trim() ||
+      !editingCounselor.specialty?.trim() ||
+      !editingCounselor.address?.trim()
     ) {
       setActionMessage("Please complete all edit fields first.");
       return;
     }
 
-    const emailUsedByAnotherCounselor = counselors.some(
-      (counselor) =>
-        counselor.id !== editingCounselor.id &&
-        counselor.email.toLowerCase() === editingCounselor.email.toLowerCase()
-    );
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: editingCounselor.full_name,
+        email: editingCounselor.email,
+        specialty: editingCounselor.specialty,
+        address: editingCounselor.address,
+        status: editingCounselor.status,
+        sessions: editingCounselor.sessions,
+      })
+      .eq("id", editingCounselor.id)
+      .select();
 
-    if (emailUsedByAnotherCounselor) {
-      setActionMessage("This email is already used by another counselor.");
+    if (error) {
+      setActionMessage(error.message);
       return;
     }
 
     setCounselors((prev) =>
       prev.map((counselor) =>
-        counselor.id === editingCounselor.id ? editingCounselor : counselor
+        counselor.id === editingCounselor.id ? data[0] : counselor
       )
     );
+
     setShowEditModal(false);
     setEditingCounselor(null);
     setActionMessage("Counselor updated successfully.");
@@ -540,7 +576,7 @@ export default function AdminCounselorsPage() {
                       className="border-b border-[#f2f2f2] last:border-b-0"
                     >
                       <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
-                        {counselor.name}
+                        {counselor.full_name}
                       </td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
                         {counselor.email}
@@ -552,7 +588,7 @@ export default function AdminCounselorsPage() {
                         {counselor.address}
                       </td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                        {counselor.joined}
+                        {formatJoinDate(new Date(counselor.created_at))}
                       </td>
                       <td className="px-4 py-4">
                         <span
@@ -623,7 +659,7 @@ export default function AdminCounselorsPage() {
                 <div className="rounded-[14px] bg-white/50 px-4 py-4">
                   <p className="text-[13px] text-[#ea3f97]">Most active counselor</p>
                   <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                    {[...counselors].sort((a, b) => b.sessions - a.sessions)[0]?.name || "-"}
+                    {[...counselors].sort((a, b) => b.sessions - a.sessions)[0]?.full_name || "-"}
                   </p>
                 </div>
 
@@ -724,9 +760,9 @@ export default function AdminCounselorsPage() {
             <form onSubmit={handleAddCounselor} className="space-y-4">
               <input
                 type="text"
-                name="name"
+                name="full_name"
                 placeholder="Full name"
-                value={newCounselorForm.name}
+                value={newCounselorForm.full_name}
                 onChange={handleNewCounselorChange}
                 className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
               />
@@ -849,7 +885,7 @@ export default function AdminCounselorsPage() {
               <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
                 <p className="text-[12px] text-[#ea3f97]">Full Name</p>
                 <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedCounselor.name}
+                  {selectedCounselor.full_name}
                 </p>
               </div>
 
@@ -948,11 +984,10 @@ export default function AdminCounselorsPage() {
             <form onSubmit={handleSaveEditCounselor} className="space-y-4">
               <input
                 type="text"
-                name="name"
+                name="full_name"
                 placeholder="Full name"
-                value={editingCounselor.name}
+                value={editingCounselor.full_name}
                 onChange={handleEditCounselorChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
               />
 
               <input
