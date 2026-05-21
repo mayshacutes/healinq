@@ -1,1025 +1,640 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
-const initialUsersData = [];
-
-function formatTopDate(date) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
-
-function formatJoinDate(date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  }).format(date);
-}
-
-function getStatusClass(status) {
-  if (status === "Active") {
-    return "bg-[#dff7eb] text-[#1f9d62]";
-  }
-  if (status === "Inactive") {
-    return "bg-[#f3f3f3] text-[#7b7b7b]";
-  }
-  return "bg-[#ffe1ea] text-[#d64b7f]";
-}
+const emptyForm = {
+  username: "",
+  email: "",
+  address: "",
+  telp_number: "",
+  birth_date: "",
+  gender: "",
+  last_edu: "",
+  doctor: "",
+};
 
 export default function AdminUsersPage() {
-  const dropdownRef = useRef(null);
-
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [users, setUsers] = useState(initialUsersData);
+  const [profiles, setProfiles] = useState([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [showAddModal, setShowAddModal] = useState(false);
-  const [actionMessage, setActionMessage] = useState("");
-
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-
-  const [editingUser, setEditingUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
-  const [newUserForm, setNewUserForm] = useState({
-    name: "",
-    email: "",
-    address: "",
-    status: "Active",
-  });
-  
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [formData, setFormData] = useState(emptyForm);
+  const [selectedUser, setSelectedUser] = useState(null);
 
-  async function fetchUsers() {
+  const [message, setMessage] = useState("");
+  const [errorText, setErrorText] = useState("");
+
+  const fetchProfiles = async () => {
+    setLoading(true);
+    setErrorText("");
+
     const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .from("profiles")
+      .select(
+        "id, username, email, exp, streak, level, nextLevelXp, bio, telp_number, birth_date, gender, address, last_edu, doctor"
+      )
+      .order("username", { ascending: true });
 
     if (error) {
-      console.log(error);
-      return;
+      console.error(error);
+      setErrorText(error.message || "Gagal mengambil data profiles.");
+      setProfiles([]);
+    } else {
+      setProfiles(data || []);
     }
 
-    const formattedUsers = data.map((user) => ({
-      id: user.id,
-      name: user.full_name,
-      email: user.email,
-      address: user.address,
-      joined: formatJoinDate(new Date(user.created_at)),
-      status: user.status,
-      role: user.role,
-    }));
-
-    setUsers(formattedUsers);
-  }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 1000);
+    fetchProfiles();
 
-    return () => clearInterval(timer);
-  }, []);
+    const channel = supabase
+      .channel("profiles-admin-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "profiles",
+        },
+        () => {
+          fetchProfiles();
+        }
+      )
+      .subscribe();
 
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsStatusOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      supabase.removeChannel(channel);
     };
   }, []);
 
-  useEffect(() => {
-    if (!actionMessage) return;
+  const filteredProfiles = useMemo(() => {
+    const keyword = search.toLowerCase().trim();
 
-    const timer = setTimeout(() => {
-      setActionMessage("");
-    }, 2500);
+    if (!keyword) return profiles;
 
-    return () => clearTimeout(timer);
-  }, [actionMessage]);
-
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      const matchSearch =
-        user.name.toLowerCase().includes(search.toLowerCase()) ||
-        user.email.toLowerCase().includes(search.toLowerCase()) ||
-        user.address.toLowerCase().includes(search.toLowerCase());
-
-      const matchStatus =
-        statusFilter === "All" ? true : user.status === statusFilter;
-
-      return matchSearch && matchStatus;
+    return profiles.filter((user) => {
+      return (
+        user.username?.toLowerCase().includes(keyword) ||
+        user.email?.toLowerCase().includes(keyword) ||
+        user.address?.toLowerCase().includes(keyword) ||
+        user.gender?.toLowerCase().includes(keyword) ||
+        user.doctor?.toLowerCase().includes(keyword)
+      );
     });
-  }, [users, search, statusFilter]);
+  }, [profiles, search]);
 
-  const totalUsers = users.length;
-  const activeUsers = users.filter((user) => user.status === "Active").length;
-  const inactiveUsers = users.filter((user) => user.status === "Inactive").length;
-  const suspendedUsers = users.filter((user) => user.status === "Suspended").length;
+  const totalUsers = profiles.length;
+  const totalDoctors = profiles.filter((user) => user.doctor).length;
+  const totalWithEmail = profiles.filter((user) => user.email).length;
 
-  const handleNewUserChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setNewUserForm((prev) => ({
+
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
+  };
+
+  const resetForm = () => {
+    setFormData(emptyForm);
+    setSelectedUser(null);
+    setMessage("");
+    setErrorText("");
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    resetForm();
+  };
+
+  const openEditModal = (user) => {
+    setSelectedUser(user);
+
+    setFormData({
+      username: user.username || "",
+      email: user.email || "",
+      address: user.address || "",
+      telp_number: user.telp_number || "",
+      birth_date: user.birth_date || "",
+      gender: user.gender || "",
+      last_edu: user.last_edu || "",
+      doctor: user.doctor || "",
+    });
+
+    setMessage("");
+    setErrorText("");
+    setShowEditModal(true);
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    resetForm();
+  };
+
+  const validateForm = () => {
+    if (!formData.username.trim()) {
+      return "Username wajib diisi.";
+    }
+
+    if (!formData.email.trim()) {
+      return "Email wajib diisi.";
+    }
+
+    if (!formData.email.includes("@")) {
+      return "Format email belum benar.";
+    }
+
+    return "";
   };
 
   const handleAddUser = async (e) => {
     e.preventDefault();
 
-    if (
-      !newUserForm.name.trim() ||
-      !newUserForm.email.trim() ||
-      !newUserForm.address.trim()
-    ) {
-      setActionMessage("Please complete all fields first.");
+    const validationError = validateForm();
+
+    if (validationError) {
+      setErrorText(validationError);
       return;
     }
 
-    const defaultPassword = "user12345";
+    setSaving(true);
+    setErrorText("");
+    setMessage("");
 
-    // register auth user
-    const { data: authData, error: authError } =
-      await supabase.auth.signUp({
-        email: newUserForm.email,
-        password: defaultPassword,
-      });
+    const newProfile = {
+      id: crypto.randomUUID(),
+      username: formData.username.trim(),
+      email: formData.email.trim(),
+      address: formData.address.trim() || null,
+      telp_number: formData.telp_number.trim() || null,
+      birth_date: formData.birth_date || null,
+      gender: formData.gender || null,
+      last_edu: formData.last_edu.trim() || null,
+      doctor: formData.doctor.trim() || null,
+      exp: 0,
+      streak: 0,
+      level: 1,
+      nextLevelXp: 260,
+    };
 
-    if (authError) {
-      setActionMessage(authError.message);
-      console.log(authError);
+    const { error } = await supabase.from("profiles").insert([newProfile]);
+
+    if (error) {
+      console.error(error);
+      setErrorText(error.message || "Gagal menambahkan user.");
+      setSaving(false);
       return;
     }
 
-    // ambil user id dengan aman
-    const userId =
-      authData?.user?.id || authData?.session?.user?.id;
+    setMessage("User berhasil ditambahkan.");
+    await fetchProfiles();
 
-    if (!userId) {
-      setActionMessage(
-        "User created but failed getting user ID."
-      );
-      console.log(authData);
-      return;
-    }
+    setSaving(false);
 
-    // insert ke table users
-    const { error: dbError } = await supabase
-      .from("users")
-      .insert([
-        {
-          id: userId,
-          full_name: newUserForm.name,
-          email: newUserForm.email,
-          address: newUserForm.address,
-          status: newUserForm.status,
-          role: "User",
-        },
-      ]);
-
-    if (dbError) {
-      setActionMessage(dbError.message);
-      console.log(dbError);
-      return;
-    }
-
-    await fetchUsers();
-
-    setShowAddModal(false);
-
-    setNewUserForm({
-      name: "",
-      email: "",
-      address: "",
-      status: "Active",
-    });
-
-    setActionMessage(
-      "User enrolled successfully. Default password: user12345"
-    );
+    setTimeout(() => {
+      closeAddModal();
+    }, 700);
   };
 
-  // password default
-  const defaultPassword = "user12345";
-
-  // bikin auth user
-  const { data: authData, error: authError } =
-    await supabase.auth.signUp({
-      email: newUserForm.email,
-      password: defaultPassword,
-    });
-
-  if (authError) {
-    setActionMessage(authError.message);
-    return;
-  }
-
-  const userId = authData.user.id;
-
-  // masukin ke table users
-  const { error: dbError } = await supabase
-    .from("users")
-    .insert([
-      {
-        id: userId,
-        full_name: newUserForm.name,
-        email: newUserForm.email,
-        address: newUserForm.address,
-        status: newUserForm.status,
-        role: "User",
-      },
-    ]);
-
-  if (dbError) {
-    setActionMessage(dbError.message);
-    return;
-  }
-
-  fetchUsers();
-
-  setShowAddModal(false);
-
-  setNewUserForm({
-    name: "",
-    email: "",
-    address: "",
-    status: "Active",
-  });
-
-  setActionMessage(
-    "User enrolled successfully. Default password: user12345"
-  );
-  };
-
-  const handleExportData = () => {
-    const rows = [
-      ["Name", "Email", "Address", "Joined", "Status", "Role"],
-      ...filteredUsers.map((user) => [
-        user.name,
-        user.email,
-        user.address,
-        user.joined,
-        user.status,
-        user.role,
-      ]),
-    ];
-
-    const csvContent = rows
-      .map((row) =>
-        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")
-      )
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.setAttribute("download", "users-data.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    setActionMessage("User data exported successfully.");
-  };
-
-  const handleFilterActive = () => {
-    setStatusFilter("Active");
-    setIsStatusOpen(false);
-    setActionMessage("Showing active users only.");
-  };
-
-  const handleReviewSuspended = () => {
-    setStatusFilter("Suspended");
-    setIsStatusOpen(false);
-    setActionMessage("Showing suspended users only.");
-  };
-
-  const handleViewUser = (user) => {
-    setSelectedUser(user);
-    setShowViewModal(true);
-  };
-
-  const handleOpenEditUser = (user) => {
-    setEditingUser({ ...user });
-    setShowEditModal(true);
-  };
-
-  const handleEditUserChange = (e) => {
-    const { name, value } = e.target;
-    setEditingUser((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleSaveEditUser = async (e) => {
+  const handleEditUser = async (e) => {
     e.preventDefault();
 
-    if (
-      !editingUser.name.trim() ||
-      !editingUser.email.trim() ||
-      !editingUser.address.trim()
-    ) {
-      setActionMessage("Please complete all edit fields first.");
+    if (!selectedUser?.id) {
+      setErrorText("User tidak ditemukan.");
       return;
     }
+
+    const validationError = validateForm();
+
+    if (validationError) {
+      setErrorText(validationError);
+      return;
+    }
+
+    setSaving(true);
+    setErrorText("");
+    setMessage("");
+
+    const updatedProfile = {
+      username: formData.username.trim(),
+      email: formData.email.trim(),
+      address: formData.address.trim() || null,
+      telp_number: formData.telp_number.trim() || null,
+      birth_date: formData.birth_date || null,
+      gender: formData.gender || null,
+      last_edu: formData.last_edu.trim() || null,
+      doctor: formData.doctor.trim() || null,
+    };
 
     const { error } = await supabase
-      .from("users")
-      .update({
-        full_name: editingUser.name,
-        email: editingUser.email,
-        address: editingUser.address,
-        status: editingUser.status,
-      })
-      .eq("id", editingUser.id);
+      .from("profiles")
+      .update(updatedProfile)
+      .eq("id", selectedUser.id);
 
     if (error) {
-      setActionMessage(error.message);
+      console.error(error);
+      setErrorText(error.message || "Gagal mengupdate user.");
+      setSaving(false);
       return;
     }
 
-    await fetchUsers();
+    setMessage("User berhasil diupdate.");
+    await fetchProfiles();
 
-    setShowEditModal(false);
-    setEditingUser(null);
+    setSaving(false);
 
-    setActionMessage("User updated successfully.");
+    setTimeout(() => {
+      closeEditModal();
+    }, 700);
   };
 
-  const handleDeleteUser = async (userId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this user?"
+  const handleDeleteUser = async (user) => {
+    const confirmDelete = confirm(
+      `Yakin mau hapus profile ${user.username || user.email}?`
     );
 
-    if (!confirmed) return;
+    if (!confirmDelete) return;
+
+    setErrorText("");
+    setMessage("");
 
     const { error } = await supabase
-      .from("users")
+      .from("profiles")
       .delete()
-      .eq("id", userId);
+      .eq("id", user.id);
 
     if (error) {
-      setActionMessage(error.message);
+      console.error(error);
+      setErrorText(error.message || "Gagal menghapus user.");
       return;
     }
 
-    await fetchUsers();
-
-    setActionMessage("User deleted successfully.");
-
-    if (selectedUser?.id === userId) {
-      setShowViewModal(false);
-      setSelectedUser(null);
-    }
-
-    if (editingUser?.id === userId) {
-      setShowEditModal(false);
-      setEditingUser(null);
-    }
+    setMessage("Profile berhasil dihapus.");
+    await fetchProfiles();
   };
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
-        <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
-        <div className="absolute left-[14%] top-[-7rem] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
-        <div className="absolute right-[20%] top-[16%] h-72 w-72 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
-        <div className="absolute bottom-[-9rem] left-[-2rem] h-80 w-80 rounded-full bg-[#ffe5f3cc] blur-[100px]" />
-        <div className="absolute bottom-[-5rem] left-[26%] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
-        <div className="absolute left-[-6rem] top-[-3rem] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
-        <Image
-          src="/images/header.png"
-          alt="Header Decoration"
-          width={1600}
-          height={200}
-          className="absolute top-0 left-0 w-full object-cover opacity-80"
-        />
-      </div>
-
-      <section className="relative z-10 w-full px-6 pb-6 pt-40 sm:px-8 lg:px-12">
-        <div className="relative">
-          <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">
-                User Management
-              </h1>
-              <p className="mt-2 text-[18px] text-[#f08bbf]">
-                Manage registered users, statuses, and account details
-              </p>
-            </div>
-
-            <div className="flex flex-col items-end gap-3">
-              <div className="w-fit rounded-full bg-white px-5 py-2 text-[15px] font-medium text-[#e85fa7] shadow-sm">
-                {formatTopDate(currentDate)}
-              </div>
-
-              {actionMessage && (
-                <div className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm">
-                  {actionMessage}
-                </div>
-              )}
-            </div>
+    <main className="min-h-screen bg-[#d4eefc] px-8 py-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[#0c72a6]">
+              User Management
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+              Data user diambil langsung dari table profiles.
+            </p>
           </div>
 
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <p className="text-[14px] text-[#ea3f97]">Total Users</p>
-              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                {totalUsers}
-              </h3>
-            </div>
+          <button
+            onClick={openAddModal}
+            className="rounded-full bg-[#0c72a6] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:opacity-90"
+          >
+            + Add User
+          </button>
+        </div>
 
-            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <p className="text-[14px] text-[#ea3f97]">Active Users</p>
-              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                {activeUsers}
-              </h3>
-            </div>
+        {message && (
+          <div className="mb-4 rounded-xl bg-green-100 px-4 py-3 text-sm text-green-700">
+            {message}
+          </div>
+        )}
 
-            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <p className="text-[14px] text-[#ea3f97]">Inactive Users</p>
-              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                {inactiveUsers}
-              </h3>
-            </div>
+        {errorText && (
+          <div className="mb-4 rounded-xl bg-red-100 px-4 py-3 text-sm text-red-700">
+            {errorText}
+          </div>
+        )}
 
-            <div className="rounded-[18px] bg-[#bde6e5]/85 px-5 py-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <p className="text-[14px] text-[#ea3f97]">Suspended Users</p>
-              <h3 className="mt-2 text-[28px] font-bold text-[#0c72a6]">
-                {suspendedUsers}
-              </h3>
-            </div>
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Total Profiles</p>
+            <p className="mt-2 text-3xl font-bold text-[#0c72a6]">
+              {totalUsers}
+            </p>
           </div>
 
-          <div className="mb-6 rounded-[20px] bg-white/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                  User Directory
-                </h2>
-                <p className="mt-1 text-[12px] text-[#5c5c5c]">
-                  Search and manage all registered users
-                </p>
-              </div>
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Profiles with Email</p>
+            <p className="mt-2 text-3xl font-bold text-[#0c72a6]">
+              {totalWithEmail}
+            </p>
+          </div>
 
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  type="text"
-                  placeholder="Search user, email, or address..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-[44px] min-w-[240px] rounded-full border border-[#e6e6e6] bg-white px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                />
+          <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-500">Profiles with Doctor</p>
+            <p className="mt-2 text-3xl font-bold text-[#0c72a6]">
+              {totalDoctors}
+            </p>
+          </div>
+        </div>
 
-                <div ref={dropdownRef} className="relative min-w-[180px]">
-                  <button
-                    type="button"
-                    onClick={() => setIsStatusOpen((prev) => !prev)}
-                    className="flex h-[44px] w-full items-center rounded-full border border-[#e6e6e6] bg-white pl-5 pr-4 text-[14px] text-[#333] shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                  >
-                    <span className="flex-1 text-center">
-                      {statusFilter === "All" ? "All Status" : statusFilter}
-                    </span>
-                    <span className="ml-3 shrink-0 text-[12px] text-[#666]">
-                      ▼
-                    </span>
-                  </button>
+        <div className="rounded-3xl bg-white p-5 shadow-md">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by username, email, address..."
+              className="w-full rounded-full border border-gray-300 px-5 py-3 text-sm outline-none md:max-w-md"
+            />
 
-                  {isStatusOpen && (
-                    <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-[18px] border border-[#f0d8e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-                      {["All", "Active", "Inactive", "Suspended"].map((status) => (
-                        <button
-                          key={status}
-                          type="button"
-                          onClick={() => {
-                            setStatusFilter(status);
-                            setIsStatusOpen(false);
-                          }}
-                          className={`w-full px-4 py-3 text-center text-[14px] transition ${
-                            statusFilter === status
-                              ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
-                              : "text-[#333] hover:bg-[#fff5fa]"
-                          }`}
-                        >
-                          {status === "All" ? "All Status" : status}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <button
+              onClick={fetchProfiles}
+              className="rounded-full border border-[#0c72a6] px-5 py-3 text-sm font-semibold text-[#0c72a6] transition hover:bg-[#0c72a6] hover:text-white"
+            >
+              Refresh
+            </button>
+          </div>
 
-            <div className="mt-6 overflow-x-auto">
-              <table className="w-full min-w-[900px] border-collapse">
-                <thead>
-                  <tr className="border-b border-[#ea3f97]">
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Name
-                    </th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Email
-                    </th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Address
-                    </th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Joined
-                    </th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Actions
-                    </th>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] border-collapse">
+              <thead>
+                <tr className="border-b bg-[#f4fbff] text-left text-sm text-[#0c72a6]">
+                  <th className="px-4 py-3">No</th>
+                  <th className="px-4 py-3">Username</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Gender</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">Address</th>
+                  <th className="px-4 py-3">Level</th>
+                  <th className="px-4 py-3">EXP</th>
+                  <th className="px-4 py-3">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan="9"
+                      className="px-4 py-8 text-center text-sm text-gray-500"
+                    >
+                      Loading data...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => (
+                ) : filteredProfiles.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan="9"
+                      className="px-4 py-8 text-center text-sm text-gray-500"
+                    >
+                      Belum ada data user.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredProfiles.map((user, index) => (
                     <tr
                       key={user.id}
-                      className="border-b border-[#f2f2f2] last:border-b-0"
+                      className="border-b text-sm text-gray-700 hover:bg-[#f8fcff]"
                     >
-                      <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
-                        {user.name}
+                      <td className="px-4 py-3">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold">
+                        {user.username || "-"}
                       </td>
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                        {user.email}
-                      </td>
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                        {user.address}
-                      </td>
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                        {user.joined}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
-                            user.status
-                          )}`}
-                        >
-                          {user.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-2">
+                      <td className="px-4 py-3">{user.email || "-"}</td>
+                      <td className="px-4 py-3">{user.gender || "-"}</td>
+                      <td className="px-4 py-3">{user.telp_number || "-"}</td>
+                      <td className="px-4 py-3">{user.address || "-"}</td>
+                      <td className="px-4 py-3">{user.level ?? "-"}</td>
+                      <td className="px-4 py-3">{user.exp ?? "-"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
                           <button
-                            type="button"
-                            onClick={() => handleViewUser(user)}
-                            className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90"
-                          >
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditUser(user)}
-                            className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90"
+                            onClick={() => openEditModal(user)}
+                            className="rounded-full bg-[#efc6dc] px-4 py-2 text-xs font-semibold text-[#9b3d71] transition hover:opacity-80"
                           >
                             Edit
                           </button>
+
                           <button
-                            type="button"
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="rounded-full bg-[#f3f3f3] px-3 py-1.5 text-[12px] font-medium text-[#666] transition hover:opacity-90"
+                            onClick={() => handleDeleteUser(user)}
+                            className="rounded-full bg-red-100 px-4 py-2 text-xs font-semibold text-red-600 transition hover:opacity-80"
                           >
                             Delete
                           </button>
                         </div>
                       </td>
                     </tr>
-                  ))}
-
-                  {filteredUsers.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
-                      >
-                        No users found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <div className="rounded-[20px] bg-[#e7daf0]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                User Insights
-              </h2>
-
-              <div className="mt-5 space-y-4">
-                <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                  <p className="text-[13px] text-[#ea3f97]">Most recent join</p>
-                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                    {users[0]?.name || "-"}
-                  </p>
-                </div>
-
-                <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                  <p className="text-[13px] text-[#ea3f97]">Most common status</p>
-                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                    {activeUsers >= inactiveUsers && activeUsers >= suspendedUsers
-                      ? "Active"
-                      : inactiveUsers >= suspendedUsers
-                      ? "Inactive"
-                      : "Suspended"}
-                  </p>
-                </div>
-
-                <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                  <p className="text-[13px] text-[#ea3f97]">Default role</p>
-                  <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                    User
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[20px] bg-[#bde6e5]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-              <h2 className="text-[18px] font-bold text-[#1e1e1e]">
-                Quick Actions
-              </h2>
-
-              <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(true)}
-                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                >
-                  <p className="text-[15px] font-semibold text-[#db2d8d]">
-                    Add User
-                  </p>
-                  <p className="mt-1 text-[12px] text-[#666]">
-                    Create a new user account
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleExportData}
-                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                >
-                  <p className="text-[15px] font-semibold text-[#db2d8d]">
-                    Export Data
-                  </p>
-                  <p className="mt-1 text-[12px] text-[#666]">
-                    Download user records
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleFilterActive}
-                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                >
-                  <p className="text-[15px] font-semibold text-[#db2d8d]">
-                    Filter Active
-                  </p>
-                  <p className="mt-1 text-[12px] text-[#666]">
-                    Show only active users
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleReviewSuspended}
-                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
-                >
-                  <p className="text-[15px] font-semibold text-[#db2d8d]">
-                    Review Suspended
-                  </p>
-                  <p className="mt-1 text-[12px] text-[#666]">
-                    Check restricted accounts
-                  </p>
-                </button>
-              </div>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-      </section>
+      </div>
 
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[520px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-[26px] font-bold text-[#db2d8d]">
-                  Add New User
-                </h2>
-                <p className="mt-1 text-[14px] text-[#777]">
-                  Fill in the user information below
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Full name"
-                value={newUserForm.name}
-                onChange={handleNewUserChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="email"
-                name="email"
-                placeholder="Email address"
-                value={newUserForm.email}
-                onChange={handleNewUserChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="address"
-                placeholder="Address"
-                value={newUserForm.address}
-                onChange={handleNewUserChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-[13px] font-medium text-[#666]">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={newUserForm.status}
-                    onChange={handleNewUserChange}
-                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Suspended">Suspended</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-[13px] font-medium text-[#666]">
-                    Role
-                  </label>
-                  <div className="flex h-[48px] items-center rounded-[14px] border border-[#e6e6e6] bg-[#fafafa] px-4 text-[14px] text-[#666]">
-                    User
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                >
-                  Save User
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <UserModal
+          title="Add User"
+          formData={formData}
+          handleChange={handleChange}
+          onSubmit={handleAddUser}
+          onClose={closeAddModal}
+          saving={saving}
+          errorText={errorText}
+          message={message}
+        />
       )}
 
-      {showViewModal && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[460px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-[26px] font-bold text-[#db2d8d]">
-                  User Detail
-                </h2>
-                <p className="mt-1 text-[14px] text-[#777]">
-                  Detailed information for this user
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowViewModal(false);
-                  setSelectedUser(null);
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                <p className="text-[12px] text-[#ea3f97]">Full Name</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedUser.name}
-                </p>
-              </div>
-
-              <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
-                <p className="text-[12px] text-[#0c72a6]">Email</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedUser.email}
-                </p>
-              </div>
-
-              <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                <p className="text-[12px] text-[#ea3f97]">Address</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedUser.address}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
-                  <p className="text-[12px] text-[#0c72a6]">Joined</p>
-                  <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                    {selectedUser.joined}
-                  </p>
-                </div>
-
-                <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                  <p className="text-[12px] text-[#ea3f97]">Status</p>
-                  <div className="mt-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(
-                        selectedUser.status
-                      )}`}
-                    >
-                      {selectedUser.status}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowViewModal(false);
-                    setSelectedUser(null);
-                  }}
-                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showEditModal && editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[520px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-[26px] font-bold text-[#db2d8d]">
-                  Edit User
-                </h2>
-                <p className="mt-1 text-[14px] text-[#777]">
-                  Update the selected user information
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowEditModal(false);
-                  setEditingUser(null);
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditUser} className="space-y-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Full name"
-                value={editingUser.name}
-                onChange={handleEditUserChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="email"
-                name="email"
-                placeholder="Email address"
-                value={editingUser.email}
-                onChange={handleEditUserChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="address"
-                placeholder="Address"
-                value={editingUser.address}
-                onChange={handleEditUserChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-[13px] font-medium text-[#666]">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    value={editingUser.status}
-                    onChange={handleEditUserChange}
-                    className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Suspended">Suspended</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-[13px] font-medium text-[#666]">
-                    Role
-                  </label>
-                  <div className="flex h-[48px] items-center rounded-[14px] border border-[#e6e6e6] bg-[#fafafa] px-4 text-[14px] text-[#666]">
-                    {editingUser.role}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleDeleteUser(editingUser.id)}
-                  className="rounded-full bg-[#f3f3f3] px-5 py-2.5 text-[14px] font-medium text-[#666] transition hover:bg-[#ebebeb]"
-                >
-                  Delete User
-                </button>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowEditModal(false);
-                      setEditingUser(null);
-                    }}
-                    className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showEditModal && (
+        <UserModal
+          title="Edit User"
+          formData={formData}
+          handleChange={handleChange}
+          onSubmit={handleEditUser}
+          onClose={closeEditModal}
+          saving={saving}
+          errorText={errorText}
+          message={message}
+        />
       )}
     </main>
   );
+}
+
+function UserModal({
+  title,
+  formData,
+  handleChange,
+  onSubmit,
+  onClose,
+  saving,
+  errorText,
+  message,
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-xl">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-[#0c72a6]">{title}</h2>
+
+          <button
+            onClick={onClose}
+            className="rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-600"
+          >
+            Close
+          </button>
+        </div>
+
+        {message && (
+          <div className="mb-4 rounded-xl bg-green-100 px-4 py-3 text-sm text-green-700">
+            {message}
+          </div>
+        )}
+
+        {errorText && (
+          <div className="mb-4 rounded-xl bg-red-100 px-4 py-3 text-sm text-red-700">
+            {errorText}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Username
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+              placeholder="Username"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+              placeholder="email@gmail.com"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Phone Number
+            </label>
+            <input
+              type="text"
+              name="telp_number"
+              value={formData.telp_number}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+              placeholder="08xxxxxxxxxx"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Birth Date
+            </label>
+            <input
+              type="date"
+              name="birth_date"
+              value={formData.birth_date}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Gender
+            </label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+            >
+              <option value="">Pilih gender</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Last Education
+            </label>
+            <input
+              type="text"
+              name="last_edu"
+              value={formData.last_edu}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+              placeholder="SMA / S1 / dll"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Doctor
+            </label>
+            <input
+              type="text"
+              name="doctor"
+              value={formData.doctor}
+              onChange={handleChange}
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+              placeholder="Nama dokter / counselor"
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="mb-1 block text-sm font-semibold text-gray-600">
+              Address
+            </label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              className="min-h-[90px] w-full rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none"
+              placeholder="Alamat user"
+            />
+          </div>
+
+          <div className="mt-2 flex justify-end gap-3 md:col-span-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-600"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-[#0c72a6] px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

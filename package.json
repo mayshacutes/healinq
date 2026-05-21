@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.3",
+    "bcryptjs": "^3.0.3",
     "next": "16.1.6",
     "next-auth": "^4.24.14",
     "phosphor-react": "^1.4.1",
