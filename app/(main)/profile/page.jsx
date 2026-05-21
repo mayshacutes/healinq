@@ -71,32 +71,87 @@ export default function UserProfilePage() {
   const [actionMessage, setActionMessage] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
   const [rewards, setRewards] = useState(REWARDS);
-
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-
-    localStorage.clear();
-    sessionStorage.clear();
-
-    router.replace("/login");
-  };
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const [profile, setProfile] = useState({
-    name: "Arinda Putri",
-    username: "arindaputri",
-    bio: "Sedang belajar lebih mengenal diri sendiri satu hari dalam satu waktu 🌱",
-    telp_number: "+62 812-3456-7890",
-    birth_date: "2002-05-14",
-    last_edu: "Mahasiswa Psikologi",
-    gender: "Perempuan",
-    address: "Surabaya, Jawa Timur",
-    doctor: "dr. Sari Dewi",
-    image: "/images/icon_profile.png",
+    full_name: "",
+    username: "",
+    bio: "",
+    telp_number: "",
+    birth_date: "",
+    last_edu: "",
+    gender: "",
+    address: "",
+    doctor: "",
   });
 
   const [editForm, setEditForm] = useState(profile);
+
+  useEffect(() => {
+    async function loadProfile() {
+      setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        console.error("Error loading profile:", error);
+        if (error.code === "PGRST116") {
+          const defaultProfile = {
+            id: user.id,
+            full_name: user.email?.split("@")[0] || "User",
+            username: user.email?.split("@")[0] || "user",
+            email: user.email,
+            exp: 0,
+            streak: 0,
+            level: 1,
+            nextLevelXp: 100,
+            bio: "",
+            telp_number: "",
+            birth_date: null,
+            gender: "",
+            address: "",
+            last_edu: "",
+            doctor: "",
+          };
+          await supabase.from("profiles").insert(defaultProfile);
+          setProfile(defaultProfile);
+          setEditForm(defaultProfile);
+        } else {
+          setActionMessage("Gagal memuat profil.");
+        }
+      } else if (data) {
+        setProfile(data);
+        setEditForm(data);
+      }
+      setIsLoading(false);
+    }
+    loadProfile();
+  }, [router]);
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDate(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!actionMessage) return;
+    const timer = setTimeout(() => setActionMessage(""), 2500);
+    return () => clearTimeout(timer);
+  }, [actionMessage]);
 
   const calcAge = (dateStr) => {
     if (!dateStr) return "-";
@@ -105,36 +160,136 @@ export default function UserProfilePage() {
     return `${age} tahun`;
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!actionMessage) return;
-    const timer = setTimeout(() => {
-      setActionMessage("");
-    }, 2500);
-    return () => clearTimeout(timer);
-  }, [actionMessage]);
-
   const handleOpenEditModal = () => {
     setEditForm(profile);
     setShowEditModal(true);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    if (!editForm.name.trim() || !editForm.username.trim()) {
-      setActionMessage("Please complete required fields.");
+    if (!editForm.full_name?.trim() || !editForm.username?.trim()) {
+      setActionMessage("Nama dan username harus diisi.");
       return;
     }
-    setProfile(editForm);
-    setShowEditModal(false);
-    setActionMessage("Profile updated successfully.");
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setActionMessage("Anda harus login.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: editForm.full_name,
+        username: editForm.username,
+        bio: editForm.bio,
+        telp_number: editForm.telp_number,
+        birth_date: editForm.birth_date,
+        gender: editForm.gender,
+        address: editForm.address,
+        last_edu: editForm.last_edu,
+        doctor: editForm.doctor,
+      })
+      .eq("id", user.id);
+
+    if (error) {
+      console.error(error);
+      setActionMessage("Gagal menyimpan perubahan.");
+    } else {
+      setProfile(editForm);
+      setShowEditModal(false);
+      setActionMessage("Profil berhasil diperbarui!");
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    sessionStorage.clear();
+    router.replace("/login");
+  };
+
+  const handlePasswordFormChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordForm((p) => ({ ...p, [name]: value }));
+  };
+
+  const getPasswordStrength = (password) => {
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    const percent = Math.min(100, (score / 5) * 100);
+    const label = score <= 2 ? "Weak" : score <= 4 ? "Medium" : "Strong";
+    const color = score <= 2 ? "bg-[#f8c3d0]" : score <= 4 ? "bg-[#f9e29d]" : "bg-[#a7e5a8]";
+    return { percent, label, color };
+  };
+
+  const handleSendPasswordReset = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      setActionMessage("Email tidak ditemukan.");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+      if (error) throw error;
+      setResetEmailSent(true);
+      setActionMessage("Email reset password terkirim.");
+    } catch (err) {
+      console.error(err);
+      setActionMessage("Gagal mengirim email reset.");
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      setActionMessage("User tidak valid.");
+      return;
+    }
+    if (!passwordForm.currentPassword) {
+      setActionMessage("Password saat ini harus diisi.");
+      return;
+    }
+    if (!passwordForm.newPassword || passwordForm.newPassword.length < 8) {
+      setActionMessage("Password baru minimal 8 karakter.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setActionMessage("Konfirmasi password tidak cocok.");
+      return;
+    }
+    try {
+      const { error: reauthError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: passwordForm.currentPassword,
+      });
+      if (reauthError) {
+        setActionMessage("Password saat ini salah.");
+        return;
+      }
+      const { error } = await supabase.auth.updateUser({ password: passwordForm.newPassword });
+      if (error) throw error;
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setResetEmailSent(false);
+      setActionMessage("Password berhasil diubah.");
+    } catch (err) {
+      console.error(err);
+      setActionMessage("Gagal mengubah password.");
+    }
   };
 
   const claimReward = (id, name) => {
@@ -142,13 +297,13 @@ export default function UserProfilePage() {
     setActionMessage(`🎉 "${name}" berhasil diklaim!`);
   };
 
-  const handleEditFormChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  if (isLoading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-[#d9edf8]">
+        <div className="text-[#db2d8d] text-xl">Memuat profil...</div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
@@ -173,19 +328,13 @@ export default function UserProfilePage() {
         <div className="relative">
           <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">
-                My Profile
-              </h1>
-              <p className="mt-2 text-[18px] text-[#f08bbf]">
-                Kelola informasi dan aktivitasmu
-              </p>
+              <h1 className="text-[34px] font-bold leading-none text-[#e1268d] sm:text-[42px]">My Profile</h1>
+              <p className="mt-2 text-[18px] text-[#f08bbf]">Kelola informasi dan aktivitasmu</p>
             </div>
-
             <div className="flex flex-col items-end gap-3">
               <div className="w-fit rounded-full bg-white px-5 py-2 text-[15px] font-medium text-[#e85fa7] shadow-sm">
                 {formatTopDate(currentDate)}
               </div>
-
               {actionMessage && (
                 <div className="rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm">
                   {actionMessage}
@@ -195,7 +344,7 @@ export default function UserProfilePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-            {/* Left Section - Profile Info */}
+            {/* LEFT SECTION */}
             <div className="space-y-5">
               {/* Profile Card */}
               <div className="rounded-[22px] bg-white/90 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
@@ -203,79 +352,50 @@ export default function UserProfilePage() {
                   <div className="flex h-[110px] w-[110px] items-center justify-center rounded-full bg-[#f7d3e4] p-3">
                     <span className="text-[80px]">🐰</span>
                   </div>
-
                   <div>
-                    <h2 className="text-[28px] font-bold text-[#222]">
-                      {profile.name}
-                    </h2>
+                    <h2 className="text-[28px] font-bold text-[#222]">{profile.full_name || profile.username}</h2>
                     <p className="mt-1 text-[16px] text-[#666]">@{profile.username}</p>
                     <p className="mt-2 text-[14px] text-[#888]">{profile.bio}</p>
                   </div>
                 </div>
-
                 <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
                     <p className="text-[13px] text-[#ea3f97]">📍 Lokasi</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {profile.address}
-                    </p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.address}</p>
                   </div>
-
                   <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
                     <p className="text-[13px] text-[#0c72a6]">🎂 Usia</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {calcAge(profile.birth_date)}
-                    </p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">{calcAge(profile.birth_date)}</p>
                   </div>
-
                   <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
                     <p className="text-[13px] text-[#ea3f97]">⚧️ Jenis Kelamin</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {profile.gender}
-                    </p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.gender}</p>
                   </div>
-
                   <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
                     <p className="text-[13px] text-[#0c72a6]">🎓 Pendidikan</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {profile.last_edu}
-                    </p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.last_edu}</p>
                   </div>
-
                   <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
                     <p className="text-[13px] text-[#ea3f97]">📞 Telepon</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {profile.telp_number}
-                    </p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.telp_number}</p>
                   </div>
-
                   <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
                     <p className="text-[13px] text-[#0c72a6]">🩺 Psikiater</p>
-                    <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                      {profile.doctor}
-                    </p>
+                    <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.doctor}</p>
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleOpenEditModal}
-                  className="mt-6 w-full rounded-full bg-[#db2d8d] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#c8277e]"
-                >
+                <button onClick={handleOpenEditModal} className="mt-6 w-full rounded-full bg-[#db2d8d] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#c8277e]">
                   ✏️ Edit Profile
                 </button>
-
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="mt-3 w-full rounded-full border border-[#db2d8d] bg-white px-5 py-3 text-[14px] font-bold text-[#db2d8d] transition hover:bg-[#fff0f8]"
-                >
+                <button onClick={() => setShowPasswordModal(true)} className="mt-3 w-full rounded-full bg-[#f28a50] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#d76a44]">
+                  🔑 Ubah Password
+                </button>
+                <button onClick={handleLogout} className="mt-3 w-full rounded-full border border-[#db2d8d] bg-white px-5 py-3 text-[14px] font-bold text-[#db2d8d] transition hover:bg-[#fff0f8]">
                   🚪 Logout
                 </button>
-
               </div>
 
-              {/* Level & Stats */}
+              {/* Level & Stats (sementara) */}
               <div className="rounded-[22px] bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
@@ -290,16 +410,13 @@ export default function UserProfilePage() {
                     <p className="text-[12px] text-white/80">dari 50 level</p>
                   </div>
                 </div>
-
                 <div className="mb-3 flex justify-between text-[12px] font-bold text-white/90">
                   <span>⚡ 2.400 XP</span>
                   <span>Target: 3.500 XP</span>
                 </div>
-
                 <div className="mb-3 h-[10px] rounded-full bg-white/25 overflow-hidden">
                   <div className="h-full bg-gradient-to-r from-white to-[#fff1a8]" style={{ width: "68%" }} />
                 </div>
-
                 <p className="text-[12px] text-white/90">1.100 XP lagi → Level 13: Soul Seeker ✨</p>
               </div>
 
@@ -320,9 +437,8 @@ export default function UserProfilePage() {
               </div>
             </div>
 
-            {/* Right Section - Tabs & Content */}
+            {/* RIGHT SECTION */}
             <div className="space-y-5">
-              {/* Tab Navigation */}
               <div className="flex gap-2 rounded-full bg-white/90 p-2 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
                 {[
                   { id: "missions", label: "🎯 Misi" },
@@ -342,7 +458,6 @@ export default function UserProfilePage() {
                 ))}
               </div>
 
-              {/* Missions Tab */}
               {activeTab === "missions" && (
                 <div className="space-y-4">
                   {Object.entries(MISSIONS).map(([section, missions]) => (
@@ -372,9 +487,7 @@ export default function UserProfilePage() {
                                   </div>
                                 </div>
                                 <div className="flex flex-col items-end gap-2">
-                                  <span className="text-[12px] font-bold bg-[#fff4bf] text-[#9b6b00] px-3 py-1 rounded-full">
-                                    ⚡ +{m.xp}
-                                  </span>
+                                  <span className="text-[12px] font-bold bg-[#fff4bf] text-[#9b6b00] px-3 py-1 rounded-full">⚡ +{m.xp}</span>
                                   <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${getMissionStatusColor(m.status)}`}>
                                     {m.status === "done" ? "✓ Done" : m.status === "active" ? "● Progress" : "🔒 Locked"}
                                   </span>
@@ -389,7 +502,6 @@ export default function UserProfilePage() {
                 </div>
               )}
 
-              {/* Rewards Tab */}
               {activeTab === "rewards" && (
                 <div className="grid grid-cols-1 gap-4">
                   {rewards.map((r) => (
@@ -421,7 +533,6 @@ export default function UserProfilePage() {
                 </div>
               )}
 
-              {/* Consultation History Tab */}
               {activeTab === "history" && (
                 <div className="space-y-3">
                   {CONSULTATIONS.map((c) => (
@@ -449,7 +560,6 @@ export default function UserProfilePage() {
                 </div>
               )}
 
-              {/* Badges Section */}
               <div className="rounded-[22px] bg-white/90 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
                 <h3 className="text-[16px] font-bold text-[#222] mb-4">🏅 Badges</h3>
                 <div className="grid grid-cols-4 gap-3">
@@ -473,486 +583,79 @@ export default function UserProfilePage() {
         </div>
       </section>
 
-      {/* Edit Modal */}
+      {/* EDIT MODAL */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
           <div className="w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-[26px] font-bold text-[#db2d8d]">
-                  Edit Profile
-                </h2>
-                <p className="mt-1 text-[14px] text-[#777]">
-                  Update informasi pribadi kamu
-                </p>
+                <h2 className="text-[26px] font-bold text-[#db2d8d]">Edit Profile</h2>
+                <p className="mt-1 text-[14px] text-[#777]">Update informasi pribadi kamu</p>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
-              >
-                ×
-              </button>
+              <button onClick={() => setShowEditModal(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]">×</button>
             </div>
-
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Nama lengkap"
-                value={editForm.name}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="username"
-                placeholder="Username"
-                value={editForm.username}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <textarea
-                name="bio"
-                placeholder="Bio singkat tentang dirimu"
-                value={editForm.bio}
-                onChange={handleEditFormChange}
-                className="w-full rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-                rows={2}
-              />
-
-              <input
-                type="date"
-                name="birth_date"
-                value={editForm.birth_date}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <select
-                name="gender"
-                value={editForm.gender}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              >
+              <input type="text" name="full_name" placeholder="Nama lengkap" value={editForm.full_name || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" required />
+              <input type="text" name="username" placeholder="Username" value={editForm.username || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" required />
+              <textarea name="bio" placeholder="Bio singkat tentang dirimu" value={editForm.bio || ""} onChange={handleEditFormChange} className="w-full rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[14px]" rows={2} />
+              <input type="date" name="birth_date" value={editForm.birth_date || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <select name="gender" value={editForm.gender || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]">
+                <option value="">Pilih gender</option>
                 <option value="Perempuan">Perempuan</option>
                 <option value="Laki-laki">Laki-laki</option>
                 <option value="Lainnya">Lainnya</option>
               </select>
-
-              <input
-                type="tel"
-                name="telp_number"
-                placeholder="Nomor telepon"
-                value={editForm.telp_number}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="last_edu"
-                placeholder="Pendidikan terakhir"
-                value={editForm.last_edu}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="address"
-                placeholder="Alamat"
-                value={editForm.address}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="doctor"
-                placeholder="Nama psikiater/konselor"
-                value={editForm.doctor}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
+              <input type="tel" name="telp_number" placeholder="Nomor telepon" value={editForm.telp_number || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <input type="text" name="last_edu" placeholder="Pendidikan terakhir" value={editForm.last_edu || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <input type="text" name="address" placeholder="Alamat" value={editForm.address || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <input type="text" name="doctor" placeholder="Nama psikiater/konselor" value={editForm.doctor || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
               <div className="flex flex-wrap justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]"
-                >
-                  Cancel
-                </button>
+                <button type="button" onClick={() => setShowEditModal(false)} className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555]">Cancel</button>
+                <button type="submit" className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
-                <button
-                  type="submit"
-                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]"
-                >
-                  Save Changes
+      {/* PASSWORD MODAL */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
+          <div className="w-full max-w-[520px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-[22px] font-bold text-[#0c72a6]">Ubah Password</h2>
+                <p className="mt-1 text-[13px] text-[#777]">Ganti password akun Anda (minimal 8 karakter)</p>
+              </div>
+              <button onClick={() => setShowPasswordModal(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f7f7f7] text-[16px] text-[#555]">×</button>
+            </div>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <input type="password" name="currentPassword" placeholder="Current password" value={passwordForm.currentPassword} onChange={handlePasswordFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <input type="password" name="newPassword" placeholder="New password" value={passwordForm.newPassword} onChange={handlePasswordFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <div className="space-y-2">
+                <div className="flex justify-between text-[13px] text-[#666]">
+                  <span>Password strength</span>
+                  <span className="font-semibold text-[#222]">{getPasswordStrength(passwordForm.newPassword).label}</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f1f1f1] overflow-hidden">
+                  <div className={`${getPasswordStrength(passwordForm.newPassword).color} h-full transition-all`} style={{ width: `${getPasswordStrength(passwordForm.newPassword).percent}%` }} />
+                </div>
+              </div>
+              <input type="password" name="confirmPassword" placeholder="Confirm new password" value={passwordForm.confirmPassword} onChange={handlePasswordFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
+              <div className="rounded-[16px] bg-[#f7f7f7] p-4 text-[13px] text-[#444]">
+                <p className="mb-2 text-[#0c72a6] font-semibold">Lupa password?</p>
+                <button type="button" disabled={resetEmailSent} onClick={handleSendPasswordReset} className={`w-full rounded-full px-4 py-2 text-[14px] font-semibold ${resetEmailSent ? "bg-[#d1d5db] text-[#6b7280]" : "bg-[#0c72a6] text-white"}`}>
+                  {resetEmailSent ? "Reset email sent" : "Send reset email"}
                 </button>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowPasswordModal(false)} className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium">Cancel</button>
+                <button type="submit" className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white">Change Password</button>
               </div>
             </form>
           </div>
         </div>
       )}
     </main>
-  );
-}
-
-
-function MissionCard({ m }) {
-  const pct = m.total > 0 ? Math.round((m.progress / m.total) * 100) : 0;
-  return (
-    <div className={`mcard mcard-${m.status}`}>
-      <div className={`micon micon-${m.color}`}>{m.icon}</div>
-      <div className="minfo">
-        <div className="mtitle">{m.title}</div>
-        <div className="mdesc">{m.desc}</div>
-        <div className="mprog">
-          <div className="pbar">
-            <div className={`pfill pfill-${m.color}`} style={{ width: `${pct}%` }} />
-          </div>
-          <span className="ptext">
-            {m.status === "done" ? `${m.total}/${m.total} ✓` : m.status === "locked" ? "Terkunci" : `${m.progress}/${m.total}`}
-          </span>
-        </div>
-      </div>
-      <div className="mright">
-        <div className="xpreward">⚡ +{m.xp} XP</div>
-        <div className={`mstatus mstatus-${m.status}`}>
-          {m.status === "done" ? "✓ Selesai" : m.status === "active" ? (pct > 0 && pct < 100 ? "● Progress" : "● Belum") : "🔒 Terkunci"}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── MAIN COMPONENT ────────────────────────────────────────────────────────────
-
-function ProfilePage() {
-  const [activeTab, setActiveTab] = useState("missions");
-  const [rewards, setRewards] = useState(REWARDS_INIT);
-  const [toast, setToast] = useState(null);
-  const [confetti, setConfetti] = useState([]);
-  const [editOpen, setEditOpen] = useState(false);
-
-  // ── Profile state — sesuai CDM users ──
-  const [profile, setProfile] = useState({
-    name: "Arinda Putri",
-    username: "arindaputri",
-    bio: "Sedang belajar lebih mengenal diri sendiri satu hari dalam satu waktu 🌱",
-    telp_number: "+62 812-3456-7890",
-    birth_date: "2002-05-14",
-    last_edu: "Mahasiswa Psikologi",
-    gender: "Perempuan",
-    address: "Surabaya, Jawa Timur",
-    status: "Aktif",
-    doctor: "dr. Sari Dewi",
-  });
-  const [form, setForm] = useState(profile);
-
-  // Hitung usia dari birth_date
-  const calcAge = (dateStr) => {
-    if (!dateStr) return "-";
-    const birth = new Date(dateStr);
-    const age = new Date().getFullYear() - birth.getFullYear();
-    return `${age} tahun`;
-  };
-
-  const openEdit = () => { setForm(profile); setEditOpen(true); };
-  const saveEdit = () => { setProfile(form); setEditOpen(false); showToast("✅ Profil berhasil diperbarui!"); };
-
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
-
-  const launchConfetti = () => {
-    const colors = ["#ea1e8c", "#8fd0ef", "#e2b93b", "#2086c4", "#f28a50", "#22C55E"];
-    const pieces = Array.from({ length: 48 }, (_, i) => ({
-      id: i, left: Math.random() * 100,
-      color: colors[i % colors.length],
-      delay: Math.random() * 1.4,
-      dur: 1.5 + Math.random(),
-    }));
-    setConfetti(pieces);
-    setTimeout(() => setConfetti([]), 2800);
-  };
-
-  const claimReward = (id, name) => {
-    setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, state: "claimed" } : r)));
-    launchConfetti();
-    showToast(`🎉 "${name}" berhasil diklaim!`);
-  };
-
-  return (
-    <>
-      <style>{css}</style>
-
-      {/* Confetti */}
-      {confetti.map((p) => (
-        <div key={p.id} className="confpiece" style={{ left: `${p.left}vw`, background: p.color, animationDelay: `${p.delay}s`, animationDuration: `${p.dur}s` }} />
-      ))}
-
-      {/* Toast */}
-      {toast && (
-        <div className="toast">
-          <span style={{ fontSize: "1.2rem" }}>🎉</span>
-          <div className="toast-text">{toast}</div>
-        </div>
-      )}
-
-      {/* Page */}
-      <div className="page">
-
-        {/* ── LEFT ── */}
-        <aside className="left">
-
-          {/* Profile Card */}
-          <div className="pcard">
-            <div className="pbanner" />
-            <div className="pbody">
-              <div className="av-wrap">
-                <div className="av">🐰</div>
-                <div className="av-online" />
-              </div>
-              <div className="pname">{profile.name}</div>
-              <div className="phandle">@{profile.username} · Member sejak Jan 2024</div>
-              <div className="pbio">{profile.bio}</div>
-              <div className="ptags">
-                <span className="ptag ptag-pink">😊 Anxiety</span>
-                <span className="ptag ptag-teal">🧘 Meditasi</span>
-                <span className="ptag ptag-lav">📝 Journaling</span>
-              </div>
-              <div className="pinfo">
-                {[
-                  ["📍", profile.address],
-                  ["🎂", calcAge(profile.birth_date)],
-                  ["⚧️", profile.gender],
-                  ["📞", profile.telp_number],
-                  ["🎓", profile.last_edu],
-                  ["🩺", profile.doctor + " (Psikiaterku)"],
-                ].map(([icon, txt]) => (
-                  <div className="pinfo-row" key={icon}><span>{icon}</span>{txt}</div>
-                ))}
-              </div>
-              <button className="edit-btn" onClick={openEdit}>✏️ Edit Profil</button>
-              <div className="pinfo" style={{ marginTop: "12px", gap: "8px" }}>
-                <button className="edit-btn" style={{ background: "#f28a50", fontSize: "0.8rem" }} onClick={() => alert("Fitur ubah password akan segera hadir!")}>🔑 Ubah Password</button>
-                <button className="edit-btn" style={{ background: "#ea1e8c", fontSize: "0.8rem" }} onClick={() => signOut()}>🚪 Sign Out</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Level Card */}
-          <div className="lcard">
-            <div className="ltop">
-              <div className="lbadge">
-                <span style={{ fontSize: "1.7rem" }}>🌟</span>
-                <div>
-                  <div className="llabel">Level saat ini</div>
-                  <div className="lname">Mind Explorer</div>
-                </div>
-              </div>
-              <div>
-                <div className="lnum">12</div>
-                <div className="lsub">dari 50 level</div>
-              </div>
-            </div>
-            <div className="xp-labels"><span>⚡ 2.400 XP</span><span>Target: 3.500 XP</span></div>
-            <div className="xp-bar"><div className="xp-fill" /></div>
-            <div className="xp-next">1.100 XP lagi → Level 13: Soul Seeker ✨</div>
-          </div>
-
-          {/* Stats */}
-          <div className="sgrid">
-            {[["📔", "47", "Hari Journaling"], ["🧠", "8", "Sesi Konsultasi"], ["🔥", "14", "Streak Hari Ini"], ["🏆", "9", "Badge Diraih"]].map(([icon, val, lbl]) => (
-              <div className="smini" key={lbl}>
-                <div className="smini-icon">{icon}</div>
-                <div className="smini-val">{val}</div>
-                <div className="smini-lbl">{lbl}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Badges */}
-          <div className="bcard">
-            <div className="ctitle">🏅 Badge Koleksiku</div>
-            <div className="bgrid">
-              <div className="bitem bitem-earned bitem-earned-pink">
-                <span className="bemoji">🏆</span>
-                <span className="bname">{BADGES.filter(b => b.earned).length} Badge Diraih</span>
-              </div>
-            </div>
-          </div>
-
-        </aside>
-
-        {/* ── RIGHT ── */}
-        <main className="right">
-
-          {/* Tabs */}
-          <div className="tabs">
-            {[["missions", "🎯 Misi"], ["rewards", "🎁 Reward"], ["history", "📋 Riwayat"]].map(([id, label]) => (
-              <button key={id} className={`tab ${activeTab === id ? "tab-active" : ""}`} onClick={() => setActiveTab(id)}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* ── MISSIONS ── */}
-          {activeTab === "missions" && (
-            <div>
-              <div className="sec-head">
-                <h2>Misi Aktif ⚡</h2>
-                <div className="score-chip">⭐ 2.400 XP</div>
-              </div>
-              <div className="mlist">
-                <div className="mlabel">🌅 Harian</div>
-                {MISSIONS.daily.map((m) => <MissionCard key={m.id} m={m} />)}
-                <div className="mlabel">📅 Mingguan</div>
-                {MISSIONS.weekly.map((m) => <MissionCard key={m.id} m={m} />)}
-                <div className="mlabel">🌠 Misi Spesial</div>
-                {MISSIONS.special.map((m) => <MissionCard key={m.id} m={m} />)}
-              </div>
-            </div>
-          )}
-
-          {/* ── REWARDS ── */}
-          {activeTab === "rewards" && (
-            <div>
-              <div className="sec-head">
-                <h2>Reward Tersedia 🎁</h2>
-                <div className="score-chip">⭐ 2.400 XP</div>
-              </div>
-              <div className="rgrid">
-                {rewards.map((r) => (
-                  <div key={r.id} className={`rcard rcard-${r.state}`}>
-                    <span className="remoji">{r.emoji}</span>
-                    <div className="rname">{r.name}</div>
-                    <div className="rdesc">{r.desc}</div>
-                    <div className={r.state === "locked" ? "rcost rcost-grey" : "rcost"}>
-                      {r.state === "locked" ? "🔒 Level 20" : `⚡ ${r.xp} XP`}
-                    </div>
-                    <button
-                      className={`rbtn ${r.state === "available" ? "rbtn-claim" : "rbtn-off"}`}
-                      disabled={r.state !== "available"}
-                      onClick={() => r.state === "available" && claimReward(r.id, r.name)}
-                    >
-                      {r.state === "claimed" ? "✓ Sudah Diklaim" : r.state === "locked" ? "Belum Terbuka" : "Klaim Sekarang"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── HISTORY ── */}
-          {activeTab === "history" && (
-            <div>
-              <div className="sec-head">
-                <h2>Consultation History 🩺</h2>
-                <span style={{ fontSize: ".8rem", color: "var(--text-light)", fontWeight: 700 }}>
-                  {CONSULTATIONS.length} sesi total
-                </span>
-              </div>
-              <div className="ch-grid">
-                {CONSULTATIONS.map((c) => (
-                  <div key={c.id} className={`ch-card ${c.type === "online" ? "ch-online" : ""} ${c.status === "cancelled" ? "ch-cancelled" : ""}`}>
-                    <div className="ch-date-num">{c.day}</div>
-                    <div className="ch-date-month">{c.month}</div>
-                    <div className="ch-divider" />
-                    <div className="ch-doctor">🩺 {c.doctor}</div>
-                    <div className="ch-time">🕐 {c.time}</div>
-                    <div className="ch-badges">
-                      <span className={`ch-badge ${c.type === "online" ? "ch-badge-teal" : "ch-badge-pink"}`}>
-                        {c.type === "online" ? "💻 Online" : "🏥 Offline"}
-                      </span>
-                      <span className={`ch-badge ${c.status === "done" ? "ch-badge-teal" : "ch-badge-grey"}`}>
-                        {c.status === "done" ? "✓ Selesai" : "✕ Batal"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-                <div className="ch-see-all">📋 Lihat Semua</div>
-              </div>
-            </div>
-          )}
-
-        </main>
-      </div>
-
-      {/* ── EDIT MODAL ── */}
-      {editOpen && (
-        <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setEditOpen(false)}>
-          <div className="modal">
-            <div className="modal-head">
-              <div className="modal-title">✏️ Edit Profil</div>
-              <button className="modal-close" onClick={() => setEditOpen(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              {/* name + username */}
-              <div className="field-row">
-                <div className="field">
-                  <label>Nama Lengkap</label>
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nama lengkap" />
-                </div>
-                <div className="field">
-                  <label>Username</label>
-                  <input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" />
-                </div>
-              </div>
-              {/* bio */}
-              <div className="field">
-                <label>Bio</label>
-                <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="Ceritakan sedikit tentang dirimu..." />
-              </div>
-              {/* birth_date + gender */}
-              <div className="field-row">
-                <div className="field">
-                  <label>Tanggal Lahir</label>
-                  <input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>Jenis Kelamin</label>
-                  <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
-                    <option value="Perempuan">Perempuan</option>
-                    <option value="Laki-laki">Laki-laki</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
-                </div>
-              </div>
-              {/* telp_number + last_edu */}
-              <div className="field-row">
-                <div className="field">
-                  <label>Nomor Telepon</label>
-                  <input value={form.telp_number} onChange={(e) => setForm({ ...form, telp_number: e.target.value })} placeholder="+62 8xx-xxxx-xxxx" />
-                </div>
-                <div className="field">
-                  <label>Pendidikan Terakhir</label>
-                  <input value={form.last_edu} onChange={(e) => setForm({ ...form, last_edu: e.target.value })} placeholder="cth: S1 Psikologi" />
-                </div>
-              </div>
-              {/* address + doctor */}
-              <div className="field-row">
-                <div className="field">
-                  <label>Alamat</label>
-                  <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Kota, Provinsi" />
-                </div>
-                <div className="field">
-                  <label>Nama Psikiater</label>
-                  <input value={form.doctor} onChange={(e) => setForm({ ...form, doctor: e.target.value })} placeholder="dr. Nama, Sp.KJ" />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setEditOpen(false)}>Batal</button>
-              <button className="btn-save" onClick={saveEdit}>💾 Simpan Perubahan</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
   );
 }

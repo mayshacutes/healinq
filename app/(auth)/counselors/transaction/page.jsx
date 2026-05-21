@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const initialTransactions = [
@@ -96,8 +97,8 @@ function getStatusClass(status) {
 }
 
 export default function AdminTransactionsPage() {
+  const router = useRouter();
   const dropdownRef = useRef(null);
-
   const [currentDate, setCurrentDate] = useState(new Date());
   const [transactions] = useState(initialTransactions);
   const [search, setSearch] = useState("");
@@ -106,6 +107,20 @@ export default function AdminTransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [counselorProfile, setCounselorProfile] = useState(null);
+
+  const COUNSELOR_PROFILE_STORAGE_KEY = "healinq_counselor_profile";
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(COUNSELOR_PROFILE_STORAGE_KEY);
+      if (stored) {
+        setCounselorProfile(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error("Failed to read counselor profile:", e);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -139,27 +154,39 @@ export default function AdminTransactionsPage() {
   }, [actionMessage]);
 
   const filteredTransactions = useMemo(() => {
-    return transactions.filter((tx) => {
+    // first, narrow to this counselor's transactions when profile is available
+    const base = counselorProfile
+      ? transactions.filter(
+          (tx) => tx.counselor.toLowerCase() === counselorProfile.name.toLowerCase()
+        )
+      : transactions;
+
+    return base.filter((tx) => {
       const matchSearch =
         tx.user.toLowerCase().includes(search.toLowerCase()) ||
-        tx.counselor.toLowerCase().includes(search.toLowerCase()) ||
         tx.reference.toLowerCase().includes(search.toLowerCase()) ||
         tx.method.toLowerCase().includes(search.toLowerCase());
 
-      const matchStatus =
-        statusFilter === "All" ? true : tx.status === statusFilter;
+      const matchStatus = statusFilter === "All" ? true : tx.status === statusFilter;
 
       return matchSearch && matchStatus;
     });
-  }, [transactions, search, statusFilter]);
+  }, [transactions, search, statusFilter, counselorProfile]);
 
-  const totalRevenue = transactions
+  // compute stats only for this counselor
+  const counselorTransactions = counselorProfile
+    ? transactions.filter(
+        (tx) => tx.counselor.toLowerCase() === counselorProfile.name.toLowerCase()
+      )
+    : transactions;
+
+  const totalRevenue = counselorTransactions
     .filter((tx) => tx.status === "Paid")
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const paidTransactions = transactions.filter((tx) => tx.status === "Paid").length;
-  const pendingTransactions = transactions.filter((tx) => tx.status === "Pending").length;
-  const failedTransactions = transactions.filter((tx) => tx.status === "Failed").length;
+  const paidTransactions = counselorTransactions.filter((tx) => tx.status === "Paid").length;
+  const pendingTransactions = counselorTransactions.filter((tx) => tx.status === "Pending").length;
+  const failedTransactions = counselorTransactions.filter((tx) => tx.status === "Failed").length;
 
   const handleExportData = () => {
     const rows = [
@@ -310,7 +337,7 @@ export default function AdminTransactionsPage() {
               <div className="flex flex-col gap-3 sm:flex-row">
                 <input
                   type="text"
-                  placeholder="Search user, counselor, or reference..."
+                  placeholder="Search user or reference..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="h-[44px] min-w-[280px] rounded-full border border-[#e6e6e6] bg-white px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
@@ -371,9 +398,6 @@ export default function AdminTransactionsPage() {
                       User
                     </th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
-                      Counselor
-                    </th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
                       Amount
                     </th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">
@@ -396,9 +420,7 @@ export default function AdminTransactionsPage() {
                       <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
                         {tx.user}
                       </td>
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
-                        {tx.counselor}
-                      </td>
+                      {/* Counselor column removed for counselor view (shows only own transactions) */}
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
                         {formatCurrency(tx.amount)}
                       </td>
@@ -429,7 +451,7 @@ export default function AdminTransactionsPage() {
                   {filteredTransactions.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]"
                       >
                         No transactions found.
@@ -585,12 +607,7 @@ export default function AdminTransactionsPage() {
                 </p>
               </div>
 
-              <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3">
-                <p className="text-[12px] text-[#ea3f97]">Counselor</p>
-                <p className="mt-1 text-[15px] font-semibold text-[#222]">
-                  {selectedTransaction.counselor}
-                </p>
-              </div>
+              {/* Counselor info hidden in counselor view */}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
@@ -637,7 +654,19 @@ export default function AdminTransactionsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex gap-3 justify-end pt-2">
+                {selectedTransaction.status === "Pending" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Navigate to payment page with transaction reference
+                      router.push(`/consultation/payment/${selectedTransaction.id}?ref=${selectedTransaction.reference}`);
+                    }}
+                    className="rounded-full bg-[#0c72a6] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#0a5a8a]"
+                  >
+                    Go to Payment
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
