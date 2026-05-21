@@ -35,7 +35,7 @@ export default function LoginPage() {
     const newErrors = {};
 
     if (!formData.identifier.trim()) {
-      newErrors.identifier = "Email wajib diisi.";
+      newErrors.identifier = "Email atau username wajib diisi.";
     }
 
     if (!formData.password) {
@@ -46,7 +46,7 @@ export default function LoginPage() {
   };
 
   // =====================
-  // GOOGLE LOGIN - SUPABASE AUTH
+  // GOOGLE LOGIN - SUPABASE AUTH USER BIASA
   // =====================
   const handleGoogleLogin = async () => {
     setErrors({});
@@ -71,7 +71,9 @@ export default function LoginPage() {
   };
 
   // =====================
-  // MANUAL LOGIN - SUPABASE AUTH
+  // MANUAL LOGIN
+  // 1. CEK ADMIN DULU
+  // 2. KALAU BUKAN ADMIN, LOGIN USER BIASA
   // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,8 +86,50 @@ export default function LoginPage() {
     }
 
     setIsSubmitting(true);
+    setErrors({});
 
     try {
+      // =====================
+      // CEK LOGIN ADMIN
+      // =====================
+      const adminResponse = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: formData.identifier,
+          password: formData.password,
+        }),
+      });
+
+      const adminResult = await adminResponse.json().catch(() => null);
+
+      if (adminResponse.ok && adminResult?.success) {
+        router.push("/admin");
+        router.refresh();
+        return;
+      }
+
+      // Kalau error admin-nya bukan karena "bukan admin/password salah",
+      // berarti ada error teknis dari API/admin table.
+      if (
+        !adminResponse.ok &&
+        adminResponse.status !== 401 &&
+        adminResponse.status !== 403
+      ) {
+        setErrors({
+          general:
+            adminResult?.message ||
+            "Terjadi kesalahan saat mengecek login admin.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // =====================
+      // LOGIN USER BIASA VIA SUPABASE AUTH
+      // =====================
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.identifier,
         password: formData.password,
@@ -93,7 +137,7 @@ export default function LoginPage() {
 
       if (error) {
         setErrors({
-          general: error.message || "Login gagal.",
+          general: "Email/username atau password salah.",
         });
         setIsSubmitting(false);
         return;
@@ -104,6 +148,7 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (err) {
+      console.error(err);
       setErrors({
         general: "Terjadi kesalahan saat login.",
       });
@@ -139,7 +184,6 @@ export default function LoginPage() {
         <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-[1600px] items-center">
           <div className="w-full max-w-[460px] lg:ml-8">
             <div className="rounded-[20px] bg-white px-5 py-8 shadow-[0_0_18px_rgba(0,0,0,0.18)] sm:px-6 sm:py-10 lg:px-8 lg:py-12">
-
               {/* LOGO */}
               <div className="mb-5 flex justify-center">
                 <img
@@ -154,15 +198,15 @@ export default function LoginPage() {
               </h1>
 
               <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                {/* EMAIL */}
+                {/* EMAIL / USERNAME */}
                 <div>
                   <input
-                    type="email"
+                    type="text"
                     name="identifier"
                     value={formData.identifier}
                     onChange={handleChange}
-                    placeholder="Email"
-                    autoComplete="email"
+                    placeholder="Email / Username"
+                    autoComplete="username"
                     className="h-[40px] w-full rounded-full border border-neutral-400 px-5 text-[14px] focus:outline-none"
                   />
 
