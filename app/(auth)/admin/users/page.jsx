@@ -2,63 +2,9 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-const initialUsersData = [
-  {
-    id: 1,
-    name: "Alya Putri",
-    email: "alya@gmail.com",
-    address: "Jakarta, Indonesia",
-    joined: "Mar 28, 2026",
-    status: "Active",
-    role: "User",
-  },
-  {
-    id: 2,
-    name: "Nadhif Ramadhan",
-    email: "nadhif@gmail.com",
-    address: "Bandung, Indonesia",
-    joined: "Mar 27, 2026",
-    status: "Active",
-    role: "User",
-  },
-  {
-    id: 3,
-    name: "Citra Maharani",
-    email: "citra@gmail.com",
-    address: "Surabaya, Indonesia",
-    joined: "Mar 26, 2026",
-    status: "Inactive",
-    role: "User",
-  },
-  {
-    id: 4,
-    name: "Raka Pratama",
-    email: "raka@gmail.com",
-    address: "Yogyakarta, Indonesia",
-    joined: "Mar 25, 2026",
-    status: "Active",
-    role: "User",
-  },
-  {
-    id: 5,
-    name: "Salwa Nabila",
-    email: "salwa@gmail.com",
-    address: "Medan, Indonesia",
-    joined: "Mar 24, 2026",
-    status: "Suspended",
-    role: "User",
-  },
-  {
-    id: 6,
-    name: "Kevin Saputra",
-    email: "kevin@gmail.com",
-    address: "Semarang, Indonesia",
-    joined: "Mar 23, 2026",
-    status: "Active",
-    role: "User",
-  },
-];
+const initialUsersData = [];
 
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -110,6 +56,34 @@ export default function AdminUsersPage() {
     address: "",
     status: "Active",
   });
+  
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  async function fetchUsers() {
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    const formattedUsers = data.map((user) => ({
+      id: user.id,
+      name: user.full_name,
+      email: user.email,
+      address: user.address,
+      joined: formatJoinDate(new Date(user.created_at)),
+      status: user.status,
+      role: user.role,
+    }));
+
+    setUsers(formattedUsers);
+  }
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -169,7 +143,7 @@ export default function AdminUsersPage() {
     }));
   };
 
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
 
     if (
@@ -181,34 +155,119 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const emailExists = users.some(
-      (user) => user.email.toLowerCase() === newUserForm.email.toLowerCase()
-    );
+    const defaultPassword = "user12345";
 
-    if (emailExists) {
-      setActionMessage("This email is already registered.");
+    // register auth user
+    const { data: authData, error: authError } =
+      await supabase.auth.signUp({
+        email: newUserForm.email,
+        password: defaultPassword,
+      });
+
+    if (authError) {
+      setActionMessage(authError.message);
+      console.log(authError);
       return;
     }
 
-    const newUser = {
-      id: Date.now(),
-      name: newUserForm.name.trim(),
-      email: newUserForm.email.trim(),
-      address: newUserForm.address.trim(),
-      joined: formatJoinDate(new Date()),
-      status: newUserForm.status,
-      role: "User",
-    };
+    // ambil user id dengan aman
+    const userId =
+      authData?.user?.id || authData?.session?.user?.id;
 
-    setUsers((prev) => [newUser, ...prev]);
+    if (!userId) {
+      setActionMessage(
+        "User created but failed getting user ID."
+      );
+      console.log(authData);
+      return;
+    }
+
+    // insert ke table users
+    const { error: dbError } = await supabase
+      .from("users")
+      .insert([
+        {
+          id: userId,
+          full_name: newUserForm.name,
+          email: newUserForm.email,
+          address: newUserForm.address,
+          status: newUserForm.status,
+          role: "User",
+        },
+      ]);
+
+    if (dbError) {
+      setActionMessage(dbError.message);
+      console.log(dbError);
+      return;
+    }
+
+    await fetchUsers();
+
     setShowAddModal(false);
+
     setNewUserForm({
       name: "",
       email: "",
       address: "",
       status: "Active",
     });
-    setActionMessage("New user added successfully.");
+
+    setActionMessage(
+      "User enrolled successfully. Default password: user12345"
+    );
+  };
+
+  // password default
+  const defaultPassword = "user12345";
+
+  // bikin auth user
+  const { data: authData, error: authError } =
+    await supabase.auth.signUp({
+      email: newUserForm.email,
+      password: defaultPassword,
+    });
+
+  if (authError) {
+    setActionMessage(authError.message);
+    return;
+  }
+
+  const userId = authData.user.id;
+
+  // masukin ke table users
+  const { error: dbError } = await supabase
+    .from("users")
+    .insert([
+      {
+        id: userId,
+        full_name: newUserForm.name,
+        email: newUserForm.email,
+        address: newUserForm.address,
+        status: newUserForm.status,
+        role: "User",
+      },
+    ]);
+
+  if (dbError) {
+    setActionMessage(dbError.message);
+    return;
+  }
+
+  fetchUsers();
+
+  setShowAddModal(false);
+
+  setNewUserForm({
+    name: "",
+    email: "",
+    address: "",
+    status: "Active",
+  });
+
+  setActionMessage(
+    "User enrolled successfully. Default password: user12345"
+  );
   };
 
   const handleExportData = () => {
@@ -274,7 +333,7 @@ export default function AdminUsersPage() {
     }));
   };
 
-  const handleSaveEditUser = (e) => {
+  const handleSaveEditUser = async (e) => {
     e.preventDefault();
 
     if (
@@ -286,33 +345,48 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const emailUsedByAnotherUser = users.some(
-      (user) =>
-        user.id !== editingUser.id &&
-        user.email.toLowerCase() === editingUser.email.toLowerCase()
-    );
+    const { error } = await supabase
+      .from("users")
+      .update({
+        full_name: editingUser.name,
+        email: editingUser.email,
+        address: editingUser.address,
+        status: editingUser.status,
+      })
+      .eq("id", editingUser.id);
 
-    if (emailUsedByAnotherUser) {
-      setActionMessage("This email is already used by another user.");
+    if (error) {
+      setActionMessage(error.message);
       return;
     }
 
-    setUsers((prev) =>
-      prev.map((user) => (user.id === editingUser.id ? editingUser : user))
-    );
+    await fetchUsers();
+
     setShowEditModal(false);
     setEditingUser(null);
+
     setActionMessage("User updated successfully.");
   };
 
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = async (userId) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this user?"
     );
 
     if (!confirmed) return;
 
-    setUsers((prev) => prev.filter((user) => user.id !== userId));
+    const { error } = await supabase
+      .from("users")
+      .delete()
+      .eq("id", userId);
+
+    if (error) {
+      setActionMessage(error.message);
+      return;
+    }
+
+    await fetchUsers();
+
     setActionMessage("User deleted successfully.");
 
     if (selectedUser?.id === userId) {
@@ -949,4 +1023,3 @@ export default function AdminUsersPage() {
       )}
     </main>
   );
-}

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
 const initialCounselorsData = [
   {
@@ -190,7 +191,7 @@ export default function AdminCounselorsPage() {
     }));
   };
 
-  const handleAddCounselor = (e) => {
+  const handleAddCounselor = async (e) => {
     e.preventDefault();
 
     if (
@@ -203,30 +204,32 @@ export default function AdminCounselorsPage() {
       return;
     }
 
-    const emailExists = counselors.some(
-      (counselor) =>
-        counselor.email.toLowerCase() === newCounselorForm.email.toLowerCase()
-    );
+    const { data, error } = await supabase
+      .from("counselors")
+      .insert([
+        {
+          name: newCounselorForm.name,
+          email: newCounselorForm.email,
+          specialty: newCounselorForm.specialty,
+          address: newCounselorForm.address,
+          status: newCounselorForm.status,
+          sessions: Number(newCounselorForm.sessions),
+          role: true,
+        },
+      ])
+      .select();
 
-    if (emailExists) {
-      setActionMessage("This email is already registered.");
+    console.log(error);
+
+    if (error) {
+      setActionMessage(error.message);
       return;
     }
 
-    const newCounselor = {
-      id: Date.now(),
-      name: newCounselorForm.name.trim(),
-      email: newCounselorForm.email.trim(),
-      specialty: newCounselorForm.specialty.trim(),
-      address: newCounselorForm.address.trim(),
-      joined: formatJoinDate(new Date()),
-      status: newCounselorForm.status,
-      sessions: Number(newCounselorForm.sessions) || 0,
-      role: "Counselor",
-    };
+    setCounselors((prev) => [...data, ...prev]);
 
-    setCounselors((prev) => [newCounselor, ...prev]);
     setShowAddModal(false);
+
     setNewCounselorForm({
       name: "",
       email: "",
@@ -235,7 +238,8 @@ export default function AdminCounselorsPage() {
       status: "Pending",
       sessions: 0,
     });
-    setActionMessage("New counselor added successfully.");
+
+    setActionMessage("Counselor added successfully.");
   };
 
   const handleExportData = () => {
