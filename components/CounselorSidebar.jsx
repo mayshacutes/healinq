@@ -11,6 +11,7 @@ export default function CounselorSidebar() {
     { name: "Profile", href: "/counselors/profile" },
     { name: "Schedule", href: "/counselors/schedule" },
     { name: "Chat", href: "/counselors/chat" },
+    { name: "Transaction", href: "/counselors/transaction" },
   ];
 
   const isActive = (href) => {
