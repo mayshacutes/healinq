@@ -46,7 +46,7 @@ export default function LoginPage() {
   };
 
   // =====================
-  // GOOGLE LOGIN - SUPABASE AUTH USER BIASA
+  // GOOGLE LOGIN
   // =====================
   const handleGoogleLogin = async () => {
     setErrors({});
@@ -55,7 +55,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/user`,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           prompt: "select_account",
         },
@@ -71,9 +71,7 @@ export default function LoginPage() {
   };
 
   // =====================
-  // MANUAL LOGIN
-  // 1. CEK ADMIN DULU
-  // 2. KALAU BUKAN ADMIN, LOGIN USER BIASA
+  // MANUAL LOGIN dengan Redirect berdasarkan ROLE
   // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -90,7 +88,7 @@ export default function LoginPage() {
 
     try {
       // =====================
-      // CEK LOGIN ADMIN
+      // CEK LOGIN ADMIN DARI TABLE admin
       // =====================
       const adminResponse = await fetch("/api/admin/login", {
         method: "POST",
@@ -111,8 +109,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Kalau error admin-nya bukan karena "bukan admin/password salah",
-      // berarti ada error teknis dari API/admin table.
+      // Kalau error admin-nya bukan karena "bukan admin/password salah"
       if (
         !adminResponse.ok &&
         adminResponse.status !== 401 &&
@@ -128,7 +125,7 @@ export default function LoginPage() {
       }
 
       // =====================
-      // LOGIN USER BIASA VIA SUPABASE AUTH
+      // LOGIN VIA SUPABASE AUTH (untuk user biasa & counselor)
       // =====================
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.identifier,
@@ -137,14 +134,43 @@ export default function LoginPage() {
 
       if (error) {
         setErrors({
-          general: "Email/username atau password salah.",
+          general: "Email atau password salah.",
         });
         setIsSubmitting(false);
         return;
       }
 
       if (data?.user) {
-        router.push("/dashboard/user");
+        // Ambil profile user dari tabel profiles
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role, status")
+          .eq("id", data.user.id)
+          .single();
+
+        console.log("User profile:", { profile, profileError });
+
+        // Redirect berdasarkan ROLE
+        if (profile?.role === "counselor") {
+          // Cek status counselor
+          if (profile?.status === "Active") {
+            router.push("/counselor/schedule");
+          } else {
+            // Jika status tidak Active, tetap ke user dashboard dengan pesan
+            setErrors({
+              general: "Akun counselor Anda belum aktif. Silakan hubungi admin.",
+            });
+            await supabase.auth.signOut();
+            setIsSubmitting(false);
+            return;
+          }
+        } else if (profile?.role === "user" || !profile?.role) {
+          router.push("/dashboard/user");
+        } else {
+          // Default ke user dashboard
+          router.push("/dashboard/user");
+        }
+        
         router.refresh();
       }
     } catch (err) {

@@ -2,62 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { getDailyLyric } from "@/lib/dailyLyric";
-
-const defaultQuestions = [
-  {
-    id: 1,
-    text: "Seberapa sering Anda menikmati memecahkan teka-teki atau masalah rumit?",
-    category: "analytical",
-  },
-  {
-    id: 2,
-    text: "Seberapa sering Anda tertarik mencoba hal baru yang belum pernah dilakukan?",
-    category: "explorative",
-  },
-  {
-    id: 3,
-    text: "Seberapa sering Anda merasa senang membantu atau mendengarkan orang lain?",
-    category: "helping",
-  },
-  {
-    id: 4,
-    text: "Seberapa sering Anda menikmati bekerja dalam tim dibanding sendirian?",
-    category: "social",
-  },
-  {
-    id: 5,
-    text: "Seberapa sering Anda suka membuat rencana atau mengatur sesuatu dengan detail?",
-    category: "planning",
-  },
-  {
-    id: 6,
-    text: "Seberapa sering Anda mengekspresikan diri lewat gambar, tulisan, musik, atau desain?",
-    category: "creative",
-  },
-  {
-    id: 7,
-    text: "Seberapa sering Anda penasaran dengan cara kerja sesuatu?",
-    category: "analytical",
-  },
-  {
-    id: 8,
-    text: "Seberapa sering Anda merasa puas saat menyelesaikan tantangan sampai tuntas?",
-    category: "analytical",
-  },
-  {
-    id: 9,
-    text: "Seberapa sering Anda menikmati berbicara di depan orang lain?",
-    category: "social",
-  },
-  {
-    id: 10,
-    text: "Seberapa sering Anda memperhatikan perasaan orang di sekitar Anda?",
-    category: "helping",
-  },
-];
-
-const QUESTIONS_STORAGE_KEY = "healinq_admin_fyp_questions";
+import { supabase } from "@/lib/supabaseClient";
 
 const answerOptions = [
   { label: "Tidak Pernah", value: 1 },
@@ -105,58 +50,6 @@ const categoryProfiles = {
     strengths: ["Expression", "Imagination", "Originality"],
   },
 };
-
-function normalizeStoredQuestions(parsedQuestions) {
-  if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
-    return defaultQuestions;
-  }
-
-  const fallbackCategories = defaultQuestions.map((item) => item.category);
-
-  const normalized = parsedQuestions
-    .map((item, index) => {
-      if (typeof item === "string") {
-        return {
-          id: index + 1,
-          text: item,
-          category: fallbackCategories[index] || "explorative",
-        };
-      }
-
-      if (item && typeof item.text === "string") {
-        return {
-          id: item.id || index + 1,
-          text: item.text,
-          category: item.category || fallbackCategories[index] || "explorative",
-        };
-      }
-
-      return null;
-    })
-    .filter((item) => item && item.text.trim() !== "");
-
-  return normalized.length > 0 ? normalized : defaultQuestions;
-}
-
-function getStoredQuestions() {
-  if (typeof window === "undefined") {
-    return defaultQuestions;
-  }
-
-  try {
-    const storedQuestions = localStorage.getItem(QUESTIONS_STORAGE_KEY);
-
-    if (!storedQuestions) {
-      return defaultQuestions;
-    }
-
-    const parsedQuestions = JSON.parse(storedQuestions);
-    return normalizeStoredQuestions(parsedQuestions);
-  } catch (error) {
-    console.error("Failed to load FYP questions:", error);
-    return defaultQuestions;
-  }
-}
 
 function buildSegmentedResults(questions, answers) {
   const scoreMap = {
@@ -214,17 +107,113 @@ function buildSegmentedResults(questions, answers) {
   };
 }
 
+// Fungsi untuk mengambil lyric random dari Supabase
+async function getDailyLyricFromSupabase() {
+  try {
+    const { data, error } = await supabase
+      .from("lyrics")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      // Ambil lyric random atau berdasarkan tanggal
+      // Bisa pakai random atau berdasarkan indeks tanggal
+      const today = new Date();
+      const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+      const index = dayOfYear % data.length;
+      
+      return {
+        title: data[index].title,
+        lyric: data[index].lyric
+      };
+    }
+    
+    // Fallback jika belum ada data
+    return {
+      title: "You Are Enough",
+      lyric: "You don't have to be perfect to be worthy of love and respect."
+    };
+  } catch (error) {
+    console.error("Error fetching daily lyric:", error);
+    return {
+      title: "Keep Going",
+      lyric: "Every step forward is a step closer to your goal."
+    };
+  }
+}
+
 export default function FypPage() {
-  const dailyLyric = useMemo(() => getDailyLyric(), []);
-  const [questions, setQuestions] = useState(defaultQuestions);
-  const [answers, setAnswers] = useState(Array(defaultQuestions.length).fill(null));
+  const [dailyLyric, setDailyLyric] = useState({ title: "", lyric: "" });
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState([]);
   const [results, setResults] = useState([]);
   const [summaryResult, setSummaryResult] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
 
+  // Ambil user session
   useEffect(() => {
-    const loadedQuestions = getStoredQuestions();
-    setQuestions(loadedQuestions);
-    setAnswers(Array(loadedQuestions.length).fill(null));
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+        setCurrentUser(profile);
+      }
+    };
+    getUser();
+  }, []);
+
+  // Fetch daily lyric dari Supabase
+  useEffect(() => {
+    const fetchDailyLyric = async () => {
+      const lyric = await getDailyLyricFromSupabase();
+      setDailyLyric(lyric);
+    };
+    fetchDailyLyric();
+  }, []);
+
+  // Fetch questions dari Supabase
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("fyp_questions")
+          .select("*")
+          .order("created_at", { ascending: true });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          setQuestions(data);
+          setAnswers(Array(data.length).fill(null));
+        } else {
+          // Fallback ke default questions jika belum ada data
+          const defaultQuestions = [
+            { id: 1, text: "Seberapa sering Anda menikmati memecahkan teka-teki atau masalah rumit?", category: "analytical" },
+            { id: 2, text: "Seberapa sering Anda tertarik mencoba hal baru yang belum pernah dilakukan?", category: "explorative" },
+            { id: 3, text: "Seberapa sering Anda merasa senang membantu atau mendengarkan orang lain?", category: "helping" },
+            { id: 4, text: "Seberapa sering Anda menikmati bekerja dalam tim dibanding sendirian?", category: "social" },
+            { id: 5, text: "Seberapa sering Anda suka membuat rencana atau mengatur sesuatu dengan detail?", category: "planning" },
+            { id: 6, text: "Seberapa sering Anda mengekspresikan diri lewat gambar, tulisan, musik, atau desain?", category: "creative" },
+          ];
+          setQuestions(defaultQuestions);
+          setAnswers(Array(defaultQuestions.length).fill(null));
+        }
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
   }, []);
 
   const handleSelect = (questionIndex, value) => {
@@ -260,6 +249,17 @@ export default function FypPage() {
     }, 100);
   };
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#d9edf8]">
+        <div className="text-center">
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-[#db2d8d] border-t-transparent"></div>
+          <p className="text-[#e1268d]">Loading questions...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f7f7f7]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0">
@@ -281,7 +281,9 @@ export default function FypPage() {
                 <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#79bde4] bg-[#dff4ff] text-[12px] font-semibold text-[#74a4d4]">
                   XP
                 </div>
-                <span className="text-[18px] font-bold text-white">1,240</span>
+                <span className="text-[18px] font-bold text-white">
+                  {currentUser?.exp?.toLocaleString() || "1,240"}
+                </span>
               </div>
 
               <div className="flex items-center gap-2 rounded-full bg-[#efb7d5] px-4 py-2">
@@ -303,6 +305,7 @@ export default function FypPage() {
             </div>
           </div>
 
+          {/* Lyric of The Day - Dari Supabase */}
           <section className="mb-8 rounded-[18px] bg-[#cfeef3] p-5 shadow-[0_4px_14px_rgba(0,0,0,0.15)]">
             <div className="mb-4 inline-flex items-center gap-3 rounded-full bg-[#a8d6ef] px-5 py-2 text-[18px] font-medium text-[#1b1b1b]">
               <span className="text-[28px] leading-none">🎵</span>
@@ -310,14 +313,15 @@ export default function FypPage() {
             </div>
 
             <h2 className="text-[22px] font-semibold text-[#1f1f1f] md:text-[28px]">
-              {dailyLyric.title}
+              {dailyLyric.title || "Loading..."}
             </h2>
 
             <div className="mt-4 rounded-[8px] border-l-[14px] border-[#a7dbef] pl-4 text-[18px] leading-9 text-[#2a2a2a]">
-              “{dailyLyric.lyric}”
+              “{dailyLyric.lyric || "Loading..."}”
             </div>
           </section>
 
+          {/* FYP Questions */}
           <section>
             <div className="mb-6 flex items-center justify-between gap-4">
               <h1 className="flex-1 text-center text-[34px] font-extrabold text-[#ea1e8c] md:text-[56px]">
@@ -387,6 +391,7 @@ export default function FypPage() {
               </button>
             </div>
 
+            {/* Results */}
             <div
               id="match-results"
               className="mt-10 rounded-[12px] bg-[#f1d9e8] px-6 py-7 shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
