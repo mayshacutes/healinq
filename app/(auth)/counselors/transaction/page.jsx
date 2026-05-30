@@ -100,7 +100,7 @@ export default function AdminTransactionsPage() {
   const router = useRouter();
   const dropdownRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [transactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -120,6 +120,31 @@ export default function AdminTransactionsPage() {
     } catch (e) {
       console.error("Failed to read counselor profile:", e);
     }
+  }, []);
+
+  useEffect(() => {
+    const savedBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
+    const mappedTransactions = savedBookings.map((booking, index) => ({
+      id: index + 1,
+      bookingCode: booking.bookingCode,
+      user: booking.userName || "Guest User",
+      counselor: booking.counselorName || "Unknown Counselor",
+      counselorId: String(booking.counselorId || ""),
+      amount: booking.totalPayment || booking.price || 0,
+      date: booking.date || "-",
+      status:
+        booking.paymentStatus === "Pending Verification"
+          ? "Pending"
+          : booking.paymentStatus === "Paid"
+          ? "Paid"
+          : booking.paymentStatus || "Pending",
+      method: booking.paymentMethod || "Bank Transfer",
+      sessionType: booking.type === "online" ? "Online Consultation" : "Offline Consultation",
+      reference: booking.bookingCode || `BK-${Date.now()}`,
+      booking,
+    }));
+
+    setTransactions(mappedTransactions);
   }, []);
 
   useEffect(() => {
@@ -154,10 +179,11 @@ export default function AdminTransactionsPage() {
   }, [actionMessage]);
 
   const filteredTransactions = useMemo(() => {
-    // first, narrow to this counselor's transactions when profile is available
     const base = counselorProfile
       ? transactions.filter(
-          (tx) => tx.counselor.toLowerCase() === counselorProfile.name.toLowerCase()
+          (tx) =>
+            String(tx.counselorId) === String(counselorProfile.id) ||
+            tx.counselor.toLowerCase() === counselorProfile.name.toLowerCase()
         )
       : transactions;
 
@@ -173,10 +199,11 @@ export default function AdminTransactionsPage() {
     });
   }, [transactions, search, statusFilter, counselorProfile]);
 
-  // compute stats only for this counselor
   const counselorTransactions = counselorProfile
     ? transactions.filter(
-        (tx) => tx.counselor.toLowerCase() === counselorProfile.name.toLowerCase()
+        (tx) =>
+          String(tx.counselorId) === String(counselorProfile.id) ||
+          tx.counselor.toLowerCase() === counselorProfile.name.toLowerCase()
       )
     : transactions;
 

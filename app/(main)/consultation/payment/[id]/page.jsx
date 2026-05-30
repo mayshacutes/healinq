@@ -14,6 +14,10 @@ export default function PaymentPage() {
     const [bookingData, setBookingData] = useState(null);
     const [selectedMethod, setSelectedMethod] = useState("qris");
     const [isProcessing, setIsProcessing] = useState(false);
+    const [paymentCompleted, setPaymentCompleted] = useState(false);
+    const [proofFile, setProofFile] = useState(null);
+    const [proofDataUrl, setProofDataUrl] = useState(null);
+    const [proofMessage, setProofMessage] = useState("");
 
     useEffect(() => {
         const savedBooking = localStorage.getItem("pendingBooking");
@@ -35,6 +39,16 @@ export default function PaymentPage() {
     const price = bookingData?.price || 50000;
     const total = price + adminFee;
 
+    const updateStoredBooking = (updatedTicket) => {
+        const oldBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
+        const updatedBookings = oldBookings.map((booking) =>
+            booking.bookingCode === updatedTicket.bookingCode ? updatedTicket : booking
+        );
+
+        localStorage.setItem("myBookings", JSON.stringify(updatedBookings));
+        localStorage.setItem("latestTicket", JSON.stringify(updatedTicket));
+    };
+
     const handlePayment = () => {
         if (!bookingData) return;
 
@@ -47,11 +61,15 @@ export default function PaymentPage() {
                 ...bookingData,
                 counselorId: params.id,
                 paymentMethod: selectedMethod,
-                paymentStatus: "Paid",
+                paymentStatus: "Pending Verification",
                 adminFee: adminFee,
                 totalPayment: total,
                 bookingCode: bookingCode,
                 attendanceConfirmed: false,
+                adminApproved: false,
+                counselorApproved: false,
+                proofUploaded: false,
+                proofFileName: null,
                 createdAt: new Date().toISOString(),
                 sessionDuration: 60, // durasi sesi 60 menit
             };
@@ -64,8 +82,43 @@ export default function PaymentPage() {
             localStorage.setItem("latestTicket", JSON.stringify(ticketData));
             localStorage.removeItem("pendingBooking");
 
-            router.push(`/consultation/ticket/${ticketData.type}?bookingCode=${bookingCode}`);
+            setBookingData(ticketData);
+            setPaymentCompleted(true);
+            setIsProcessing(false);
+            setProofMessage("Pembayaran berhasil. Silakan upload bukti transfer untuk verifikasi.");
         }, 1000);
+    };
+
+    const handleProofFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            setProofDataUrl(reader.result);
+            setProofFile(file);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleSubmitProof = () => {
+        if (!proofFile || !bookingData) {
+            alert("Pilih file bukti pembayaran terlebih dahulu.");
+            return;
+        }
+
+        const updatedTicket = {
+            ...bookingData,
+            proofUploaded: true,
+            proofFileName: proofFile.name,
+            proofUploadedAt: new Date().toISOString(),
+            paymentStatus: "Pending Verification",
+            adminApproved: false,
+        };
+
+        updateStoredBooking(updatedTicket);
+        setBookingData(updatedTicket);
+        setProofMessage("Bukti transfer berhasil diupload. Menunggu verifikasi admin.");
     };
 
     if (!bookingData) {
@@ -252,17 +305,56 @@ export default function PaymentPage() {
                             </div>
                         </div>
 
-                        <button
-                            onClick={handlePayment}
-                            disabled={isProcessing}
-                            className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-6 font-semibold disabled:bg-gray-400"
-                        >
-                            {isProcessing ? "Processing..." : "Pay Now"}
-                        </button>
+                        {bookingData?.paymentStatus !== "Pending Verification" && (
+                            <>
+                                <button
+                                    onClick={handlePayment}
+                                    disabled={isProcessing}
+                                    className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-6 font-semibold disabled:bg-gray-400"
+                                >
+                                    {isProcessing ? "Processing..." : "Pay Now"}
+                                </button>
 
-                        <p className="text-xs text-gray-600 mt-3 text-center">
-                            This is a frontend-only payment simulation.
-                        </p>
+                                <p className="text-xs text-gray-600 mt-3 text-center">
+                                    This is a frontend-only payment simulation.
+                                </p>
+                            </>
+                        )}
+
+                        {bookingData?.paymentStatus === "Pending Verification" && (
+                            <div className="mt-6 rounded-2xl bg-white p-5 text-sm text-gray-700 shadow-sm">
+                                <p className="font-semibold mb-3">Upload Bukti Transfer</p>
+                                <p className="text-xs text-gray-500 mb-4">
+                                    Setelah pembayaran, unggah bukti transfer agar admin dan konselor dapat memverifikasi.
+                                </p>
+
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleProofFileChange}
+                                    className="w-full text-sm text-gray-600"
+                                />
+
+                                {proofDataUrl && (
+                                    <div className="mt-4">
+                                        <p className="font-medium mb-2">Preview Bukti</p>
+                                        <img src={proofDataUrl} alt="Bukti Transfer" className="w-full max-h-48 object-contain rounded-xl border" />
+                                    </div>
+                                )}
+
+                                <button
+                                    onClick={handleSubmitProof}
+                                    disabled={!proofDataUrl}
+                                    className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-5 font-semibold disabled:bg-gray-400"
+                                >
+                                    Upload Bukti
+                                </button>
+
+                                {proofMessage && (
+                                    <p className="mt-4 text-sm text-green-600">{proofMessage}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                 </div>
