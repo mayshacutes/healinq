@@ -25,6 +25,22 @@ function getStatusLabel(status) {
     return "Finished";
 }
 
+function isPaymentVerified(booking) {
+    return (
+        booking?.paymentStatus === "Paid" ||
+        (booking?.paymentStatus === "Pending Verification" && booking?.adminApproved)
+    );
+}
+
+function getPaymentLabel(booking) {
+    if (booking?.paymentStatus === "Pending Verification") {
+        return booking?.adminApproved
+            ? "Verified"
+            : "Menunggu Verifikasi Admin";
+    }
+    return booking?.paymentStatus || "Unknown";
+}
+
 export default function MyBookingsPage() {
     const router = useRouter();
     const [bookings, setBookings] = useState([]);
@@ -35,12 +51,24 @@ export default function MyBookingsPage() {
     }, []);
 
     const handleViewTicket = (booking) => {
+        if (!isPaymentVerified(booking)) {
+            alert("Booking belum diverifikasi. Silakan tunggu konfirmasi terlebih dahulu.");
+            return;
+        }
+
         localStorage.setItem("latestTicket", JSON.stringify(booking));
-        router.push(`/consultation/ticket/${booking.type}?bookingCode=${booking.bookingCode}`);
+        router.push(
+            `/consultation/ticket/${booking.type?.toLowerCase() || "online"}?bookingCode=${booking.bookingCode}`
+        );
     };
 
     const handleGoToChat = (booking) => {
         const status = getSessionStatus(booking);
+
+        if (!isPaymentVerified(booking)) {
+            alert("Chat belum bisa dibuka karena pembayaran masih menunggu verifikasi.");
+            return;
+        }
 
         if (status !== "ongoing") {
             alert("Room chat hanya bisa dibuka selama sesi konsultasi berlangsung.");
@@ -87,7 +115,8 @@ export default function MyBookingsPage() {
                         {bookings.map((booking) => {
                             const status = getSessionStatus(booking);
                             const isOnline = booking.type === "online";
-                            const canChat = isOnline && status === "ongoing";
+                            const verified = isPaymentVerified(booking);
+                            const canChat = isOnline && status === "ongoing" && verified;
 
                             return (
                                 <div
@@ -120,8 +149,13 @@ export default function MyBookingsPage() {
 
                                             <p>
                                                 <span className="font-semibold text-gray-800">Payment:</span>{" "}
-                                                {booking.paymentStatus}
+                                                {getPaymentLabel(booking)}
                                             </p>
+                                            {booking.paymentStatus === "Pending Verification" && !verified && (
+                                                <p className="text-xs text-yellow-700 mt-1">
+                                                    Menunggu verifikasi bukti transfer.
+                                                </p>
+                                            )}
 
                                             <p>
                                                 <span className="font-semibold text-gray-800">Date:</span>{" "}
@@ -148,9 +182,13 @@ export default function MyBookingsPage() {
                                     <div className="w-[210px] flex flex-col gap-3 justify-center">
                                         <button
                                             onClick={() => handleViewTicket(booking)}
-                                            className="bg-pink-300 text-pink-700 px-4 py-2 rounded-full font-semibold"
+                                            disabled={!verified}
+                                            className={`px-4 py-2 rounded-full font-semibold ${verified
+                                                ? "bg-pink-300 text-pink-700"
+                                                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                            }`}
                                         >
-                                            View Ticket
+                                            {verified ? "View Ticket" : "Waiting Verification"}
                                         </button>
 
                                         {isOnline && (
@@ -162,11 +200,13 @@ export default function MyBookingsPage() {
                                                         : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                     }`}
                                             >
-                                                {status === "upcoming"
-                                                    ? "Not Started Yet"
-                                                    : status === "finished"
-                                                        ? "Session Ended"
-                                                        : "Go to Room Chat"}
+                                                {!verified
+                                                    ? "Waiting for Verification"
+                                                    : status === "upcoming"
+                                                        ? "Not Started Yet"
+                                                        : status === "finished"
+                                                            ? "Session Ended"
+                                                            : "Go to Room Chat"}
                                             </button>
                                         )}
 

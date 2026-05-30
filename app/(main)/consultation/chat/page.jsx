@@ -55,6 +55,15 @@ function getStatusLabel(status) {
   return "Unavailable";
 }
 
+function isPaymentVerified(booking) {
+  return (
+    booking?.paymentStatus === "Paid" ||
+    (booking?.paymentStatus === "Pending Verification" &&
+      booking?.adminApproved &&
+      booking?.counselorApproved)
+  );
+}
+
 function getStatusColor(status) {
   if (status === "ongoing") return "text-green-500";
   if (status === "upcoming") return "text-blue-500";
@@ -260,7 +269,8 @@ export default function Message() {
   );
 
   const selectedStatus = getSessionStatus(selectedBooking, nowMs);
-  const canChat = selectedStatus === "ongoing";
+  const selectedVerified = isPaymentVerified(selectedBooking);
+  const canChat = selectedStatus === "ongoing" && selectedVerified;
 
   const filteredBookings = sortedBookings.filter((booking) =>
     getCounselorName(booking)
@@ -494,6 +504,8 @@ export default function Message() {
           <div className="bg-yellow-100 text-yellow-700 text-sm px-4 py-3">
             {selectedStatus === "upcoming"
               ? "Room chat belum dibuka. Chat baru bisa digunakan sesuai jadwal konsultasi."
+              : selectedStatus === "ongoing" && !selectedVerified
+              ? "Bukti transfer sedang menunggu verifikasi. Chat akan tersedia setelah admin/konselor menyetujui."
               : "Sesi konsultasi sudah selesai. Room chat sudah tidak bisa digunakan."}
           </div>
         )}

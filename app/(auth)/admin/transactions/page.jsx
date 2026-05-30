@@ -99,7 +99,7 @@ export default function AdminTransactionsPage() {
   const dropdownRef = useRef(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [transactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -137,6 +137,73 @@ export default function AdminTransactionsPage() {
 
     return () => clearTimeout(timer);
   }, [actionMessage]);
+
+  useEffect(() => {
+    const savedBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
+
+    const mappedTransactions = savedBookings.map((booking, index) => ({
+      id: index + 1,
+      bookingCode: booking.bookingCode,
+      user: booking.userName || "Guest User",
+      counselor: booking.counselorName || "Unknown Counselor",
+      amount: booking.totalPayment || booking.price || 0,
+      date: booking.date || "-",
+      status:
+        booking.paymentStatus === "Pending Verification"
+          ? "Pending"
+          : booking.paymentStatus === "Paid"
+          ? "Paid"
+          : booking.paymentStatus || "Pending",
+      method: booking.paymentMethod || "Bank Transfer",
+      sessionType: booking.type === "online" ? "Online Consultation" : "Offline Consultation",
+      reference: booking.bookingCode || `BK-${Date.now()}`,
+      booking,
+    }));
+
+    setTransactions(mappedTransactions);
+  }, []);
+
+  const updateStoredBooking = (updatedBooking) => {
+    const oldBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
+    const updatedBookings = oldBookings.map((booking) =>
+      booking.bookingCode === updatedBooking.bookingCode ? updatedBooking : booking
+    );
+
+    localStorage.setItem("myBookings", JSON.stringify(updatedBookings));
+
+    setTransactions((prev) =>
+      prev.map((tx) =>
+        tx.bookingCode === updatedBooking.bookingCode
+          ? {
+              ...tx,
+              status: updatedBooking.paymentStatus === "Paid" ? "Paid" : tx.status,
+              booking: updatedBooking,
+            }
+          : tx
+      )
+    );
+
+    if (selectedTransaction?.bookingCode === updatedBooking.bookingCode) {
+      setSelectedTransaction((prev) => ({
+        ...prev,
+        status: updatedBooking.paymentStatus === "Paid" ? "Paid" : prev.status,
+        booking: updatedBooking,
+      }));
+    }
+  };
+
+  const handleApproveTransaction = (tx) => {
+    if (!tx?.booking) return;
+
+    const updatedBooking = {
+      ...tx.booking,
+      paymentStatus: "Paid",
+      adminApproved: true,
+    };
+
+    updateStoredBooking(updatedBooking);
+    setActionMessage("Pembayaran berhasil diverifikasi.");
+  };
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
@@ -637,7 +704,17 @@ export default function AdminTransactionsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-between pt-2">
+                {selectedTransaction?.status === "Pending" && (
+                  <button
+                    type="button"
+                    onClick={() => handleApproveTransaction(selectedTransaction)}
+                    className="rounded-full bg-[#2b9a45] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#24803b]"
+                  >
+                    Verify Payment
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
