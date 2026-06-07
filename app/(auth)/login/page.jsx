@@ -108,7 +108,8 @@ export default function LoginPage() {
 
         // ACTIVITY LOG ADMIN
         await logActivity({
-          actor_id: null,
+          actor_id: crypto.randomUUID(),
+
           actor_name: formData.identifier,
           actor_role: "Admin",
 
