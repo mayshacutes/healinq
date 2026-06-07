@@ -2,81 +2,8 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
 
-const initialActivities = [
-  {
-    id: 1,
-    actor: "Alya Putri",
-    role: "User",
-    action: "Created a new journal entry",
-    category: "Self-Healing",
-    date: "Mar 28, 2026",
-    time: "09:15 AM",
-    status: "Completed",
-    description:
-      "The user created a new journal entry in the self-healing section.",
-  },
-  {
-    id: 2,
-    actor: "Dr. Aulia Rahman",
-    role: "Counselor",
-    action: "Completed a counseling session",
-    category: "Consultation",
-    date: "Mar 28, 2026",
-    time: "11:30 AM",
-    status: "Completed",
-    description:
-      "The counselor completed a scheduled counseling session with a user.",
-  },
-  {
-    id: 3,
-    actor: "Admin",
-    role: "Admin",
-    action: "Updated counselor profile",
-    category: "Management",
-    date: "Mar 27, 2026",
-    time: "02:40 PM",
-    status: "Completed",
-    description:
-      "The admin updated counselor information in the management panel.",
-  },
-  {
-    id: 4,
-    actor: "Nadhif Ramadhan",
-    role: "User",
-    action: "Payment is still pending",
-    category: "Transactions",
-    date: "Mar 27, 2026",
-    time: "04:10 PM",
-    status: "Pending",
-    description:
-      "The user's payment transaction is pending verification.",
-  },
-  {
-    id: 5,
-    actor: "System",
-    role: "System",
-    action: "Failed payment notification sent",
-    category: "Transactions",
-    date: "Mar 26, 2026",
-    time: "08:20 PM",
-    status: "Failed",
-    description:
-      "The system sent a failed payment notification to the user.",
-  },
-  {
-    id: 6,
-    actor: "Dr. Nabila Putri",
-    role: "Counselor",
-    action: "Updated availability schedule",
-    category: "Counselors",
-    date: "Mar 26, 2026",
-    time: "01:00 PM",
-    status: "Completed",
-    description:
-      "The counselor updated her weekly availability for future sessions.",
-  },
-];
 
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -101,13 +28,49 @@ export default function AdminActivityPage() {
   const dropdownRef = useRef(null);
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [activities] = useState(initialActivities);
+  const [activities, setActivities] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+
+  const fetchActivities = async () => {
+    const { data, error } = await supabase
+      .from("activity_logs")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const formatted = data.map((item) => ({
+      ...item,
+
+      actor: item.actor_name,
+      role: item.actor_role,
+
+      date: new Date(item.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }),
+
+      time: new Date(item.created_at).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    }));
+
+    setActivities(formatted);
+  };
+
+  useEffect(() => {
+    fetchActivities();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -351,11 +314,10 @@ export default function AdminActivityPage() {
                             setStatusFilter(status);
                             setIsStatusOpen(false);
                           }}
-                          className={`w-full px-4 py-3 text-center text-[14px] transition ${
-                            statusFilter === status
-                              ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
-                              : "text-[#333] hover:bg-[#fff5fa]"
-                          }`}
+                          className={`w-full px-4 py-3 text-center text-[14px] transition ${statusFilter === status
+                            ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
+                            : "text-[#333] hover:bg-[#fff5fa]"
+                            }`}
                         >
                           {status === "All" ? "All Status" : status}
                         </button>
@@ -483,11 +445,11 @@ export default function AdminActivityPage() {
                   <p className="text-[13px] text-[#ea3f97]">Most common status</p>
                   <p className="mt-1 text-[16px] font-semibold text-[#222]">
                     {completedActivities >= pendingActivities &&
-                    completedActivities >= failedActivities
+                      completedActivities >= failedActivities
                       ? "Completed"
                       : pendingActivities >= failedActivities
-                      ? "Pending"
-                      : "Failed"}
+                        ? "Pending"
+                        : "Failed"}
                   </p>
                 </div>
               </div>

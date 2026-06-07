@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
 const MISSIONS = {
@@ -209,9 +210,38 @@ export default function UserProfilePage() {
   };
 
   const handleLogout = async () => {
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await logActivity({
+        actor_id: user.id,
+
+        actor_name:
+          profile.full_name ||
+          profile.username ||
+          user.email,
+
+        actor_role: "User",
+
+        action: "Logged out of account",
+
+        category: "Authentication",
+
+        status: "Completed",
+
+        description:
+          "User logged out from HealinQ.",
+      });
+    }
+
     await supabase.auth.signOut();
+
     localStorage.clear();
     sessionStorage.clear();
+
     router.replace("/login");
   };
 
