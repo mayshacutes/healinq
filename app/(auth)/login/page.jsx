@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
@@ -104,10 +105,28 @@ export default function LoginPage() {
       const adminResult = await adminResponse.json().catch(() => null);
 
       if (adminResponse.ok && adminResult?.success) {
+
+        // ACTIVITY LOG ADMIN
+        await logActivity({
+          actor_id: null,
+          actor_name: formData.identifier,
+          actor_role: "Admin",
+
+          action: "Logged into admin dashboard",
+
+          category: "Authentication",
+
+          status: "Completed",
+
+          description:
+            "Admin successfully logged into the dashboard.",
+        });
+
         router.push("/admin");
         router.refresh();
         return;
       }
+
 
       // Kalau error admin-nya bukan karena "bukan admin/password salah"
       if (
@@ -150,6 +169,29 @@ export default function LoginPage() {
 
         console.log("User profile:", { profile, profileError });
 
+        // ACTIVITY LOG USER / COUNSELOR LOGIN
+        await logActivity({
+          actor_id: data.user.id,
+
+          actor_name:
+            data.user.user_metadata?.full_name ||
+            data.user.email,
+
+          actor_role:
+            profile?.role === "counselor"
+              ? "Counselor"
+              : "User",
+
+          action: "Logged into account",
+
+          category: "Authentication",
+
+          status: "Completed",
+
+          description:
+            "User successfully logged into HealinQ.",
+        });
+
         // Redirect berdasarkan ROLE
         if (profile?.role === "counselor") {
           // Cek status counselor
@@ -170,7 +212,7 @@ export default function LoginPage() {
           // Default ke user dashboard
           router.push("/dashboard/user");
         }
-        
+
         router.refresh();
       }
     } catch (err) {

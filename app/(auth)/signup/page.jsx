@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function SignUp() {
@@ -156,6 +157,25 @@ export default function SignUp() {
           setIsSubmitting(false);
           return;
         }
+
+        // ACTIVITY LOG SIGNUP
+        await logActivity({
+          actor_id: user.id,
+
+          actor_name: formData.username,
+
+          actor_role: "User",
+
+          action: "Created a new account",
+
+          category: "Authentication",
+
+          status: "Completed",
+
+          description:
+            "A new user account was successfully registered.",
+        });
+
       }
 
       alert("Registrasi berhasil! Silakan login.");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
 const days = [
@@ -34,9 +35,9 @@ export default function CounselorSchedulePage() {
       setIsPageLoading(true);
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         console.log("User check:", { user, userError });
-        
+
         if (userError || !user) {
           console.error("User not logged in", userError);
           setActionMessage("Please login first to access this page.");
@@ -45,7 +46,7 @@ export default function CounselorSchedulePage() {
         }
 
         setIsLoggedIn(true);
-        
+
         // Cari profile berdasarkan user id
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
@@ -75,7 +76,7 @@ export default function CounselorSchedulePage() {
         }
 
         setCounselorProfile(profileData);
-        
+
       } catch (error) {
         console.error("Error in checkUser:", error);
         setActionMessage(`Error: ${error.message}`);
@@ -158,10 +159,10 @@ export default function CounselorSchedulePage() {
 
     // Cek apakah sudah ada jadwal di hari yang sama dengan waktu yang bentrok
     const existingSchedule = schedules.find(
-      (s) => s.day === form.day && 
-      ((form.startTime >= s.start_time && form.startTime < s.end_time) ||
-       (form.endTime > s.start_time && form.endTime <= s.end_time) ||
-       (form.startTime <= s.start_time && form.endTime >= s.end_time))
+      (s) => s.day === form.day &&
+        ((form.startTime >= s.start_time && form.startTime < s.end_time) ||
+          (form.endTime > s.start_time && form.endTime <= s.end_time) ||
+          (form.startTime <= s.start_time && form.endTime >= s.end_time))
     );
 
     if (existingSchedule) {
@@ -206,6 +207,25 @@ export default function CounselorSchedulePage() {
       console.log("Schedule added:", data);
       await fetchSchedules();
 
+      await logActivity({
+        actor_id: counselorProfile.id,
+
+        actor_name:
+          counselorProfile.full_name ||
+          counselorProfile.name ||
+          counselorProfile.username,
+
+        actor_role: "Counselor",
+
+        action: "Added consultation schedule",
+
+        category: "Counselors",
+
+        status: "Completed",
+
+        description: `${form.day} ${form.startTime}-${form.endTime} (${form.mode})`,
+      });
+
       setForm({
         day: "Monday",
         startTime: "",
@@ -213,7 +233,7 @@ export default function CounselorSchedulePage() {
         mode: "online",
       });
       setActionMessage("✅ Schedule added successfully!");
-      
+
     } catch (error) {
       console.error("Unexpected error:", error);
       setActionMessage(`Error: ${error.message}`);
@@ -243,8 +263,28 @@ export default function CounselorSchedulePage() {
       }
 
       await fetchSchedules();
+
+      await logActivity({
+        actor_id: counselorProfile.id,
+
+        actor_name:
+          counselorProfile.full_name ||
+          counselorProfile.name ||
+          counselorProfile.username,
+
+        actor_role: "Counselor",
+
+        action: "Deleted consultation schedule",
+
+        category: "Counselors",
+
+        status: "Completed",
+
+        description: `Schedule ID ${id} removed`,
+      });
+
       setActionMessage("✅ Schedule deleted successfully!");
-      
+
     } catch (error) {
       console.error("Unexpected error:", error);
       setActionMessage(`Error: ${error.message}`);
@@ -413,13 +453,13 @@ export default function CounselorSchedulePage() {
         <h2 className="mb-4 text-xl font-bold text-[#0c72a6]">
           Your Schedules ({schedules.length})
         </h2>
-        
+
         {isLoading && schedules.length === 0 && (
           <div className="flex justify-center py-10">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#db2d8d] border-t-transparent"></div>
           </div>
         )}
-        
+
         {!isLoading && schedules.length === 0 && (
           <div className="rounded-2xl bg-white p-8 text-center shadow">
             <p className="text-gray-500">No schedule added yet.</p>
@@ -428,7 +468,7 @@ export default function CounselorSchedulePage() {
             </p>
           </div>
         )}
-        
+
         {schedules.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {schedules.map((item) => (
@@ -440,11 +480,10 @@ export default function CounselorSchedulePage() {
                   <h2 className="text-lg font-bold text-[#0C72A6]">
                     {formatDay(item.day)}
                   </h2>
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                    item.mode === "online" 
-                      ? "bg-blue-100 text-blue-700" 
-                      : "bg-purple-100 text-purple-700"
-                  }`}>
+                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${item.mode === "online"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-purple-100 text-purple-700"
+                    }`}>
                     {formatMode(item.mode)}
                   </span>
                 </div>

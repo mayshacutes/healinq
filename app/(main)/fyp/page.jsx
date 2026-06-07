@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
 const answerOptions = [
@@ -123,13 +124,13 @@ async function getDailyLyricFromSupabase() {
       const today = new Date();
       const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
       const index = dayOfYear % data.length;
-      
+
       return {
         title: data[index].title,
         lyric: data[index].lyric
       };
     }
-    
+
     // Fallback jika belum ada data
     return {
       title: "You Are Enough",
@@ -231,7 +232,7 @@ export default function FypPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (answers.length === 0 || answers.some((answer) => answer === null)) {
       alert("Mohon isi semua pertanyaan dulu ya.");
       return;
@@ -240,6 +241,26 @@ export default function FypPage() {
     const segmentedResult = buildSegmentedResults(questions, answers);
     setResults(segmentedResult.cards);
     setSummaryResult(segmentedResult.summary);
+
+    if (currentUser?.id) {
+      await logActivity({
+        actor_id: currentUser.id,
+
+        actor_name:
+          currentUser.username ||
+          currentUser.email,
+
+        actor_role: "User",
+
+        action: "Completed Find Your Passion assessment",
+
+        category: "Find Your Passion",
+
+        status: "Completed",
+
+        description: `Top interest category: ${segmentedResult.summary.primaryLabel}`,
+      });
+    }
 
     setTimeout(() => {
       const resultSection = document.getElementById("match-results");
@@ -360,11 +381,10 @@ export default function FypPage() {
                           className="flex flex-col items-center"
                         >
                           <span
-                            className={`flex h-[50px] w-[50px] items-center justify-center rounded-full border-[3px] transition ${
-                              active
+                            className={`flex h-[50px] w-[50px] items-center justify-center rounded-full border-[3px] transition ${active
                                 ? "border-[#5eaee0] bg-[#dff4ff]"
                                 : "border-[#b8d0dd] bg-white hover:border-[#7db9de]"
-                            }`}
+                              }`}
                           >
                             {active && (
                               <span className="h-[18px] w-[18px] rounded-full bg-[#5eaee0]" />

@@ -3,6 +3,8 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
+import { supabase } from "@/lib/supabaseClient";
+import { logActivity } from "@/lib/activityLogger";
 import BackIconButton from "@/components/BackIconButton";
 
 export default function BookingPage() {
@@ -34,7 +36,7 @@ export default function BookingPage() {
     "13.00", "14.00", "15.00", "16.00", "17.00",
   ];
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
     if (!date || !selectedHour) {
       alert("Please select date and time first!");
       return;
@@ -53,13 +55,50 @@ export default function BookingPage() {
 
     localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
 
+    // =====================
+    // GET CURRENT USER
+    // =====================
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .single();
+
+      // =====================
+      // ACTIVITY LOG
+      // =====================
+      await logActivity({
+        actor_id: user.id,
+
+        actor_name:
+          profile?.username ||
+          user.email,
+
+        actor_role: "User",
+
+        action: `Booked a ${type} consultation`,
+
+        category: "Consultation",
+
+        status: "Pending",
+
+        description: `Booked a ${type} consultation session with ${selected?.name} on ${date} at ${selectedHour}.`,
+      });
+    }
+
     router.push(`/consultation/payment/${params.id}?type=${type}`);
+
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-10">
       <div className="mb-5">
-      <BackIconButton to={`/consultation/list?type=${type}`} />
+        <BackIconButton to={`/consultation/list?type=${type}`} />
       </div>
       <div className="flex gap-10">
 
@@ -142,11 +181,10 @@ export default function BookingPage() {
                   <button
                     key={hour}
                     onClick={() => setSelectedHour(hour)}
-                    className={`p-2 rounded-lg text-sm ${
-                      selectedHour === hour
+                    className={`p-2 rounded-lg text-sm ${selectedHour === hour
                         ? "bg-[#0C72A6] text-white"
                         : "bg-white"
-                    }`}
+                      }`}
                   >
                     {hour}
                   </button>
