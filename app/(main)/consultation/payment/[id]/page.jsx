@@ -20,7 +20,6 @@ export default function PaymentPage() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [clientName, setClientName] = useState("Guest");
 
-  // Ambil user dari Supabase Auth
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -30,7 +29,6 @@ export default function PaymentPage() {
         localStorage.setItem("userName", name);
         localStorage.setItem("userEmail", user.email);
       } else {
-        // Fallback ke localStorage
         const savedName = localStorage.getItem("userName");
         if (savedName) setClientName(savedName);
       }
@@ -56,8 +54,9 @@ export default function PaymentPage() {
   };
 
   const adminFee = 2500;
-  const price = bookingData?.type === "offline" ? 75000 : 50000;
-  const total = price + adminFee;
+  // Tentukan basePrice berdasarkan tipe (online: 50000, offline: 75000)
+  const basePrice = bookingData?.type === "offline" ? 75000 : 50000;
+  const total = basePrice + adminFee;
 
   const updateStoredBooking = (updatedTicket) => {
     const oldBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
@@ -86,12 +85,14 @@ export default function PaymentPage() {
           booking_code: bookingCode,
           counselor_id: params.id || 'unknown',
           counselor_name: bookingData.counselorName,
-          client_name: clientName,  // ✅ pakai nama dari Google
+          client_name: clientName,
           consultation_type: bookingData.type,
           consultation_date: bookingData.date,
           consultation_hour: bookingData.hour,
           topic: bookingData.topic,
-          price: total,
+          price: total,               // total yang dibayar user
+          counselor_earning: basePrice, // pendapatan bersih counselor
+          admin_fee: adminFee,
           status: "pending",
           session_duration: 60,
           attendance_confirmed: false,
@@ -123,6 +124,8 @@ export default function PaymentPage() {
         paymentMethod: selectedMethod,
         paymentStatus: "pending",
         totalPayment: total,
+        counselorEarning: basePrice,
+        adminFee: adminFee,
         attendanceConfirmed: false,
         adminApproved: false,
         proofUploaded: false,
@@ -130,12 +133,10 @@ export default function PaymentPage() {
         proofFileUrl: null,
         sessionDuration: 60,
       };
-
       const oldBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
       localStorage.setItem("myBookings", JSON.stringify([...oldBookings, newBooking]));
       localStorage.setItem("latestTicket", JSON.stringify(newBooking));
       localStorage.removeItem("pendingBooking");
-
       setBookingData(newBooking);
       setPaymentCompleted(true);
       setProofMessage("Pembayaran berhasil. Silakan upload bukti transfer untuk verifikasi.");
@@ -171,12 +172,10 @@ export default function PaymentPage() {
         .from("proofs")
         .upload(filePath, proofFile);
       if (uploadError) throw uploadError;
-
       const { data: urlData } = supabase.storage
         .from("proofs")
         .getPublicUrl(filePath);
       const publicUrl = urlData.publicUrl;
-
       const { error: updateError } = await supabase
         .from("consultations")
         .update({
@@ -187,7 +186,6 @@ export default function PaymentPage() {
         })
         .eq("booking_code", bookingData.bookingCode);
       if (updateError) throw updateError;
-
       const updatedTicket = {
         ...bookingData,
         proofUploaded: true,
@@ -224,7 +222,7 @@ export default function PaymentPage() {
         <h1 className="text-3xl font-bold text-[#0C72A6] mb-2">Payment</h1>
         <p className="text-gray-600 mb-8">Complete your payment to confirm your consultation booking.</p>
         <div className="grid grid-cols-2 gap-8">
-          {/* Left: Payment Method */}
+          {/* Left: Payment Method (sama seperti sebelumnya) */}
           <div className="bg-white rounded-2xl p-6 shadow">
             <h2 className="text-xl font-bold text-pink-600 mb-5">Choose Payment Method</h2>
             <div className="space-y-4">
@@ -242,26 +240,9 @@ export default function PaymentPage() {
               </button>
             </div>
             <div className="mt-6 bg-pink-100 rounded-2xl p-5 text-center">
-              {selectedMethod === "qris" && (
-                <>
-                  <div className="w-40 h-40 bg-white mx-auto rounded-xl flex items-center justify-center text-gray-400 font-semibold">QRIS</div>
-                  <p className="text-sm text-gray-600 mt-3">Scan this QR code to complete your payment.</p>
-                </>
-              )}
-              {selectedMethod === "ewallet" && (
-                <>
-                  <p className="font-semibold">E-Wallet Number</p>
-                  <p className="text-2xl font-bold text-[#0C72A6] mt-2">0812-3456-7890</p>
-                  <p className="text-sm text-gray-600 mt-2">Use this number for dummy payment.</p>
-                </>
-              )}
-              {selectedMethod === "bank" && (
-                <>
-                  <p className="font-semibold">Virtual Account</p>
-                  <p className="text-2xl font-bold text-[#0C72A6] mt-2">8808 1234 5678 900</p>
-                  <p className="text-sm text-gray-600 mt-2">Transfer according to the total payment amount.</p>
-                </>
-              )}
+              {selectedMethod === "qris" && (<><div className="w-40 h-40 bg-white mx-auto rounded-xl flex items-center justify-center text-gray-400 font-semibold">QRIS</div><p className="text-sm text-gray-600 mt-3">Scan this QR code to complete your payment.</p></>)}
+              {selectedMethod === "ewallet" && (<><p className="font-semibold">E-Wallet Number</p><p className="text-2xl font-bold text-[#0C72A6] mt-2">0812-3456-7890</p><p className="text-sm text-gray-600 mt-2">Use this number for dummy payment.</p></>)}
+              {selectedMethod === "bank" && (<><p className="font-semibold">Virtual Account</p><p className="text-2xl font-bold text-[#0C72A6] mt-2">8808 1234 5678 900</p><p className="text-sm text-gray-600 mt-2">Transfer according to the total payment amount.</p></>)}
             </div>
           </div>
           {/* Right: Summary & Action */}
@@ -274,7 +255,7 @@ export default function PaymentPage() {
               <div><p className="text-gray-500">Hour</p><p className="font-bold">{bookingData.hour} WIB</p></div>
               <div><p className="text-gray-500">Topic</p><p className="font-bold">{bookingData.topic || "-"}</p></div>
               <hr />
-              <div className="flex justify-between"><span>Consultation Fee</span><span>{formatRupiah(price)}</span></div>
+              <div className="flex justify-between"><span>Consultation Fee</span><span>{formatRupiah(basePrice)}</span></div>
               <div className="flex justify-between"><span>Admin Fee</span><span>{formatRupiah(adminFee)}</span></div>
               <hr />
               <div className="flex justify-between text-lg"><span className="font-bold">Total</span><span className="font-bold text-[#0C72A6]">{formatRupiah(total)}</span></div>
@@ -286,17 +267,9 @@ export default function PaymentPage() {
             ) : (
               <div className="mt-6 rounded-2xl bg-white p-5 text-sm text-gray-700 shadow-sm">
                 <p className="font-semibold mb-3">Upload Bukti Transfer</p>
-                <p className="text-xs text-gray-500 mb-4">Setelah pembayaran, unggah bukti transfer agar admin dapat memverifikasi.</p>
                 <input type="file" accept="image/*" onChange={handleProofFileChange} className="w-full text-sm text-gray-600" />
-                {proofDataUrl && (
-                  <div className="mt-4">
-                    <p className="font-medium mb-2">Preview Bukti</p>
-                    <img src={proofDataUrl} alt="Bukti Transfer" className="w-full max-h-48 object-contain rounded-xl border" />
-                  </div>
-                )}
-                <button onClick={handleSubmitProof} disabled={!proofDataUrl} className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-5 font-semibold disabled:bg-gray-400">
-                  Upload Bukti
-                </button>
+                {proofDataUrl && (<div className="mt-4"><p className="font-medium mb-2">Preview</p><img src={proofDataUrl} alt="Bukti Transfer" className="w-full max-h-48 object-contain rounded-xl border" /></div>)}
+                <button onClick={handleSubmitProof} disabled={!proofDataUrl} className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-5 font-semibold disabled:bg-gray-400">Upload Bukti</button>
                 {proofMessage && <p className="mt-4 text-sm text-green-600">{proofMessage}</p>}
               </div>
             )}
