@@ -18,6 +18,25 @@ export default function PaymentPage() {
   const [proofDataUrl, setProofDataUrl] = useState(null);
   const [proofMessage, setProofMessage] = useState("");
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [clientName, setClientName] = useState("Guest");
+
+  // Ambil user dari Supabase Auth
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const name = user.user_metadata?.full_name || user.email;
+        setClientName(name);
+        localStorage.setItem("userName", name);
+        localStorage.setItem("userEmail", user.email);
+      } else {
+        // Fallback ke localStorage
+        const savedName = localStorage.getItem("userName");
+        if (savedName) setClientName(savedName);
+      }
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     const savedBooking = localStorage.getItem("pendingBooking");
@@ -37,7 +56,6 @@ export default function PaymentPage() {
   };
 
   const adminFee = 2500;
-  // ✅ PERBAIKAN: Tentukan harga berdasarkan tipe konsultasi, abaikan bookingData.price yang salah
   const price = bookingData?.type === "offline" ? 75000 : 50000;
   const total = price + adminFee;
 
@@ -68,7 +86,7 @@ export default function PaymentPage() {
           booking_code: bookingCode,
           counselor_id: params.id || 'unknown',
           counselor_name: bookingData.counselorName,
-          client_name: localStorage.getItem("userName") || "Guest",
+          client_name: clientName,  // ✅ pakai nama dari Google
           consultation_type: bookingData.type,
           consultation_date: bookingData.date,
           consultation_hour: bookingData.hour,
