@@ -3,24 +3,25 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
+import { supabase } from "@/lib/supabaseClient";
 
-const COUNSELOR_PROFILE_STORAGE_KEY = "healinq_counselor_profile";
+// const COUNSELOR_PROFILE_STORAGE_KEY = "healinq_counselor_profile";
 
-const defaultCounselorData = {
-  id: 1,
-  name: "Dr. Aulia Rahman",
-  email: "aulia@healinq.com",
-  specialty: "Anxiety",
-  address: "Jakarta, Indonesia",
-  joined: "Mar 28, 2026",
-  status: "Active",
-  sessions: 128,
-  role: "Counselor",
-  image: "/images/icon_profile.png",
-  license: "PSY-2024-001",
-  experience: "8 years",
-  bio: "Specialized in anxiety disorders and stress management with evidence-based therapeutic approaches.",
-};
+// const defaultCounselorData = {
+//   id: 1,
+//   name: "Dr. Aulia Rahman",
+//   email: "aulia@healinq.com",
+//   specialty: "Anxiety",
+//   address: "Jakarta, Indonesia",
+//   joined: "Mar 28, 2026",
+//   status: "Active",
+//   sessions: 128,
+//   role: "Counselor",
+//   image: "/images/icon_profile.png",
+//   license: "PSY-2024-001",
+//   experience: "8 years",
+//   bio: "Specialized in anxiety disorders and stress management with evidence-based therapeutic approaches.",
+// };
 
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -45,12 +46,21 @@ export default function CounselorProfilePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [actionMessage, setActionMessage] = useState("");
 
-  const [counselorData, setCounselorData] = useState(defaultCounselorData);
+  const [counselorData, setCounselorData] = useState(null);
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  const [editForm, setEditForm] = useState(defaultCounselorData);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    specialty: "",
+    address: "",
+    license: "",
+    experience: "",
+    bio: "",
+    image: "/images/icon_profile.png",
+  });
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -65,27 +75,109 @@ export default function CounselorProfilePage() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    try {
-      const storedProfile = localStorage.getItem(COUNSELOR_PROFILE_STORAGE_KEY);
+  // useEffect(() => {
+  //   try {
+  //     const storedProfile = localStorage.getItem(COUNSELOR_PROFILE_STORAGE_KEY);
 
-      if (storedProfile) {
-        const parsedProfile = JSON.parse(storedProfile);
-        const normalizedProfile = {
-          ...defaultCounselorData,
-          ...parsedProfile,
+  //     if (storedProfile) {
+  //       const parsedProfile = JSON.parse(storedProfile);
+  //       const normalizedProfile = {
+  //         ...defaultCounselorData,
+  //         ...parsedProfile,
+  //       };
+  //       setCounselorData(normalizedProfile);
+  //       setEditForm(normalizedProfile);
+  //     } else {
+  //       localStorage.setItem(
+  //         COUNSELOR_PROFILE_STORAGE_KEY,
+  //         JSON.stringify(defaultCounselorData)
+  //       );
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to load counselor profile:", error);
+  //   }
+  // }, []);
+
+  useEffect(() => {
+
+    const fetchCounselorProfile = async () => {
+
+      try {
+
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+          console.error("No authenticated counselor");
+          return;
+        }
+
+        // ambil profile
+        const { data: profileData, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+        // ambil counselor detail
+        const { data: counselorDataDB, error: counselorError } =
+          await supabase
+            .from("counselors")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+        if (profileError || counselorError) {
+          console.error(profileError || counselorError);
+          return;
+        }
+
+        const mergedData = {
+          id: user.id,
+          name:
+            profileData.full_name ||
+            counselorDataDB.name ||
+            "Counselor",
+          email: profileData.email || "",
+          specialty:
+            counselorDataDB.specialty ||
+            profileData.specialty ||
+            "",
+          address:
+            counselorDataDB.address ||
+            profileData.address ||
+            "",
+          status: profileData.status || "Active",
+          sessions: profileData.sessions || 0,
+          role: profileData.role || "Counselor",
+          image:
+            counselorDataDB.image_url ||
+            "/images/icon_profile.png",
+          license:
+            counselorDataDB.str_number ||
+            "No license",
+          experience: "Professional Counselor",
+          bio:
+            counselorDataDB.bio ||
+            "No bio available.",
+          joined: new Date(
+            profileData.created_at
+          ).toLocaleDateString(),
         };
-        setCounselorData(normalizedProfile);
-        setEditForm(normalizedProfile);
-      } else {
-        localStorage.setItem(
-          COUNSELOR_PROFILE_STORAGE_KEY,
-          JSON.stringify(defaultCounselorData)
-        );
+
+        setCounselorData(mergedData);
+        setEditForm(mergedData);
+
+      } catch (error) {
+        console.error(error);
       }
-    } catch (error) {
-      console.error("Failed to load counselor profile:", error);
-    }
+    };
+
+    fetchCounselorProfile();
+
   }, []);
 
   useEffect(() => {
@@ -119,7 +211,7 @@ export default function CounselorProfilePage() {
     setShowEditModal(true);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
 
     if (
@@ -136,18 +228,71 @@ export default function CounselorProfilePage() {
       name: editForm.name.trim(),
       email: editForm.email.trim(),
       specialty: editForm.specialty.trim(),
-      address: editForm.address.trim() || counselorData.address,
-      license: editForm.license.trim() || counselorData.license,
-      experience: editForm.experience.trim() || counselorData.experience,
-      bio: editForm.bio.trim() || counselorData.bio,
-      image: editForm.image.trim() || "/images/icon_profile.png",
+      address: editForm.address.trim(),
+      license: editForm.license.trim(),
+      experience: editForm.experience.trim(),
+      bio: editForm.bio.trim(),
+      image: editForm.image.trim(),
     };
 
-    setCounselorData(updatedProfile);
-    localStorage.setItem(
-      COUNSELOR_PROFILE_STORAGE_KEY,
-      JSON.stringify(updatedProfile)
-    );
+    try {
+
+      // update profiles
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          full_name: updatedProfile.name,
+          email: updatedProfile.email,
+          specialty: updatedProfile.specialty,
+          address: updatedProfile.address,
+        })
+        .eq("id", counselorData.id);
+
+      // update counselors
+      const { error: counselorError } = await supabase
+        .from("counselors")
+        .update({
+          name: updatedProfile.name,
+          email: updatedProfile.email,
+          specialty: updatedProfile.specialty,
+          specialization: updatedProfile.specialty,
+          address: updatedProfile.address,
+          location: updatedProfile.address,
+          bio: updatedProfile.bio,
+          image_url: updatedProfile.image,
+          str_number: updatedProfile.license,
+        })
+        .eq("id", counselorData.id);
+
+      if (profileError || counselorError) {
+        console.error(profileError || counselorError);
+
+        setActionMessage("Failed to update profile.");
+        return;
+      }
+
+      setCounselorData(updatedProfile);
+
+      setShowEditModal(false);
+
+      setActionMessage(
+        "Profile updated successfully."
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      setActionMessage(
+        "Unexpected error occurred."
+      );
+    }
+
+    // setCounselorData(updatedProfile);
+    // localStorage.setItem(
+    //   COUNSELOR_PROFILE_STORAGE_KEY,
+    //   JSON.stringify(updatedProfile)
+    // );
 
     setShowEditModal(false);
     setActionMessage("Profile updated successfully.");
@@ -192,6 +337,14 @@ export default function CounselorProfilePage() {
       window.location.href = "/login";
     }
   };
+
+  if (!counselorData) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        Loading profile...
+      </div>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
@@ -434,6 +587,7 @@ export default function CounselorProfilePage() {
 
               <input
                 type="email"
+                readOnly
                 name="email"
                 placeholder="Email address"
                 value={editForm.email}
