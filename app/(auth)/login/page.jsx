@@ -152,6 +152,9 @@ export default function LoginPage() {
         password: formData.password,
       });
 
+      console.log("LOGIN DATA:", data);
+      console.log("LOGIN ERROR:", error);
+
       if (error) {
         setErrors({
           general: "Email atau password salah.",
@@ -197,7 +200,7 @@ export default function LoginPage() {
         if (profile?.role === "counselor") {
           // Cek status counselor
           if (profile?.status === "Active") {
-            router.push("/counselor/schedule");
+            router.push("/counselors/schedule");
           } else {
             // Jika status tidak Active, tetap ke user dashboard dengan pesan
             setErrors({
