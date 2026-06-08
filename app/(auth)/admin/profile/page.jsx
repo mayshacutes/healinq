@@ -2,16 +2,18 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { signOut } from "next-auth/react";
+// import { signOut } from "next-auth/react";
+import { supabase } from "@/lib/supabaseClient";
+import { logActivity } from "@/lib/activityLogger";
 
-const ADMIN_PROFILE_STORAGE_KEY = "healinq_admin_profile";
+//const ADMIN_PROFILE_STORAGE_KEY = "healinq_admin_profile";
 
 const defaultAdminData = {
-  name: "Admin HealinQ",
-  email: "admin@healinq.com",
+  name: "",
+  email: "",
   role: "Administrator",
   image: "/images/icon_profile.png",
-  lastLogin: "April 19, 2026 - 09:20 AM",
+  lastLogin: "-",
 };
 
 function formatTopDate(date) {
@@ -47,27 +49,48 @@ export default function AdminProfilePage() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
+  const loadAdminProfile = async () => {
     try {
-      const storedProfile = localStorage.getItem(ADMIN_PROFILE_STORAGE_KEY);
+      const response = await fetch("/api/admin/me");
+      const result = await response.json();
 
-      if (storedProfile) {
-        const parsedProfile = JSON.parse(storedProfile);
-        const normalizedProfile = {
-          ...defaultAdminData,
-          ...parsedProfile,
-        };
-        setAdminData(normalizedProfile);
-        setEditForm(normalizedProfile);
-      } else {
-        localStorage.setItem(
-          ADMIN_PROFILE_STORAGE_KEY,
-          JSON.stringify(defaultAdminData)
-        );
-      }
-    } catch (error) {
-      console.error("Failed to load admin profile:", error);
+      if (!result.success) return;
+
+      const cookieAdmin = result.admin;
+
+      const { data, error } = await supabase
+        .from("admin")
+        .select("*")
+        .eq("admin_id", cookieAdmin.admin_id)
+        .maybeSingle();
+
+      console.log("COOKIE ADMIN:", cookieAdmin);
+      console.log("DB DATA:", data);
+      console.log("DB ERROR:", error);
+
+      if (error) throw error;
+      if (!data) return;
+
+      const profile = {
+        name: data.name || "",
+        email: data.email || "",
+        role: "Administrator",
+        image: "/images/icon_profile.png",
+        lastLogin: data.updated_at
+          ? new Date(data.updated_at).toLocaleString()
+          : "-",
+      };
+
+      setAdminData(profile);
+      setEditForm(profile);
+
+    } catch (err) {
+      console.error("LOAD ADMIN PROFILE ERROR:", err);
     }
+  };
+
+  useEffect(() => {
+    loadAdminProfile();
   }, []);
 
   useEffect(() => {
@@ -101,7 +124,7 @@ export default function AdminProfilePage() {
     setShowEditModal(true);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
 
     if (!editForm.name.trim() || !editForm.email.trim() || !editForm.role.trim()) {
@@ -118,16 +141,40 @@ export default function AdminProfilePage() {
     };
 
     setAdminData(updatedProfile);
-    localStorage.setItem(
-      ADMIN_PROFILE_STORAGE_KEY,
-      JSON.stringify(updatedProfile)
-    );
+    const response = await fetch("/api/admin/me");
+    const result = await response.json();
+
+    await supabase
+      .from("admin")
+      .update({
+        name: editForm.name,
+        email: editForm.email,
+        updated_at: new Date(),
+      })
+      .eq("admin_id", result.admin.admin_id);
+
+    await logActivity({
+      actor_id: null,
+
+      actor_name: editForm.name,
+
+      actor_role: "Admin",
+
+      action: "Updated profile",
+
+      category: "Management",
+
+      status: "Completed",
+
+      description:
+        "Admin updated profile information.",
+    });
 
     setShowEditModal(false);
     setActionMessage("Admin profile updated successfully.");
   };
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
 
     if (
@@ -140,29 +187,72 @@ export default function AdminProfilePage() {
     }
 
     if (passwordForm.newPassword.length < 6) {
-      setActionMessage("New password must be at least 6 characters.");
+      setActionMessage("Password must be at least 6 characters.");
       return;
     }
 
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setActionMessage("New password and confirmation do not match.");
+    if (
+      passwordForm.newPassword !==
+      passwordForm.confirmPassword
+    ) {
+      setActionMessage(
+        "New password and confirmation do not match."
+      );
       return;
     }
 
-    setPasswordForm({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
-    setShowPasswordModal(false);
-    setActionMessage("Password changed successfully. (Demo mode)");
+    try {
+      const response = await fetch(
+        "/api/admin/change-password",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentPassword:
+              passwordForm.currentPassword,
+            newPassword:
+              passwordForm.newPassword,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setActionMessage(result.message);
+        return;
+      }
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      setShowPasswordModal(false);
+
+      setActionMessage(
+        "Password changed successfully."
+      );
+    } catch (error) {
+      console.error(error);
+      setActionMessage(
+        "Failed to change password."
+      );
+    }
   };
 
   const handleLogout = async () => {
     try {
-      await signOut({ callbackUrl: "/login" });
+      await fetch("/api/admin/logout", {
+        method: "POST",
+      });
+
+      window.location.href = "/login";
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error(error);
       window.location.href = "/login";
     }
   };
