@@ -72,7 +72,7 @@ export default function LoginPage() {
   };
 
   // =====================
-  // MANUAL LOGIN dengan Redirect berdasarkan ROLE
+  // MANUAL LOGIN
   // =====================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -145,7 +145,7 @@ export default function LoginPage() {
       }
 
       // =====================
-      // LOGIN VIA SUPABASE AUTH (untuk user biasa & counselor)
+      // LOGIN VIA SUPABASE AUTH
       // =====================
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.identifier,
@@ -164,7 +164,42 @@ export default function LoginPage() {
       }
 
       if (data?.user) {
-        // Ambil profile user dari tabel profiles
+        const userEmail = data.user.email;
+        
+        // =====================
+        // CEK DI TABEL COUNSELORS DULU (PALING PENTING)
+        // =====================
+        const { data: counselorData } = await supabase
+          .from("counselors")
+          .select("id, status")
+          .eq("email", userEmail)
+          .maybeSingle();
+
+        console.log("Manual login - counselor check:", counselorData);
+
+        // JIKA COUNSELOR DAN ACTIVE
+        if (counselorData && counselorData.status === "Active") {
+          // Update atau buat profile dengan role counselor
+          await supabase
+            .from("profiles")
+            .upsert({
+              id: data.user.id,
+              email: userEmail,
+              role: "counselor",
+              status: "Active",
+              username: userEmail.split('@')[0],
+              full_name: userEmail.split('@')[0],
+            });
+          
+          console.log("✅ Manual login - redirecting to counselor");
+          router.push("/counselor/schedule");
+          router.refresh();
+          return;
+        }
+
+        // =====================
+        // CEK DI PROFILES
+        // =====================
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role, status")
@@ -198,11 +233,9 @@ export default function LoginPage() {
 
         // Redirect berdasarkan ROLE
         if (profile?.role === "counselor") {
-          // Cek status counselor
           if (profile?.status === "Active") {
             router.push("/counselors/schedule");
           } else {
-            // Jika status tidak Active, tetap ke user dashboard dengan pesan
             setErrors({
               general: "Akun counselor Anda belum aktif. Silakan hubungi admin.",
             });
@@ -210,10 +243,9 @@ export default function LoginPage() {
             setIsSubmitting(false);
             return;
           }
-        } else if (profile?.role === "user" || !profile?.role) {
-          router.push("/dashboard/user");
+        } else if (profile?.role === "admin") {
+          router.push("/admin");
         } else {
-          // Default ke user dashboard
           router.push("/dashboard/user");
         }
 
