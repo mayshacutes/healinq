@@ -192,7 +192,7 @@ export default function LoginPage() {
             });
           
           console.log("✅ Manual login - redirecting to counselor");
-          router.push("/counselor/schedule");
+          router.push("/counselors/schedule");
           router.refresh();
           return;
         }
