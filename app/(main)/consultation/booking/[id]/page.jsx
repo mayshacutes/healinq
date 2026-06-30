@@ -33,7 +33,6 @@ export default function BookingPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const type = searchParams.get("type") || "online";
 
   const [selected, setSelected] = useState(null);
@@ -43,6 +42,40 @@ export default function BookingPage() {
   const [selectedHour, setSelectedHour] = useState(null);
   const [date, setDate] = useState("");
   const [topic, setTopic] = useState("");
+  const [counselor, setCounselor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [allSchedules, setAllSchedules] = useState([]);
+
+  useEffect(() => {
+    const fetchCounselor = async () => {
+      const { data, error } = await supabase
+        .from("counselors")
+        .select("*")
+        .eq("id", params.id)
+        .single();
+      if (!error) setCounselor(data);
+      setLoading(false);
+    };
+    fetchCounselor();
+  }, [params.id]);
+
+  useEffect(() => {
+    if (!counselor) return;
+    const fetchAllSchedules = async () => {
+      const { data, error } = await supabase
+        .from("counselor_schedules")
+        .select("*")
+        .eq("counselor_id", counselor.id);
+      if (!error && data) {
+        setAllSchedules(data);
+        console.log("✅ Jadwal dari database:", data);
+      } else {
+        console.error("❌ Gagal ambil jadwal:", error);
+      }
+    };
+    fetchAllSchedules();
+  }, [counselor]);
 
   const [availableHours, setAvailableHours] = useState([]);
   const [isLoadingHours, setIsLoadingHours] = useState(false);
@@ -154,10 +187,14 @@ export default function BookingPage() {
 
   const handleBooking = () => {
     if (!date || !selectedHour) {
-      alert("Please select date and time first!");
+      alert("Pilih tanggal dan jam terlebih dahulu!");
       return;
     }
-
+    if (!availableSlots.includes(selectedHour)) {
+      alert("Jam yang dipilih tidak tersedia.");
+      return;
+    }
+    const price = type === "online" ? counselor.online_price : counselor.offline_price;
     const bookingData = {
       counselorId: selected.id,
       counselorName: selected.name,
@@ -165,13 +202,11 @@ export default function BookingPage() {
       type: type,
       date: date,
       hour: selectedHour,
-      topic: topic,
-      price: type === "offline" ? 75000 : 50000,
+      topic,
+      price,
     };
-
     localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
-
-    router.push(`/consultation/payment/${params.id}?type=${type}`);
+    router.push(`/consultation/payment/${counselor.id}?type=${type}`);
   };
 
   if (isLoading) {
@@ -203,16 +238,11 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-10">
       <div className="mb-5">
-      <BackIconButton to={`/consultation/list?type=${type}`} />
+        <BackIconButton to={`/consultation/list?type=${type}`} />
       </div>
       <div className="flex gap-10">
-
-        {/* ================= LEFT ================= */}
         <div className="bg-white p-6 rounded-2xl w-1/2 shadow">
-          <h2 className="text-xl font-bold text-[#0C72A6] mb-6 text-center">
-            Counselor Information
-          </h2>
-
+          <h2 className="text-xl font-bold text-[#0C72A6] mb-6 text-center">Counselor Information</h2>
           <div className="flex flex-col items-center gap-3">
             <div className="w-28 h-28 rounded-full overflow-hidden">
               <Image
@@ -236,7 +266,6 @@ export default function BookingPage() {
               {selected?.specialty || selected?.specialization || "Psikolog"}
             </span>
           </div>
-
           <div className="mt-6 text-sm space-y-4">
             <div>
               <p className="font-semibold">No. STR</p>
@@ -258,14 +287,9 @@ export default function BookingPage() {
           </div>
         </div>
 
-        {/* ================= RIGHT ================= */}
         <div className="bg-pink-200 p-6 rounded-2xl w-1/2 shadow">
-          <h2 className="text-xl font-bold text-pink-600 mb-6 text-center">
-            Booking Form
-          </h2>
-
+          <h2 className="text-xl font-bold text-pink-600 mb-6 text-center">Booking Form</h2>
           <div className="flex flex-col gap-5">
-
             <div>
               <label className="font-medium">Consul Date</label>
               <input
@@ -276,7 +300,6 @@ export default function BookingPage() {
                 className="w-full p-3 rounded-lg mt-2 bg-pink-100 outline-none"
               />
             </div>
-
             <div>
               <label className="font-medium">
                 Consultation Hour
@@ -316,32 +339,19 @@ export default function BookingPage() {
                 </div>
               )}
             </div>
-
             <div>
-              <label className="font-medium">
-                What would you like to talk about?
-              </label>
+              <label className="font-medium">What would you like to talk about?</label>
               <textarea
                 rows={4}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Write your consultation topics here"
+                placeholder="Tulis topik konsultasi"
                 className="w-full p-3 rounded-lg mt-2 bg-pink-100 outline-none"
               />
             </div>
-
             <div className="bg-white/70 p-4 rounded-xl text-sm">
-              <div className="flex justify-between">
-                <span>Consultation Type</span>
-                <span className="font-semibold capitalize">{type}</span>
-              </div>
-
-              <div className="flex justify-between mt-2">
-                <span>Price</span>
-                <span className="font-semibold">
-                  Rp{type === "offline" ? "75.000" : "50.000"}
-                </span>
-              </div>
+              <div className="flex justify-between"><span>Consultation Type</span><span className="font-semibold capitalize">{type}</span></div>
+              <div className="flex justify-between mt-2"><span>Price</span><span className="font-semibold">Rp {price?.toLocaleString()}</span></div>
             </div>
 
             <button
