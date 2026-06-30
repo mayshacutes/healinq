@@ -169,7 +169,7 @@ export default function LoginPage() {
             });
           
           console.log("✅ Manual login - redirecting to counselor");
-          router.push("/counselor/schedule");
+          router.push("/counselors/schedule");
           router.refresh();
           return;
         }
@@ -188,7 +188,7 @@ export default function LoginPage() {
         // Redirect berdasarkan ROLE
         if (profile?.role === "counselor") {
           if (profile?.status === "Active") {
-            router.push("/counselor/schedule");
+            router.push("/counselors/schedule");
           } else {
             setErrors({
               general: "Akun counselor Anda belum aktif. Silakan hubungi admin.",

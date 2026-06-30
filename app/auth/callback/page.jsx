@@ -54,7 +54,7 @@ export default function AuthCallback() {
             });
           
           console.log("✅ Redirecting to /counselor/schedule");
-          window.location.replace("/counselor/schedule");
+          window.location.replace("/counselors/schedule");
           return;
         }
 
@@ -71,7 +71,7 @@ export default function AuthCallback() {
 
         if (profileData?.role === "counselor" && profileData?.status === "Active") {
           console.log("✅ COUNSELOR IN PROFILES!");
-          window.location.replace("/counselor/schedule");
+          window.location.replace("/counselors/schedule");
           return;
         }
 
