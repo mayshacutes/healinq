@@ -6,22 +6,10 @@ import Image from "next/image";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 
-const DAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
-// Pecah range start_time-end_time jadi slot per jam, mis. "08:00"-"12:00" -> ["08.00","09.00","10.00","11.00"]
 function splitIntoHourlySlots(startTime, endTime) {
   const slots = [];
   let [h] = startTime.split(":").map(Number);
   const [endH] = endTime.split(":").map(Number);
-
   while (h < endH) {
     slots.push(`${String(h).padStart(2, "0")}.00`);
     h += 1;
@@ -85,8 +73,6 @@ export default function BookingPage() {
   useEffect(() => {
     const fetchCounselor = async () => {
       setIsLoading(true);
-      setErrorMessage("");
-
       const { data, error } = await supabase
         .from("counselors")
         .select("*")
@@ -94,21 +80,17 @@ export default function BookingPage() {
         .maybeSingle();
 
       if (error || !data) {
-        console.error("Error fetching counselor:", error);
         setErrorMessage("Konselor tidak ditemukan.");
         setIsLoading(false);
         return;
       }
-
       setSelected(data);
       setIsLoading(false);
     };
-
     if (params.id) fetchCounselor();
   }, [params.id]);
 
-  // SETIAP TANGGAL BERUBAH, AMBIL JAM YANG TERSEDIA DARI counselor_schedules
-  // LALU BUANG JAM YANG SUDAH DIBOOKING ORANG LAIN DI consultations
+  // AMBIL JAM TERSEDIA DARI counselor_schedules BERDASARKAN TANGGAL + EMAIL
   useEffect(() => {
     const fetchAvailableHours = async () => {
       if (!date || !selected) {
@@ -120,20 +102,18 @@ export default function BookingPage() {
       setHoursMessage("");
       setSelectedHour(null);
 
-      // Cari hari dalam minggu dari tanggal yang dipilih
-      const dayName = DAY_NAMES[new Date(`${date}T00:00:00`).getDay()];
-
-      // 1. Ambil jadwal konselor di hari itu, sesuai mode (online/offline)
+      // Query pakai counselor_email dan schedule_date (bukan day)
       const { data: schedules, error: scheduleError } = await supabase
         .from("counselor_schedules")
         .select("*")
-        .eq("counselor_id", selected.id)
-        .eq("day", dayName)
+        .eq("counselor_email", selected.email)
+        .eq("schedule_date", date)
         .eq("mode", type)
         .eq("status", "available");
 
+      console.log("Schedules:", schedules, scheduleError);
+
       if (scheduleError) {
-        console.error("Error fetching schedule:", scheduleError);
         setHoursMessage("Gagal memuat jadwal konselor.");
         setAvailableHours([]);
         setIsLoadingHours(false);
@@ -141,41 +121,33 @@ export default function BookingPage() {
       }
 
       if (!schedules || schedules.length === 0) {
-        setHoursMessage(
-          `Konselor tidak memiliki jadwal ${type} pada hari ${dayName}.`
-        );
+        setHoursMessage(`Konselor tidak memiliki jadwal ${type} pada tanggal ini.`);
         setAvailableHours([]);
         setIsLoadingHours(false);
         return;
       }
 
-      // Pecah semua range jadi slot per jam
+      // Pecah range jadi slot per jam
       let allSlots = [];
       schedules.forEach((s) => {
-        allSlots = allSlots.concat(
-          splitIntoHourlySlots(s.start_time, s.end_time)
-        );
+        allSlots = allSlots.concat(splitIntoHourlySlots(s.start_time, s.end_time));
       });
 
-      // 2. Cek slot yang sudah dibooking di tanggal itu (selain yang dibatalkan)
-      const { data: bookedConsultations, error: bookedError } = await supabase
+      // Buang slot yang sudah dibooking
+      const { data: booked } = await supabase
         .from("consultations")
         .select("consultation_hour, status")
         .eq("counselor_id", selected.id)
         .eq("consultation_date", date)
         .neq("status", "cancelled");
 
-      if (bookedError) {
-        console.error("Error fetching booked hours:", bookedError);
-      }
-
-      const bookedHours = (bookedConsultations || []).map((b) =>
+      const bookedHours = (booked || []).map((b) =>
         b.consultation_hour?.replace(":", ".")
       );
 
       const freeSlots = allSlots.filter((slot) => !bookedHours.includes(slot));
-
       setAvailableHours(freeSlots);
+
       if (freeSlots.length === 0) {
         setHoursMessage("Semua jam pada tanggal ini sudah penuh.");
       }
@@ -206,7 +178,7 @@ export default function BookingPage() {
       price,
     };
     localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
-    router.push(`/consultation/payment/${counselor.id}?type=${type}`);
+    router.push(`/consultation/payment/${params.id}?type=${type}`);
   };
 
   if (isLoading) {
@@ -241,8 +213,12 @@ export default function BookingPage() {
         <BackIconButton to={`/consultation/list?type=${type}`} />
       </div>
       <div className="flex gap-10">
+
+        {/* LEFT - INFO KONSELOR */}
         <div className="bg-white p-6 rounded-2xl w-1/2 shadow">
-          <h2 className="text-xl font-bold text-[#0C72A6] mb-6 text-center">Counselor Information</h2>
+          <h2 className="text-xl font-bold text-[#0C72A6] mb-6 text-center">
+            Counselor Information
+          </h2>
           <div className="flex flex-col items-center gap-3">
             <div className="w-28 h-28 rounded-full overflow-hidden">
               <Image
@@ -253,42 +229,33 @@ export default function BookingPage() {
                 className="object-cover"
               />
             </div>
-
-            <h3 className="font-bold text-center">
-              {selected?.name}
-            </h3>
-
+            <h3 className="font-bold text-center">{selected?.name}</h3>
             <p className="text-sm text-gray-500">
               📍 {selected?.address || selected?.location || "-"}
             </p>
-
             <span className="bg-pink-200 text-pink-600 px-3 py-1 rounded-full text-sm">
               {selected?.specialty || selected?.specialization || "Psikolog"}
             </span>
           </div>
           <div className="mt-6 text-sm space-y-4">
             <div>
-              <p className="font-semibold">No. STR</p>
-              <p className="text-gray-600">{selected?.str || "-"}</p>
+              <p className="font-semibold">Email</p>
+              <p className="text-gray-600">{selected?.email || "-"}</p>
               <hr className="mt-2" />
             </div>
-
             <div>
-              <p className="font-semibold">No. SIPP</p>
-              <p className="text-gray-600">{selected?.sipp || "-"}</p>
-              <hr className="mt-2" />
-            </div>
-
-            <div>
-              <p className="font-semibold">Bahasa</p>
-              <p className="text-gray-600">{selected?.languages || "-"}</p>
+              <p className="font-semibold">Sessions</p>
+              <p className="text-gray-600">{selected?.sessions || 0} clients</p>
               <hr className="mt-2" />
             </div>
           </div>
         </div>
 
+        {/* RIGHT - BOOKING FORM */}
         <div className="bg-pink-200 p-6 rounded-2xl w-1/2 shadow">
-          <h2 className="text-xl font-bold text-pink-600 mb-6 text-center">Booking Form</h2>
+          <h2 className="text-xl font-bold text-pink-600 mb-6 text-center">
+            Booking Form
+          </h2>
           <div className="flex flex-col gap-5">
             <div>
               <label className="font-medium">Consul Date</label>
@@ -301,26 +268,20 @@ export default function BookingPage() {
               />
             </div>
             <div>
-              <label className="font-medium">
-                Consultation Hour
-              </label>
-
+              <label className="font-medium">Consultation Hour</label>
               {!date && (
                 <p className="text-sm text-gray-500 mt-2">
-                  Pilih tanggal terlebih dahulu untuk melihat jam yang tersedia.
+                  Pilih tanggal terlebih dahulu.
                 </p>
               )}
-
               {date && isLoadingHours && (
                 <div className="flex justify-center py-4">
                   <div className="h-6 w-6 animate-spin rounded-full border-4 border-[#0C72A6] border-t-transparent"></div>
                 </div>
               )}
-
               {date && !isLoadingHours && hoursMessage && (
                 <p className="text-sm text-pink-700 mt-2">{hoursMessage}</p>
               )}
-
               {date && !isLoadingHours && availableHours.length > 0 && (
                 <div className="grid grid-cols-5 gap-2 mt-2">
                   {availableHours.map((hour) => (
@@ -350,8 +311,16 @@ export default function BookingPage() {
               />
             </div>
             <div className="bg-white/70 p-4 rounded-xl text-sm">
-              <div className="flex justify-between"><span>Consultation Type</span><span className="font-semibold capitalize">{type}</span></div>
-              <div className="flex justify-between mt-2"><span>Price</span><span className="font-semibold">Rp {price?.toLocaleString()}</span></div>
+              <div className="flex justify-between">
+                <span>Consultation Type</span>
+                <span className="font-semibold capitalize">{type}</span>
+              </div>
+              <div className="flex justify-between mt-2">
+                <span>Price</span>
+                <span className="font-semibold">
+                  Rp{type === "offline" ? "75.000" : "50.000"}
+                </span>
+              </div>
             </div>
 
             <button
@@ -361,7 +330,6 @@ export default function BookingPage() {
             >
               Continue to Payment
             </button>
-
           </div>
         </div>
       </div>
