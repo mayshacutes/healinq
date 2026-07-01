@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
-const days = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 export default function CounselorSchedulePage() {
   const [schedules, setSchedules] = useState([]);
@@ -22,7 +24,7 @@ export default function CounselorSchedulePage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const [form, setForm] = useState({
-    day: "Monday",
+    scheduleDate: "",
     startTime: "",
     endTime: "",
     mode: "online",
@@ -34,29 +36,20 @@ export default function CounselorSchedulePage() {
       setIsPageLoading(true);
       try {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        console.log("User check:", { user, userError });
-        
         if (userError || !user) {
-          console.error("User not logged in", userError);
           setActionMessage("Please login first to access this page.");
           setIsPageLoading(false);
           return;
         }
-
         setIsLoggedIn(true);
-        
-        // Cari profile berdasarkan user id
+
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
           .single();
 
-        console.log("Profile data:", { profileData, profileError });
-
         if (profileError) {
-          console.error("Error fetching profile:", profileError);
           setActionMessage(`Error: ${profileError.message}`);
           setIsPageLoading(false);
           return;
@@ -75,7 +68,6 @@ export default function CounselorSchedulePage() {
         }
 
         setCounselorProfile(profileData);
-        
       } catch (error) {
         console.error("Error in checkUser:", error);
         setActionMessage(`Error: ${error.message}`);
@@ -83,33 +75,27 @@ export default function CounselorSchedulePage() {
         setIsPageLoading(false);
       }
     };
-
     checkUser();
   }, []);
 
   // Fetch schedules dari Supabase
   const fetchSchedules = async () => {
     if (!counselorProfile) return;
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from("counselor_schedules")
         .select("*")
         .eq("counselor_id", counselorProfile.id)
-        .order("day", { ascending: true })
+        .order("schedule_date", { ascending: true })
         .order("start_time", { ascending: true });
 
       if (error) {
-        console.error("Fetch error:", error);
         setActionMessage(`Error: ${error.message}`);
         return;
       }
-
-      console.log("Schedules fetched:", data?.length || 0);
       setSchedules(data || []);
     } catch (error) {
-      console.error("Unexpected error:", error);
       setActionMessage(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -139,45 +125,41 @@ export default function CounselorSchedulePage() {
   // ADD SCHEDULE ke Supabase
   const handleAddSchedule = async (e) => {
     e.preventDefault();
-
-    if (!form.startTime || !form.endTime) {
-      setActionMessage("Please complete the schedule first.");
+    if (!form.scheduleDate || !form.startTime || !form.endTime) {
+      setActionMessage("Please complete all schedule fields.");
       return;
     }
-
     if (!counselorProfile) {
       setActionMessage("Please login as counselor first.");
       return;
     }
-
-    // Validasi waktu
     if (form.startTime >= form.endTime) {
       setActionMessage("Start time must be before end time.");
       return;
     }
 
-    // Cek apakah sudah ada jadwal di hari yang sama dengan waktu yang bentrok
-    const existingSchedule = schedules.find(
-      (s) => s.day === form.day && 
-      ((form.startTime >= s.start_time && form.startTime < s.end_time) ||
-       (form.endTime > s.start_time && form.endTime <= s.end_time) ||
-       (form.startTime <= s.start_time && form.endTime >= s.end_time))
+    // Cek apakah sudah ada jadwal pada tanggal, waktu, dan mode yang sama
+    const existing = schedules.find(
+      (s) =>
+        s.schedule_date === form.scheduleDate &&
+        s.mode === form.mode &&
+        ((form.startTime >= s.start_time && form.startTime < s.end_time) ||
+         (form.endTime > s.start_time && form.endTime <= s.end_time) ||
+         (form.startTime <= s.start_time && form.endTime >= s.end_time))
     );
-
-    if (existingSchedule) {
-      setActionMessage("Schedule already exists for this time range on the same day.");
+    if (existing) {
+      setActionMessage("Schedule already exists for this time range on the same date and mode.");
       return;
     }
 
     setIsLoading(true);
     setActionMessage("Saving schedule...");
-
     try {
       const scheduleData = {
         counselor_id: counselorProfile.id,
         counselor_email: counselorProfile.email,
         counselor_name: counselorProfile.full_name || counselorProfile.name,
-        day: form.day,
+        schedule_date: form.scheduleDate,
         start_time: form.startTime,
         end_time: form.endTime,
         mode: form.mode,
@@ -186,36 +168,41 @@ export default function CounselorSchedulePage() {
         updated_at: new Date().toISOString(),
       };
 
-      console.log("Inserting schedule:", scheduleData);
-
       const { data, error } = await supabase
         .from("counselor_schedules")
         .insert([scheduleData])
         .select();
 
       if (error) {
-        console.error("Insert error:", error);
         if (error.code === "23505") {
-          setActionMessage("Schedule already exists for this time slot.");
+          setActionMessage("Duplicate schedule entry.");
         } else {
           setActionMessage(`Error: ${error.message}`);
         }
         return;
       }
 
-      console.log("Schedule added:", data);
       await fetchSchedules();
 
+      await logActivity({
+        actor_id: counselorProfile.id,
+        actor_name: counselorProfile.full_name || counselorProfile.name,
+        actor_role: "Counselor",
+        action: "Added consultation schedule",
+        category: "Counselors",
+        status: "Completed",
+        description: `${form.scheduleDate} ${form.startTime}-${form.endTime} (${form.mode})`,
+      });
+
       setForm({
-        day: "Monday",
+        scheduleDate: "",
         startTime: "",
         endTime: "",
         mode: "online",
       });
       setActionMessage("✅ Schedule added successfully!");
-      
     } catch (error) {
-      console.error("Unexpected error:", error);
+      console.error(error);
       setActionMessage(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
@@ -229,7 +216,6 @@ export default function CounselorSchedulePage() {
 
     setIsLoading(true);
     setActionMessage("Deleting schedule...");
-
     try {
       const { error } = await supabase
         .from("counselor_schedules")
@@ -237,42 +223,34 @@ export default function CounselorSchedulePage() {
         .eq("id", id);
 
       if (error) {
-        console.error("Delete error:", error);
         setActionMessage(`Error: ${error.message}`);
         return;
       }
 
       await fetchSchedules();
+
+      await logActivity({
+        actor_id: counselorProfile.id,
+        actor_name: counselorProfile.full_name || counselorProfile.name,
+        actor_role: "Counselor",
+        action: "Deleted consultation schedule",
+        category: "Counselors",
+        status: "Completed",
+        description: `Schedule ID ${id} removed`,
+      });
+
       setActionMessage("✅ Schedule deleted successfully!");
-      
     } catch (error) {
-      console.error("Unexpected error:", error);
       setActionMessage(`Error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Format day ke Bahasa Indonesia
-  const formatDay = (day) => {
-    const dayMap = {
-      "Monday": "Senin",
-      "Tuesday": "Selasa",
-      "Wednesday": "Rabu",
-      "Thursday": "Kamis",
-      "Friday": "Jumat",
-      "Saturday": "Sabtu",
-      "Sunday": "Minggu",
-    };
-    return dayMap[day] || day;
-  };
-
-  // Format mode
   const formatMode = (mode) => {
     return mode === "online" ? "Online (Video Call)" : "Offline (Tatap Muka)";
   };
 
-  // Loading page
   if (isPageLoading) {
     return (
       <main className="min-h-screen bg-[#d9edf8] px-8 py-10">
@@ -286,7 +264,6 @@ export default function CounselorSchedulePage() {
     );
   }
 
-  // Jika belum login atau bukan counselor
   if (!isLoggedIn || !counselorProfile) {
     return (
       <main className="min-h-screen bg-[#d9edf8] px-8 py-10">
@@ -313,20 +290,15 @@ export default function CounselorSchedulePage() {
     <main className="min-h-screen bg-[#d9edf8] px-4 py-8 sm:px-8 sm:py-10">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#e1268d] sm:text-4xl">
-          Counselor Schedule
-        </h1>
-        <p className="mt-2 text-[#f08bbf]">
-          Set your available consultation schedule
-        </p>
+        <h1 className="text-3xl font-bold text-[#e1268d] sm:text-4xl">Counselor Schedule</h1>
+        <p className="mt-2 text-[#f08bbf]">Set your available consultation schedule</p>
         {counselorProfile && (
           <p className="mt-1 text-sm text-[#0c72a6]">
-            Welcome, {counselorProfile.full_name || counselorProfile.name || counselorProfile.username}
+            Welcome, {counselorProfile.full_name || counselorProfile.name}
           </p>
         )}
       </div>
 
-      {/* Action Message */}
       {actionMessage && (
         <div className="mb-4 rounded-full bg-white/90 px-4 py-2 text-[13px] font-medium text-[#db2d8d] shadow-sm w-fit">
           {actionMessage}
@@ -334,59 +306,43 @@ export default function CounselorSchedulePage() {
       )}
 
       {/* Form Add Schedule */}
-      <form
-        onSubmit={handleAddSchedule}
-        className="rounded-2xl bg-white p-6 shadow-lg"
-      >
+      <form onSubmit={handleAddSchedule} className="rounded-2xl bg-white p-6 shadow-lg">
         <div className="grid gap-4 md:grid-cols-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#666]">
-              Day
-            </label>
-            <select
-              name="day"
-              value={form.day}
+            <label className="mb-1 block text-sm font-medium text-[#666]">Date</label>
+            <input
+              type="date"
+              name="scheduleDate"
+              value={form.scheduleDate}
               onChange={handleChange}
               className="w-full rounded-lg border border-[#e6e6e6] bg-pink-50 p-3 outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-            >
-              {days.map((day) => (
-                <option key={day} value={day}>
-                  {formatDay(day)}
-                </option>
-              ))}
-            </select>
+              required
+            />
           </div>
-
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#666]">
-              Start Time
-            </label>
+            <label className="mb-1 block text-sm font-medium text-[#666]">Start Time</label>
             <input
               type="time"
               name="startTime"
               value={form.startTime}
               onChange={handleChange}
               className="w-full rounded-lg border border-[#e6e6e6] bg-pink-50 p-3 outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              required
             />
           </div>
-
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#666]">
-              End Time
-            </label>
+            <label className="mb-1 block text-sm font-medium text-[#666]">End Time</label>
             <input
               type="time"
               name="endTime"
               value={form.endTime}
               onChange={handleChange}
               className="w-full rounded-lg border border-[#e6e6e6] bg-pink-50 p-3 outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+              required
             />
           </div>
-
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#666]">
-              Consultation Mode
-            </label>
+            <label className="mb-1 block text-sm font-medium text-[#666]">Mode</label>
             <select
               name="mode"
               value={form.mode}
@@ -398,7 +354,6 @@ export default function CounselorSchedulePage() {
             </select>
           </div>
         </div>
-
         <button
           type="submit"
           disabled={isLoading}
@@ -413,13 +368,13 @@ export default function CounselorSchedulePage() {
         <h2 className="mb-4 text-xl font-bold text-[#0c72a6]">
           Your Schedules ({schedules.length})
         </h2>
-        
+
         {isLoading && schedules.length === 0 && (
           <div className="flex justify-center py-10">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#db2d8d] border-t-transparent"></div>
           </div>
         )}
-        
+
         {!isLoading && schedules.length === 0 && (
           <div className="rounded-2xl bg-white p-8 text-center shadow">
             <p className="text-gray-500">No schedule added yet.</p>
@@ -428,7 +383,7 @@ export default function CounselorSchedulePage() {
             </p>
           </div>
         )}
-        
+
         {schedules.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {schedules.map((item) => (
@@ -438,25 +393,18 @@ export default function CounselorSchedulePage() {
               >
                 <div className="flex items-start justify-between">
                   <h2 className="text-lg font-bold text-[#0C72A6]">
-                    {formatDay(item.day)}
+                    {formatDate(item.schedule_date)}
                   </h2>
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${
-                    item.mode === "online" 
-                      ? "bg-blue-100 text-blue-700" 
-                      : "bg-purple-100 text-purple-700"
-                  }`}>
+                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${item.mode === "online" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
                     {formatMode(item.mode)}
                   </span>
                 </div>
-
                 <p className="mt-3 text-gray-700">
-                  🕐 {item.start_time} - {item.end_time}
+                  🕐 {item.start_time.slice(0,5)} - {item.end_time.slice(0,5)}
                 </p>
-
                 <p className="mt-1 text-sm text-gray-500">
                   Status: <span className="font-medium text-green-600">{item.status || "Available"}</span>
                 </p>
-
                 <button
                   onClick={() => handleDeleteSchedule(item.id)}
                   disabled={isLoading}

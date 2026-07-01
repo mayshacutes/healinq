@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
+import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
 const moodOptions = [
@@ -91,7 +92,7 @@ export default function JournalingPage() {
       setLoading(true);
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        
+
         if (user) {
           const { data: profile } = await supabase
             .from("profiles")
@@ -178,7 +179,7 @@ export default function JournalingPage() {
 
     if (currentUser?.id) {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const { error } = await supabase
         .from("user_moods")
         .upsert({
@@ -193,6 +194,24 @@ export default function JournalingPage() {
       if (error) {
         console.error("Error saving mood:", error);
       }
+
+      await logActivity({
+        actor_id: currentUser.id,
+
+        actor_name:
+          currentUser.username ||
+          currentUser.email,
+
+        actor_role: "User",
+
+        action: "Updated mood tracker",
+
+        category: "Self-Healing",
+
+        status: "Completed",
+
+        description: `Selected mood: ${moodId}`,
+      });
     }
   };
 
@@ -226,6 +245,27 @@ export default function JournalingPage() {
     setTitle("");
     setContent("");
     setShowEntryForm(false);
+
+    await logActivity({
+      actor_id: currentUser.id,
+
+      actor_name:
+        currentUser.username ||
+        currentUser.email,
+
+      actor_role: "User",
+
+      action: "Created journal entry",
+
+      category: "Self-Healing",
+
+      status: "Completed",
+
+      description:
+        title.trim()
+          ? `Created journal: ${title}`
+          : "Created a journal entry",
+    });
   };
 
   // ========== EDIT ENTRY ==========
@@ -258,13 +298,34 @@ export default function JournalingPage() {
     }
 
     // Update entries list
-    setEntries(entries.map(entry => 
+    setEntries(entries.map(entry =>
       entry.id === editingEntry.id ? data[0] : entry
     ));
-    
+
     setEditingEntry(null);
     setEditTitle("");
     setEditContent("");
+
+    await logActivity({
+      actor_id: currentUser.id,
+
+      actor_name:
+        currentUser.username ||
+        currentUser.email,
+
+      actor_role: "User",
+
+      action: "Updated journal entry",
+
+      category: "Self-Healing",
+
+      status: "Completed",
+
+      description:
+        editTitle.trim()
+          ? `Updated journal: ${editTitle}`
+          : "Updated a journal entry",
+    });
   };
 
   // ========== DELETE ENTRY ==========
@@ -284,6 +345,25 @@ export default function JournalingPage() {
     }
 
     setEntries(entries.filter(entry => entry.id !== entryId));
+
+    await logActivity({
+      actor_id: currentUser.id,
+
+      actor_name:
+        currentUser.username ||
+        currentUser.email,
+
+      actor_role: "User",
+
+      action: "Deleted journal entry",
+
+      category: "Self-Healing",
+
+      status: "Completed",
+
+      description:
+        "User deleted a journal entry.",
+    });
   };
 
   const handleJarClick = () => {
@@ -291,7 +371,7 @@ export default function JournalingPage() {
       const randomIndex = Math.floor(Math.random() * jarItems.length);
       const randomItem = jarItems[randomIndex];
       const randomColor = ballColors[Math.floor(Math.random() * ballColors.length)];
-      
+
       setJarMessage(randomItem.content);
       setJarColor(randomColor);
       setJarOpen(true);
@@ -412,11 +492,10 @@ export default function JournalingPage() {
                           key={mood.id}
                           type="button"
                           onClick={() => handleMoodClick(mood.id)}
-                          className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${
-                            isActive
-                              ? "scale-110 border-[#0c72a6] bg-[#d9edf8] shadow-md"
-                              : "border-[#ececec] bg-[#f8f8f8] hover:scale-105"
-                          }`}
+                          className={`flex h-11 w-11 items-center justify-center rounded-full border text-xl transition ${isActive
+                            ? "scale-110 border-[#0c72a6] bg-[#d9edf8] shadow-md"
+                            : "border-[#ececec] bg-[#f8f8f8] hover:scale-105"
+                            }`}
                           title={mood.label}
                         >
                           {mood.emoji}

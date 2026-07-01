@@ -52,6 +52,7 @@ export default function AdminCounselorsPage() {
   const [newCounselorForm, setNewCounselorForm] = useState({
     full_name: "",
     email: "",
+    password: "",
     specialty: "",
     address: "",
     status: "Pending",
@@ -121,9 +122,9 @@ export default function AdminCounselorsPage() {
         (counselor.email || "").toLowerCase().includes(search.toLowerCase()) ||
         (counselor.address || counselor.location || "").toLowerCase().includes(search.toLowerCase()) ||
         (counselor.specialty || counselor.specialization || "").toLowerCase().includes(search.toLowerCase());
-      
+
       const matchStatus = statusFilter === "All" ? true : counselor.status === statusFilter;
-      
+
       return matchSearch && matchStatus;
     });
   }, [counselors, search, statusFilter]);
@@ -163,84 +164,53 @@ export default function AdminCounselorsPage() {
     setActionMessage("Saving counselor...");
 
     try {
-      const counselorId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-      
-      // 1. Insert ke tabel profiles
-      const profileData = {
-        id: counselorId,
-        username: newCounselorForm.email.trim().toLowerCase().split('@')[0],
-        email: newCounselorForm.email.trim().toLowerCase(),
-        full_name: newCounselorForm.full_name.trim(),
-        role: "counselor",
-        status: newCounselorForm.status,
-        specialty: newCounselorForm.specialty?.trim() || null,
-        address: newCounselorForm.address?.trim() || null,
-        sessions: Number(newCounselorForm.sessions) || 0,
-        created_at: new Date().toISOString(),
-      };
-
-      console.log("Inserting to profiles:", profileData);
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert([profileData]);
-
-      if (profileError) {
-        console.error("Profile insert error:", profileError);
-        if (profileError.code === "23505") {
-          setActionMessage("Email already exists. Please use a different email.");
-        } else {
-          setActionMessage(`Error creating profile: ${profileError.message}`);
+      console.log("NEW COUNSELOR FORM:", newCounselorForm);
+      const response = await fetch(
+        "/api/admin/create-counselor",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newCounselorForm),
         }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setActionMessage(
+          result.message || "Failed to create counselor."
+        );
         return;
       }
 
-      // 2. Insert ke tabel counselors
-      const counselorData = {
-        id: counselorId,
-        name: newCounselorForm.full_name.trim(),
-        email: newCounselorForm.email.trim().toLowerCase(),
-        specialty: newCounselorForm.specialty?.trim() || null,
-        specialization: newCounselorForm.specialty?.trim() || null,
-        address: newCounselorForm.address?.trim() || null,
-        location: newCounselorForm.address?.trim() || null,
-        status: newCounselorForm.status,
-        sessions: Number(newCounselorForm.sessions) || 0,
-        created_at: new Date().toISOString(),
-      };
-
-      console.log("Inserting to counselors:", counselorData);
-
-      const { error: counselorError } = await supabase
-        .from("counselors")
-        .insert([counselorData]);
-
-      if (counselorError) {
-        console.error("Counselor insert error:", counselorError);
-        // Rollback: hapus profile yang sudah dibuat
-        await supabase.from("profiles").delete().eq("id", counselorId);
-        setActionMessage(`Error creating counselor record: ${counselorError.message}`);
-        return;
-      }
-
-      console.log("Counselor created successfully!");
       await fetchCounselors();
-      
+
       setShowAddModal(false);
+
       setNewCounselorForm({
         full_name: "",
         email: "",
+        password: "",
         specialty: "",
         address: "",
         status: "Pending",
         sessions: 0,
       });
-      setActionMessage("✅ Counselor added successfully!");
-      
-    } catch (error) {
-      console.error("Unexpected error:", error);
-      setActionMessage(`Error: ${error.message}`);
-    } finally {
+
+      setActionMessage(
+        "✅ Counselor created successfully!"
+      );
+    }
+    catch (error) {
+      console.error(error);
+
+      setActionMessage(
+        error.message || "Unexpected error."
+      );
+    }
+    finally {
       setIsLoading(false);
     }
   };
@@ -539,11 +509,10 @@ export default function AdminCounselorsPage() {
                             setStatusFilter(status);
                             setIsStatusOpen(false);
                           }}
-                          className={`w-full px-4 py-3 text-center text-[14px] transition ${
-                            statusFilter === status
-                              ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
-                              : "text-[#333] hover:bg-[#fff5fa]"
-                          }`}
+                          className={`w-full px-4 py-3 text-center text-[14px] transition ${statusFilter === status
+                            ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
+                            : "text-[#333] hover:bg-[#fff5fa]"
+                            }`}
                         >
                           {status === "All" ? "All Status" : status}
                         </button>
@@ -662,6 +631,14 @@ export default function AdminCounselorsPage() {
             <form onSubmit={handleAddCounselor} className="space-y-4">
               <input type="text" name="full_name" placeholder="Full name" value={newCounselorForm.full_name} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <input type="email" name="email" placeholder="Email address" value={newCounselorForm.email} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
+              <input
+                type="password"
+                name="password"
+                placeholder="Temporary Password"
+                value={newCounselorForm.password}
+                onChange={handleNewCounselorChange}
+                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4"
+              />
               <input type="text" name="specialty" placeholder="Specialty" value={newCounselorForm.specialty} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <input type="text" name="address" placeholder="Address" value={newCounselorForm.address} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

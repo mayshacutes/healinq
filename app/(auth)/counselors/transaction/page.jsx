@@ -92,6 +92,14 @@ export default function CounselorTransactionPage() {
     .filter((t) => t.payments?.[0]?.payment_status === "paid")
     .reduce((sum, t) => sum + (t.counselor_earning || t.price || 0), 0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#d9edf8] flex items-center justify-center">
+        <div className="text-[#0c72a6] text-lg">Loading transactions...</div>
+      </div>
+    );
+  }
+
   return (
     <main className="relative min-h-screen bg-[#d9edf8] overflow-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">

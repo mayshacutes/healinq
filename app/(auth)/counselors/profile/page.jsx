@@ -138,6 +138,7 @@ export default function CounselorProfilePage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d9edf8]">
+      {/* Background decorations – same as original */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-24 top-[55%] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />
         <div className="absolute right-[8%] top-[-8rem] h-80 w-80 rounded-full bg-[#53bab3b2] blur-[100px]" />

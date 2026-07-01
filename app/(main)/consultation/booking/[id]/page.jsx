@@ -30,6 +30,40 @@ export default function BookingPage() {
   const [selectedHour, setSelectedHour] = useState(null);
   const [date, setDate] = useState("");
   const [topic, setTopic] = useState("");
+  const [counselor, setCounselor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [allSchedules, setAllSchedules] = useState([]);
+
+  useEffect(() => {
+    const fetchCounselor = async () => {
+      const { data, error } = await supabase
+        .from("counselors")
+        .select("*")
+        .eq("id", params.id)
+        .single();
+      if (!error) setCounselor(data);
+      setLoading(false);
+    };
+    fetchCounselor();
+  }, [params.id]);
+
+  useEffect(() => {
+    if (!counselor) return;
+    const fetchAllSchedules = async () => {
+      const { data, error } = await supabase
+        .from("counselor_schedules")
+        .select("*")
+        .eq("counselor_id", counselor.id);
+      if (!error && data) {
+        setAllSchedules(data);
+        console.log("✅ Jadwal dari database:", data);
+      } else {
+        console.error("❌ Gagal ambil jadwal:", error);
+      }
+    };
+    fetchAllSchedules();
+  }, [counselor]);
 
   const [availableHours, setAvailableHours] = useState([]);
   const [isLoadingHours, setIsLoadingHours] = useState(false);
@@ -125,10 +159,14 @@ export default function BookingPage() {
 
   const handleBooking = () => {
     if (!date || !selectedHour) {
-      alert("Please select date and time first!");
+      alert("Pilih tanggal dan jam terlebih dahulu!");
       return;
     }
-
+    if (!availableSlots.includes(selectedHour)) {
+      alert("Jam yang dipilih tidak tersedia.");
+      return;
+    }
+    const price = type === "online" ? counselor.online_price : counselor.offline_price;
     const bookingData = {
       counselorId: selected.id,
       counselorName: selected.name,
@@ -136,10 +174,9 @@ export default function BookingPage() {
       type: type,
       date: date,
       hour: selectedHour,
-      topic: topic,
-      price: type === "offline" ? 75000 : 50000,
+      topic,
+      price,
     };
-
     localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
     router.push(`/consultation/payment/${params.id}?type=${type}`);
   };
@@ -230,7 +267,6 @@ export default function BookingPage() {
                 className="w-full p-3 rounded-lg mt-2 bg-pink-100 outline-none"
               />
             </div>
-
             <div>
               <label className="font-medium">Consultation Hour</label>
               {!date && (
@@ -264,18 +300,16 @@ export default function BookingPage() {
                 </div>
               )}
             </div>
-
             <div>
               <label className="font-medium">What would you like to talk about?</label>
               <textarea
                 rows={4}
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="Write your consultation topics here"
+                placeholder="Tulis topik konsultasi"
                 className="w-full p-3 rounded-lg mt-2 bg-pink-100 outline-none"
               />
             </div>
-
             <div className="bg-white/70 p-4 rounded-xl text-sm">
               <div className="flex justify-between">
                 <span>Consultation Type</span>

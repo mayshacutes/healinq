@@ -143,6 +143,7 @@ export default function PaymentPage() {
       alert("Pilih file bukti pembayaran terlebih dahulu.");
       return;
     }
+  };
 
     // Upload ke Supabase Storage
     const filePath = `proof/${consultationId}_${Date.now()}_${proofFile.name}`;

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { logActivity } from "@/lib/activityLogger";
+import { supabase } from "@/lib/supabaseClient";
 import { lyricAPI, jarAPI, questionAPI, seedDefaultData } from "@/lib/supabaseApi";
 
 // ========== FUNGSI FORMAT TANGGAL ==========
@@ -24,7 +26,7 @@ function getCategoryLabel(categoryValue) {
     { value: "planning", label: "Planning" },
     { value: "creative", label: "Creative" },
   ];
-  
+
   const found = categoryOptions.find((item) => item.value === categoryValue);
   return found ? found.label : categoryValue;
 }
@@ -73,6 +75,20 @@ export default function AdminContentPage() {
   const [showEditJarModal, setShowEditJarModal] = useState(false);
   const [showAddQuestionModal, setShowAddQuestionModal] = useState(false);
   const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
+
+  const getAdminInfo = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return {
+      id: user?.id || null,
+      name:
+        user?.user_metadata?.full_name ||
+        user?.email ||
+        "Admin",
+    };
+  };
 
   // Load data from Supabase
   const loadAllData = async () => {
@@ -129,6 +145,25 @@ export default function AdminContentPage() {
       await loadAllData();
       setLyricForm({ title: "", lyric: "" });
       setShowAddLyricModal(false);
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+
+        actor_name: admin.name,
+
+        actor_role: "Admin",
+
+        action: "Added lyric content",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Added lyric: ${lyricForm.title}`,
+      });
+
       setActionMessage("✅ Lyric added successfully");
     } catch (error) {
       console.error(error);
@@ -147,6 +182,25 @@ export default function AdminContentPage() {
       await loadAllData();
       setShowEditLyricModal(false);
       setEditingLyric(null);
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+
+        actor_name: admin.name,
+
+        actor_role: "Admin",
+
+        action: "Updated lyric content",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Updated lyric: ${editingLyric.title}`,
+      });
+
       setActionMessage("✅ Lyric updated");
     } catch (error) {
       setActionMessage("❌ Failed to update lyric");
@@ -158,6 +212,25 @@ export default function AdminContentPage() {
     try {
       await lyricAPI.delete(id);
       await loadAllData();
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+
+        actor_name: admin.name,
+
+        actor_role: "Admin",
+
+        action: "Deleted lyric content",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Deleted lyric ID ${id}`,
+      });
+
       setActionMessage("✅ Lyric deleted");
       if (editingLyric?.id === id) {
         setShowEditLyricModal(false);
@@ -178,7 +251,29 @@ export default function AdminContentPage() {
     try {
       await jarAPI.create(jarForm.title.trim(), jarForm.content.trim(), jarForm.category);
       await loadAllData();
-      setJarForm({ title: "", content: "", category: "Self-Compassion & Healing" });
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+        actor_name: admin.name,
+        actor_role: "Admin",
+
+        action: "Added affirmation",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Added affirmation: ${jarForm.title}`,
+      });
+
+      setJarForm({
+        title: "",
+        content: "",
+        category: "Self-Compassion & Healing",
+      });
+
       setShowAddJarModal(false);
       setActionMessage("✅ Affirmation added");
     } catch (error) {
@@ -191,6 +286,23 @@ export default function AdminContentPage() {
     try {
       await jarAPI.update(editingJar.id, editingJar.title.trim(), editingJar.content.trim(), editingJar.category);
       await loadAllData();
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+        actor_name: admin.name,
+        actor_role: "Admin",
+
+        action: "Updated affirmation",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Updated affirmation: ${editingJar.title}`,
+      });
+
       setShowEditJarModal(false);
       setEditingJar(null);
       setActionMessage("✅ Affirmation updated");
@@ -204,6 +316,23 @@ export default function AdminContentPage() {
     try {
       await jarAPI.delete(id);
       await loadAllData();
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+        actor_name: admin.name,
+        actor_role: "Admin",
+
+        action: "Deleted affirmation",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Deleted affirmation ID ${id}`,
+      });
+
       setActionMessage("✅ Affirmation deleted");
     } catch (error) {
       setActionMessage("❌ Failed to delete");
@@ -220,7 +349,28 @@ export default function AdminContentPage() {
     try {
       await questionAPI.create(questionForm.text.trim(), questionForm.category);
       await loadAllData();
-      setQuestionForm({ text: "", category: "explorative" });
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+        actor_name: admin.name,
+        actor_role: "Admin",
+
+        action: "Added FYP question",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Added FYP question (${questionForm.category})`,
+      });
+
+      setQuestionForm({
+        text: "",
+        category: "explorative",
+      });
+
       setShowAddQuestionModal(false);
       setActionMessage("✅ Question added");
     } catch (error) {
@@ -233,6 +383,23 @@ export default function AdminContentPage() {
     try {
       await questionAPI.update(editingQuestion.id, editingQuestion.text.trim(), editingQuestion.category);
       await loadAllData();
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+        actor_name: admin.name,
+        actor_role: "Admin",
+
+        action: "Updated FYP question",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Updated FYP question (${editingQuestion.category})`,
+      });
+
       setShowEditQuestionModal(false);
       setEditingQuestion(null);
       setActionMessage("✅ Question updated");
@@ -246,6 +413,23 @@ export default function AdminContentPage() {
     try {
       await questionAPI.delete(id);
       await loadAllData();
+
+      const admin = await getAdminInfo();
+
+      await logActivity({
+        actor_id: admin.id,
+        actor_name: admin.name,
+        actor_role: "Admin",
+
+        action: "Deleted FYP question",
+
+        category: "Management",
+
+        status: "Completed",
+
+        description: `Deleted FYP question ID ${id}`,
+      });
+
       setActionMessage("✅ Question deleted");
     } catch (error) {
       setActionMessage("❌ Failed to delete");

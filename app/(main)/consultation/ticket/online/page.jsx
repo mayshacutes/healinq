@@ -3,8 +3,8 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Barcode from "react-barcode";
 import BackIconButton from "@/components/BackIconButton";
+import { supabase } from "@/lib/supabaseClient";
 
 function normalizeHour(hour) {
   return hour?.replace(".", ":") || "00:00";
@@ -15,7 +15,6 @@ function getSessionStatus(date, hour, duration = 60) {
   const start = new Date(`${date}T${formattedHour}:00`);
   const end = new Date(start.getTime() + duration * 60 * 1000);
   const now = new Date();
-
   if (now < start) return "upcoming";
   if (now >= start && now <= end) return "ongoing";
   return "finished";
@@ -34,51 +33,66 @@ export default function TicketOnlinePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const bookingCodeFromUrl = searchParams.get("bookingCode");
-
   const [ticketData, setTicketData] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
-    const savedBookings = JSON.parse(localStorage.getItem("myBookings")) || [];
-    const savedLatestTicket = localStorage.getItem("latestTicket");
-
-    if (bookingCodeFromUrl) {
-      const selectedBooking = savedBookings.find(
-        (booking) => booking.bookingCode === bookingCodeFromUrl
-      );
-      if (selectedBooking) {
-        setTicketData(selectedBooking);
-        localStorage.setItem("latestTicket", JSON.stringify(selectedBooking));
+    const fetchTicket = async () => {
+      if (!bookingCodeFromUrl) {
+        const savedLatest = localStorage.getItem("latestTicket");
+        if (savedLatest) setTicketData(JSON.parse(savedLatest));
         return;
       }
-    }
-
-    if (savedLatestTicket) {
-      setTicketData(JSON.parse(savedLatestTicket));
-    }
+      const { data, error } = await supabase
+        .from("consultations")
+        .select(`*, payments (payment_method, payment_status, paid_at)`)
+        .eq("booking_code", bookingCodeFromUrl)
+        .single();
+      if (!error && data) {
+        const isSuccess = data.payments?.[0]?.payment_status === "success";
+        const mapped = {
+          id: data.id,
+          bookingCode: data.booking_code,
+          counselorName: data.counselor_name,
+          type: data.consultation_type,
+          date: data.consultation_date,
+          hour: data.consultation_hour,
+          topic: data.topic,
+          totalPayment: data.price,
+          paymentMethod: data.payments?.[0]?.payment_method,
+          paymentStatus: data.payments?.[0]?.payment_status,
+          adminApproved: isSuccess,
+          attendanceConfirmed: data.attendance_confirmed,
+          proofFileName: data.proof_file_name,
+          sessionDuration: data.session_duration,
+        };
+        setTicketData(mapped);
+        localStorage.setItem("latestTicket", JSON.stringify(mapped));
+      } else {
+        const savedLatest = localStorage.getItem("latestTicket");
+        if (savedLatest) setTicketData(JSON.parse(savedLatest));
+      }
+    };
+    fetchTicket();
   }, [bookingCodeFromUrl]);
 
   useEffect(() => {
     if (!ticketData) return;
-
     const interval = setInterval(() => {
       const target = new Date(`${ticketData.date}T${normalizeHour(ticketData.hour)}:00`);
       const now = new Date();
       const diff = target - now;
-
       if (diff <= 0) {
         const status = getSessionStatus(ticketData.date, ticketData.hour, ticketData.sessionDuration || 60);
         if (status === "ongoing") setTimeLeft("🔴 Session Ongoing");
         else setTimeLeft("⏰ Session Ended");
         return;
       }
-
       const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff / (1000 * 60)) % 60);
       const s = Math.floor((diff / 1000) % 60);
       setTimeLeft(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`);
     }, 1000);
-
     return () => clearInterval(interval);
   }, [ticketData]);
 
@@ -101,31 +115,13 @@ export default function TicketOnlinePage() {
     );
   }
 
-  const name = ticketData.counselorName || searchParams.get("name") || "Dr. Diandra Aliyya Khoirunnisa";
-  const date = ticketData.date || searchParams.get("date") || "2026-03-05";
-  const hour = ticketData.hour || searchParams.get("hour") || "10.00";
-  const bookingCode = ticketData.bookingCode || bookingCodeFromUrl || "123.456.789.123";
-  const topic = ticketData.topic || "";
-  const duration = ticketData.sessionDuration || 60;
-
-  const isPaymentVerified =
-    ticketData.paymentStatus === "Paid" ||
-    (ticketData.paymentStatus === "Pending Verification" && ticketData.adminApproved);
-
-  const bookingStatusLabel = ticketData.paymentStatus === "Pending Verification"
-    ? "Pending Verification"
-    : isPaymentVerified
-    ? "Paid & Verified"
-    : ticketData.paymentStatus || "Unknown";
-
-  const bookingStatusClass = isPaymentVerified
-    ? "bg-green-100 text-green-600"
-    : ticketData.paymentStatus === "Pending Verification"
-    ? "bg-yellow-100 text-yellow-700"
-    : "bg-gray-100 text-gray-700";
-
-  const sessionStatus = getSessionStatus(date, hour, duration);
+  const { counselorName: name, date, hour, bookingCode, topic, totalPayment, paymentMethod, paymentStatus, adminApproved, proofFileName, sessionDuration } = ticketData;
+  const isPaymentVerified = paymentStatus === "success";
+  const bookingStatusLabel = isPaymentVerified ? "Paid & Verified" : "Pending Verification";
+  const bookingStatusClass = isPaymentVerified ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700";
+  const sessionStatus = getSessionStatus(date, hour, sessionDuration || 60);
   const canEnterChat = sessionStatus === "ongoing" && isPaymentVerified;
+  const adminVerifiedLabel = adminApproved ? "Yes" : "No";
 
   return (
     <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center justify-center py-10 px-4">
