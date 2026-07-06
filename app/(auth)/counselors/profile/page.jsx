@@ -51,8 +51,14 @@ export default function CounselorProfilePage() {
         return;
       }
 
-      setCounselorData(data);
-      setEditForm(data);
+      // Hitung sessions real dari consultations
+      const { count } = await supabase
+        .from("consultations")
+        .select("id", { count: "exact", head: true })
+        .eq("counselor_id", data.id);
+
+      setCounselorData({ ...data, sessions: count ?? 0 });
+      setEditForm({ ...data, sessions: count ?? 0 });
       setIsLoading(false);
     };
     fetchCounselor();

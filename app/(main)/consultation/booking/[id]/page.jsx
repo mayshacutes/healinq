@@ -50,7 +50,13 @@ export default function BookingPage() {
         setIsLoading(false);
         return;
       }
-      setSelected(data);
+
+      const { count } = await supabase
+        .from("consultations")
+        .select("id", { count: "exact", head: true })
+        .eq("counselor_id", data.id);
+
+      setSelected({ ...data, sessions: count ?? 0 });
       setIsLoading(false);
     };
     if (params.id) fetchCounselor();

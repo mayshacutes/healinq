@@ -40,7 +40,18 @@ export default function ListPage() {
         return;
       }
 
-      setCounselors(data || []);
+      // Hitung sessions real untuk tiap konselor
+      const ids = (data || []).map((c) => c.id);
+      const { data: counts } = await supabase
+        .from("consultations")
+        .select("counselor_id")
+        .in("counselor_id", ids.length > 0 ? ids : ["none"]);
+      const sessionCount = {};
+      (counts || []).forEach((c) => {
+        sessionCount[c.counselor_id] = (sessionCount[c.counselor_id] || 0) + 1;
+      });
+
+      setCounselors((data || []).map((c) => ({ ...c, sessions: sessionCount[c.id] || 0 })));
       setIsLoading(false);
     };
 
