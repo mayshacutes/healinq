@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import BackIconButton from "@/components/BackIconButton";
@@ -20,7 +20,8 @@ function splitIntoHourlySlots(startTime, endTime) {
 export default function BookingPage() {
   const params = useParams();
   const router = useRouter();
-  const [type, setType] = useState("online");
+  const searchParams = useSearchParams();
+  const [type, setType] = useState(searchParams.get("type") || "online");
 
   const [selected, setSelected] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
