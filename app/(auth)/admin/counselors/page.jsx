@@ -57,6 +57,7 @@ export default function AdminCounselorsPage() {
     address: "",
     status: "Pending",
     sessions: 0,
+    str_number: "",
   });
 
   // Update current date setiap detik
@@ -197,6 +198,7 @@ export default function AdminCounselorsPage() {
         address: "",
         status: "Pending",
         sessions: 0,
+        str_number: "",
       });
 
       setActionMessage(
@@ -223,11 +225,12 @@ export default function AdminCounselorsPage() {
     }
 
     const rows = [
-      ["Name", "Email", "Specialty", "Address", "Joined", "Status", "Sessions", "Role"],
+      ["Name", "Email", "Specialty", "No. STR", "Address", "Joined", "Status", "Sessions", "Role"],
       ...filteredCounselors.map((c) => [
         c.name || c.full_name,
         c.email,
         c.specialty || c.specialization,
+        c.str_number || "-",
         c.address || c.location,
         c.created_at ? formatJoinDate(new Date(c.created_at)) : "-",
         c.status,
@@ -310,6 +313,7 @@ export default function AdminCounselorsPage() {
         location: editingCounselor.address?.trim(),
         status: editingCounselor.status,
         sessions: Number(editingCounselor.sessions) || 0,
+        str_number: editingCounselor.str_number?.trim() || null,
       };
 
       // Update counselors table
@@ -640,6 +644,7 @@ export default function AdminCounselorsPage() {
                 className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4"
               />
               <input type="text" name="specialty" placeholder="Specialty" value={newCounselorForm.specialty} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
+              <input type="text" name="str_number" placeholder="No. STR (Surat Tanda Registrasi)" value={newCounselorForm.str_number} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <input type="text" name="address" placeholder="Address" value={newCounselorForm.address} onChange={handleNewCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
@@ -695,6 +700,10 @@ export default function AdminCounselorsPage() {
                 <p className="mt-1 text-[15px] font-semibold text-[#222]">{selectedCounselor.specialty || selectedCounselor.specialization}</p>
               </div>
               <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
+                <p className="text-[12px] text-[#0c72a6]">No. STR</p>
+                <p className="mt-1 text-[15px] font-semibold text-[#222]">{selectedCounselor.str_number || "-"}</p>
+              </div>
+              <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3">
                 <p className="text-[12px] text-[#0c72a6]">Address</p>
                 <p className="mt-1 text-[15px] font-semibold text-[#222]">{selectedCounselor.address || selectedCounselor.location}</p>
               </div>
@@ -741,6 +750,7 @@ export default function AdminCounselorsPage() {
               <input type="text" name="name" placeholder="Full name" value={editingCounselor.name || editingCounselor.full_name || ""} onChange={handleEditCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <input type="email" name="email" placeholder="Email address" value={editingCounselor.email || ""} onChange={handleEditCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <input type="text" name="specialty" placeholder="Specialty" value={editingCounselor.specialty || editingCounselor.specialization || ""} onChange={handleEditCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
+              <input type="text" name="str_number" placeholder="No. STR (Surat Tanda Registrasi)" value={editingCounselor.str_number || ""} onChange={handleEditCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <input type="text" name="address" placeholder="Address" value={editingCounselor.address || editingCounselor.location || ""} onChange={handleEditCounselorChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>

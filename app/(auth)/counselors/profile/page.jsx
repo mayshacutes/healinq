@@ -75,6 +75,7 @@ export default function CounselorProfilePage() {
       .update({
         name: editForm.name.trim(),
         specialty: editForm.specialty?.trim() || null,
+        str_number: editForm.str_number?.trim() || null,
         address: editForm.address?.trim() || null,
         bio: editForm.bio?.trim() || null,
       })
@@ -182,6 +183,7 @@ export default function CounselorProfilePage() {
             </span>
             <div className="w-full mt-2 text-sm space-y-2 text-gray-600">
               <p><b>Specialty:</b> {counselorData.specialty || "-"}</p>
+              <p><b>No. STR:</b> {counselorData.str_number || "-"}</p>
               <p><b>Alamat:</b> {counselorData.address || "-"}</p>
               <p><b>Sessions:</b> {counselorData.sessions || 0}</p>
               <p><b>Bio:</b> {counselorData.bio || "-"}</p>
@@ -222,6 +224,7 @@ export default function CounselorProfilePage() {
               {[
                 { name: "name", placeholder: "Nama lengkap" },
                 { name: "specialty", placeholder: "Specialty (misal: Anxiety, Depression)" },
+                { name: "str_number", placeholder: "No. STR (Surat Tanda Registrasi)" },
                 { name: "address", placeholder: "Alamat / Lokasi" },
               ].map((f) => (
                 <input key={f.name} type="text" name={f.name} placeholder={f.placeholder}

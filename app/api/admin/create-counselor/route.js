@@ -13,6 +13,7 @@ export async function POST(request) {
       address,
       status,
       sessions,
+      str_number,
     } = body;
 
     console.log("CREATE COUNSELOR BODY:", body);
@@ -99,6 +100,7 @@ export async function POST(request) {
         location: address,
         status,
         sessions,
+        str_number,
       });
 
     console.log("COUNSELOR ERROR:", counselorError);
