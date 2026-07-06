@@ -41,7 +41,7 @@ export default function CounselorProfilePage() {
       const { data, error } = await supabase
         .from("counselors")
         .select("*")
-        .eq("email", user.email)
+        .or(`email.eq.${user.email},auth_email.eq.${user.email}`)
         .maybeSingle();
 
       if (error || !data) {

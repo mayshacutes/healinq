@@ -36,7 +36,7 @@ export default function CounselorTransactionPage() {
       const { data: counselorData } = await supabase
         .from("counselors")
         .select("id, name, email")
-        .eq("email", user.email)
+        .or(`email.eq.${user.email},auth_email.eq.${user.email}`)
         .maybeSingle();
 
       if (!counselorData) { setIsLoading(false); return; }

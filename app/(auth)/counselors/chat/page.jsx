@@ -116,7 +116,7 @@ export default function CounselorChatPage() {
       const { data: counselorData } = await supabase
         .from("counselors")
         .select("id, name, email")
-        .eq("email", user.email)
+        .or(`email.eq.${user.email},auth_email.eq.${user.email}`)
         .maybeSingle();
 
       if (!counselorData) { setIsLoading(false); return; }
@@ -131,18 +131,20 @@ export default function CounselorChatPage() {
   }, []);
 
   const handleSelectConsultation = async (consultation) => {
-    setSelectedConsultation(consultation);
-    setSelectedRoomId(null);
+  setSelectedConsultation(consultation);
+  setSelectedRoomId(null);
 
-    // Ambil room_id dari chat_rooms
-    const roomId = consultation.chat_rooms?.[0]?.id;
-    if (roomId) {
-      setSelectedRoomId(roomId);
-    } else {
-      // Belum ada room untuk konsultasi ini
-      setSelectedRoomId(null);
-    }
-  };
+  // Fetch room secara terpisah
+  const { data: roomData } = await supabase
+    .from("chat_rooms")
+    .select("id")
+    .eq("consultation_id", consultation.id)
+    .maybeSingle();
+
+  if (roomData?.id) {
+    setSelectedRoomId(roomData.id);
+  }
+};
 
   if (isLoading) {
     return (

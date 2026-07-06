@@ -111,45 +111,44 @@ export default function UserChatPage() {
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setRoomId(params.get("roomId"));
-    setBookingCode(params.get("bookingCode"));
-  }, []);
+  const params = new URLSearchParams(window.location.search);
+  const roomIdFromUrl = params.get("roomId");
+  const bookingCodeFromUrl = params.get("bookingCode");
 
-  useEffect(() => {
-    const init = async () => {
-      setIsLoading(true);
+  setRoomId(roomIdFromUrl);
+  setBookingCode(bookingCodeFromUrl);
 
-      if (!roomId) {
-        setErrorMessage("Room ID tidak ditemukan.");
-        setIsLoading(false);
-        return;
-      }
+  const init = async () => {
+    setIsLoading(true);
 
-      // Ambil user yang sedang login
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setErrorMessage("Kamu harus login terlebih dahulu.");
-        setIsLoading(false);
-        return;
-      }
-      setCurrentUser(user);
-
-      // Ambil info consultation dari booking code
-      if (bookingCode) {
-        const { data } = await supabase
-          .from("consultations")
-          .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic")
-          .eq("booking_code", bookingCode)
-          .maybeSingle();
-        if (data) setConsultation(data);
-      }
-
+    if (!roomIdFromUrl) {
+      setErrorMessage("Room ID tidak ditemukan.");
       setIsLoading(false);
-    };
+      return;
+    }
 
-    init();
-  }, [roomId, bookingCode]);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setErrorMessage("Kamu harus login terlebih dahulu.");
+      setIsLoading(false);
+      return;
+    }
+    setCurrentUser(user);
+
+    if (bookingCodeFromUrl) {
+      const { data } = await supabase
+        .from("consultations")
+        .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic")
+        .eq("booking_code", bookingCodeFromUrl)
+        .maybeSingle();
+      if (data) setConsultation(data);
+    }
+
+    setIsLoading(false);
+  };
+
+  init();
+}, []);
 
   if (isLoading) {
     return (

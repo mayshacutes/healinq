@@ -27,7 +27,7 @@ function getStatusLabel(status) {
 
 function isPaymentVerified(consultation) {
   const pay = consultation.payments?.[0];
-  return pay?.payment_status === "paid";
+  return pay?.payment_status === "paid" || pay?.payment_status === "success";
 }
 
 function formatDate(d) {
@@ -44,48 +44,60 @@ export default function MyBookingsPage() {
 
   useEffect(() => {
     const fetchBookings = async () => {
-      setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setIsLoading(false); return; }
+  setIsLoading(true);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) { setIsLoading(false); return; }
 
-      const { data, error } = await supabase
-        .from("consultations")
-        .select(`
-          id,
-          booking_code,
-          counselor_name,
-          consultation_type,
-          consultation_date,
-          consultation_hour,
-          topic,
-          status,
-          session_duration,
-          proof_uploaded,
-          chat_rooms ( id ),
-          payments ( payment_status, payment_method )
-        `)
-        .eq("client_id", user.id)
-        .order("consultation_date", { ascending: false });
+  const { data, error } = await supabase
+    .from("consultations")
+    .select(`
+      id,
+      booking_code,
+      counselor_name,
+      consultation_type,
+      consultation_date,
+      consultation_hour,
+      topic,
+      status,
+      session_duration,
+      proof_uploaded,
+      payments ( payment_status, payment_method )
+    `)
+    .eq("client_id", user.id)
+    .order("consultation_date", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching bookings:", error);
-        setIsLoading(false);
-        return;
-      }
+  if (error) {
+    console.error("Error fetching bookings:", error);
+    setIsLoading(false);
+    return;
+  }
 
-      setBookings(data || []);
-      setIsLoading(false);
-    };
+  const bookingsWithRooms = await Promise.all(
+    (data || []).map(async (booking) => {
+      const { data: roomData } = await supabase
+        .from("chat_rooms")
+        .select("id")
+        .eq("consultation_id", booking.id)
+        .maybeSingle();
+      return { ...booking, roomId: roomData?.id || null };
+    })
+  );
+
+  setBookings(bookingsWithRooms);
+  setIsLoading(false);
+};
 
     fetchBookings();
   }, []);
 
   const handleGoToChat = (booking) => {
-    const sessionStatus = getSessionStatus(booking);
-    const verified = isPaymentVerified(booking);
-    const roomId = booking.chat_rooms?.[0]?.id;
+  const sessionStatus = getSessionStatus(booking);
+  const verified = isPaymentVerified(booking);
+  const roomId = booking.roomId;
 
-    if (!verified) {
+  alert(`roomId: ${roomId}, verified: ${verified}, status: ${sessionStatus}`); // ← tambah ini sementara
+
+  if (!verified) {
       alert("Chat belum bisa dibuka karena pembayaran masih menunggu verifikasi.");
       return;
     }
