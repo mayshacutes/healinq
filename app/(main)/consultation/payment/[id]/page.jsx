@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 import { createRoomForConsultation } from "@/lib/chatRooms";
@@ -9,8 +9,7 @@ import { createRoomForConsultation } from "@/lib/chatRooms";
 export default function PaymentPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const typeFromUrl = searchParams.get("type") || "online";
+  const [typeFromUrl, setTypeFromUrl] = useState("online");
 
   const [bookingData, setBookingData] = useState(null);
   const [selectedMethod, setSelectedMethod] = useState("qris");
@@ -24,6 +23,11 @@ export default function PaymentPage() {
   useEffect(() => {
     const saved = localStorage.getItem("pendingBooking");
     if (saved) setBookingData(JSON.parse(saved));
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setTypeFromUrl(params.get("type") || "online");
   }, []);
 
   const formatRupiah = (n) =>
@@ -143,30 +147,36 @@ export default function PaymentPage() {
       alert("Pilih file bukti pembayaran terlebih dahulu.");
       return;
     }
-  };
 
-    // Upload ke Supabase Storage
-    const filePath = `proof/${consultationId}_${Date.now()}_${proofFile.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from("payment-proofs")
-      .upload(filePath, proofFile);
+    try {
+      const filePath = `proof/${consultationId}_${Date.now()}_${proofFile.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("payment-proofs")
+        .upload(filePath, proofFile);
 
-    if (uploadError) {
-      // Jika storage belum dibuat, tetap update DB tanpa file URL
-      console.warn("Upload storage gagal:", uploadError.message);
+      if (uploadError) {
+        // Jika storage belum dibuat, tetap update DB tanpa file URL
+        console.warn("Upload storage gagal:", uploadError.message);
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("payment-proofs")
+        .getPublicUrl(filePath);
+
+      await supabase.from("consultations").update({
+        proof_uploaded: true,
+        proof_file_name: proofFile.name,
+        proof_file_url: urlData?.publicUrl || null,
+        proof_uploaded_at: new Date().toISOString(),
+      }).eq("id", consultationId);
+
+      setProofMessage("Bukti transfer berhasil diupload. Menunggu verifikasi admin.");
+    } catch (err) {
+      console.error("Failed to submit proof:", err);
+      alert("Gagal mengirim bukti pembayaran. Coba lagi.");
     }
-
-    const { data: urlData } = supabase.storage.from("payment-proofs").getPublicUrl(filePath);
-
-    await supabase.from("consultations").update({
-      proof_uploaded: true,
-      proof_file_name: proofFile.name,
-      proof_file_url: urlData?.publicUrl || null,
-      proof_uploaded_at: new Date().toISOString(),
-    }).eq("id", consultationId);
-
-    setProofMessage("Bukti transfer berhasil diupload. Menunggu verifikasi admin.");
   };
+
 
   if (!bookingData) {
     return (

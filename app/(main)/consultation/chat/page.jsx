@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 import { useChat } from "@/lib/useChat";
@@ -103,14 +103,18 @@ function ChatRoom({ roomId, currentUserId, counselorName }) {
 
 export default function UserChatPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const roomId = searchParams.get("roomId");
-  const bookingCode = searchParams.get("bookingCode");
-
+  const [roomId, setRoomId] = useState(null);
+  const [bookingCode, setBookingCode] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [consultation, setConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setRoomId(params.get("roomId"));
+    setBookingCode(params.get("bookingCode"));
+  }, []);
 
   useEffect(() => {
     const init = async () => {

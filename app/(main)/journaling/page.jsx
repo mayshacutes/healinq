@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
 import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -64,8 +63,6 @@ function getDateGroupLabel(dateString) {
 }
 
 export default function JournalingPage() {
-  const searchParams = useSearchParams();
-
   const hasHandledJarQuery = useRef(false);
   const hasHandledNewQuery = useRef(false);
 
@@ -150,8 +147,9 @@ export default function JournalingPage() {
   };
 
   useEffect(() => {
-    const openNew = searchParams.get("new");
-    const openJar = searchParams.get("jar");
+    const params = new URLSearchParams(window.location.search);
+    const openNew = params.get("new");
+    const openJar = params.get("jar");
 
     if (openNew === "true" && !hasHandledNewQuery.current) {
       hasHandledNewQuery.current = true;
@@ -162,7 +160,7 @@ export default function JournalingPage() {
       hasHandledJarQuery.current = true;
       handleJarClick();
     }
-  }, [searchParams]);
+  }, []);
 
   const groupedEntries = useMemo(() => {
     const groups = {};

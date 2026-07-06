@@ -23,6 +23,10 @@ function getStatusClass(status) {
   return "bg-[#ffe1ea] text-[#d64b7f]";
 }
 
+function isFullUrl(url) {
+  return typeof url === "string" && /^(https?:\/\/)/i.test(url);
+}
+
 export default function AdminTransactionsPage() {
   const dropdownRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -34,6 +38,7 @@ export default function AdminTransactionsPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [proofResolving, setProofResolving] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
@@ -121,6 +126,22 @@ export default function AdminTransactionsPage() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const resolveProofUrl = async (proofUrl) => {
+    if (!proofUrl) return null;
+    if (isFullUrl(proofUrl)) return proofUrl;
+
+    const { data, error } = supabase.storage
+      .from("payment-proofs")
+      .getPublicUrl(proofUrl);
+    if (data?.publicUrl) return data.publicUrl;
+
+    const signed = await supabase.storage
+      .from("payment-proofs")
+      .createSignedUrl(proofUrl, 60);
+    if (signed.error) return null;
+    return signed.data?.signedUrl || null;
+  };
+
   const handleApproveTransaction = async (tx) => {
     if (!tx?.paymentId) return;
     try {
@@ -173,7 +194,13 @@ export default function AdminTransactionsPage() {
 
   const handleFilterPaid = () => { setStatusFilter("Paid"); setIsStatusOpen(false); setActionMessage("Showing paid transactions only."); };
   const handleFilterPending = () => { setStatusFilter("Pending"); setIsStatusOpen(false); setActionMessage("Showing pending transactions only."); };
-  const handleViewTransaction = (tx) => { setSelectedTransaction(tx); setShowViewModal(true); };
+  const handleViewTransaction = async (tx) => {
+    setProofResolving(true);
+    const resolvedUrl = await resolveProofUrl(tx.proofFileUrl);
+    setProofResolving(false);
+    setSelectedTransaction({ ...tx, proofFileUrl: resolvedUrl });
+    setShowViewModal(true);
+  };
 
   if (loading) return <div className="min-h-screen bg-[#d9edf8] flex items-center justify-center">Loading transactions...</div>;
 
@@ -257,7 +284,7 @@ export default function AdminTransactionsPage() {
               <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3"><p className="text-[12px] text-[#0c72a6]">Status</p><div className="mt-2"><span className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(selectedTransaction.status)}`}>{selectedTransaction.status}</span></div></div>
               
               {/* TAMPILKAN GAMBAR BUKTI JIKA ADA */}
-              {selectedTransaction.proofFileUrl && (
+              {selectedTransaction.proofFileUrl ? (
                 <div className="rounded-[14px] bg-[#fff0f7] p-4">
                   <p className="text-[12px] text-[#ea3f97] font-semibold mb-2">Proof of Transfer</p>
                   <a href={selectedTransaction.proofFileUrl} target="_blank" rel="noopener noreferrer" className="block">
@@ -265,6 +292,20 @@ export default function AdminTransactionsPage() {
                   </a>
                   <p className="text-[11px] text-gray-500 mt-2">File: {selectedTransaction.proofFileName || "Proof image"}</p>
                 </div>
+              ) : selectedTransaction.proofFileName ? (
+                <div className="rounded-[14px] bg-[#fff9e8] p-4">
+                  <p className="text-[12px] text-[#d68a1f] font-semibold mb-2">Proof file exists but URL is unavailable</p>
+                  <p className="text-[13px] text-[#444]">{selectedTransaction.proofFileName}</p>
+                  <p className="mt-2 text-[12px] text-[#777]">Pastikan bukti payment sudah diupload dan terhubung dengan storage.</p>
+                </div>
+              ) : (
+                <div className="rounded-[14px] bg-[#fff0f7] p-4">
+                  <p className="text-[12px] text-[#ea3f97] font-semibold mb-2">No proof uploaded</p>
+                  <p className="text-[13px] text-[#444]">Pengguna belum mengunggah bukti transfer.</p>
+                </div>
+              )}
+              {proofResolving && (
+                <div className="rounded-[14px] bg-[#e6f7ff] p-3 text-[13px] text-[#0c72a6]">Resolving proof URL...</div>
               )}
 
               <div className="flex justify-between pt-2">
