@@ -105,12 +105,25 @@ export default function CounselorSchedulePage() {
     if (!counselorProfile) return;
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      const cid = counselorData?.id || null;
+      console.log("fetchSchedules: counselorData id =", cid, "email =", counselorProfile.email);
+
+      let query = supabase
         .from("counselor_schedules")
         .select("*")
-        .eq("counselor_id", counselorData?.id || counselorProfile.id)
         .order("schedule_date", { ascending: true })
         .order("start_time", { ascending: true });
+
+      // Cari by counselor_id kalo ada, fallback ke email buat legacy data
+      if (cid) {
+        query = query.eq("counselor_id", cid);
+      } else {
+        query = query.eq("counselor_email", counselorProfile.email);
+      }
+
+      const { data, error } = await query;
+
+      console.log("fetchSchedules: result", data, error);
 
       if (error) {
         setActionMessage(`Error: ${error.message}`);
@@ -119,17 +132,17 @@ export default function CounselorSchedulePage() {
       setSchedules(data || []);
 
       // Ambil counselor_id dari tabel counselors via email (beda tabel, beda ID)
-      const { data: counselorData } = await supabase
+      const { data: cData } = await supabase
         .from("counselors")
         .select("id")
         .eq("email", counselorProfile.email)
         .maybeSingle();
 
-      if (counselorData) {
+      if (cData) {
         const { data: consultations } = await supabase
           .from("consultations")
           .select("consultation_date, consultation_hour")
-          .eq("counselor_id", counselorData.id)
+          .eq("counselor_id", cData.id)
           .neq("status", "cancelled");
 
         const map = {};
@@ -141,6 +154,8 @@ export default function CounselorSchedulePage() {
           }
         });
         setBookedSlotsMap(map);
+      } else {
+        console.warn("Counselor not found in counselors table — booking page won't see schedules");
       }
     } catch (error) {
       setActionMessage(`Error: ${error.message}`);
@@ -153,7 +168,7 @@ export default function CounselorSchedulePage() {
     if (counselorProfile) {
       fetchSchedules();
     }
-  }, [counselorProfile]);
+  }, [counselorProfile, counselorData]);
 
   // Auto dismiss action message
   useEffect(() => {
@@ -202,8 +217,9 @@ export default function CounselorSchedulePage() {
     setIsLoading(true);
     setActionMessage("Saving schedule...");
     try {
+      const counselorIdForDb = counselorData?.id || counselorProfile.id;
       const scheduleData = {
-        counselor_id: counselorData?.id || counselorProfile.id,
+        counselor_id: counselorIdForDb,
         counselor_email: counselorProfile.email,
         counselor_name: counselorProfile.full_name || counselorProfile.name,
         schedule_date: form.scheduleDate,
@@ -211,25 +227,21 @@ export default function CounselorSchedulePage() {
         end_time: form.endTime,
         mode: form.mode,
         status: "available",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
+      const { error: insertError } = await supabase
         .from("counselor_schedules")
-        .insert([scheduleData])
-        .select();
+        .insert([scheduleData]);
 
-      if (error) {
-        if (error.code === "23505") {
+      if (insertError) {
+        if (insertError.code === "23505") {
           setActionMessage("Duplicate schedule entry.");
         } else {
-          setActionMessage(`Error: ${error.message}`);
+          setActionMessage(`Error: ${insertError.message}`);
+          console.error("Insert error:", insertError);
         }
         return;
       }
-
-      await fetchSchedules();
 
       await logActivity({
         actor_id: counselorProfile.id,
@@ -247,6 +259,8 @@ export default function CounselorSchedulePage() {
         endTime: "",
         mode: "online",
       });
+      setActionMessage("✅ Schedule added! Memuat ulang...");
+      await fetchSchedules();
       setActionMessage("✅ Schedule added successfully!");
     } catch (error) {
       console.error(error);
