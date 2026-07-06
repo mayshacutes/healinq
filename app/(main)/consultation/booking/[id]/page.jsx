@@ -67,8 +67,8 @@ export default function BookingPage() {
       setHoursMessage("");
       setSelectedHour(null);
 
-      // Query pakai counselor_email dan schedule_date (bukan day)
-      const { data: schedules, error: scheduleError } = await supabase
+      // Query — cari by counselor_id dulu, fallback ke email kalo kosong
+      let { data: schedules, error: scheduleError } = await supabase
       .from("counselor_schedules")
       .select("*")
       .eq("counselor_id", selected.id)
@@ -76,7 +76,22 @@ export default function BookingPage() {
       .eq("mode", type)
       .eq("status", "available");
 
-      console.log("Schedules:", schedules, scheduleError);
+      console.log("Schedules by ID:", schedules, scheduleError);
+
+      if (!scheduleError && (!schedules || schedules.length === 0) && selected.email) {
+        const { data: s2, error: e2 } = await supabase
+          .from("counselor_schedules")
+          .select("*")
+          .eq("counselor_email", selected.email)
+          .eq("schedule_date", date)
+          .eq("mode", type)
+          .eq("status", "available");
+        if (!e2 && s2?.length > 0) {
+          schedules = s2;
+          scheduleError = e2;
+          console.log("Schedules by email fallback:", schedules);
+        }
+      }
 
       if (scheduleError) {
         setHoursMessage("Gagal memuat jadwal konselor.");
