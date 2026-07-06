@@ -125,6 +125,9 @@ export default function ListPage() {
                       {counselor.specialty || counselor.specialization || "Konselor"}
                     </p>
                     <p className="text-xs text-gray-400">
+                      No. STR: {counselor.str_number || "-"}
+                    </p>
+                    <p className="text-xs text-gray-400">
                       {counselor.sessions || 0} clients have consulted
                     </p>
                   </div>

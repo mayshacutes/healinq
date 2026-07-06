@@ -221,6 +221,11 @@ export default function BookingPage() {
               <hr className="mt-2" />
             </div>
             <div>
+              <p className="font-semibold">No. STR</p>
+              <p className="text-gray-600">{selected?.str_number || "-"}</p>
+              <hr className="mt-2" />
+            </div>
+            <div>
               <p className="font-semibold">Sessions</p>
               <p className="text-gray-600">{selected?.sessions || 0} clients</p>
               <hr className="mt-2" />
