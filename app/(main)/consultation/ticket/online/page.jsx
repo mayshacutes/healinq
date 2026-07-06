@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import Barcode from "react-barcode";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
-import Barcode from "react-barcode";
 
 function normalizeHour(hour) {
   return hour?.replace(".", ":") || "00:00";
