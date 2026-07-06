@@ -36,7 +36,7 @@ export default function AdminActivityPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 25;
+  const itemsPerPage = 10;
 
   const fetchActivities = async () => {
     const { data, error } = await supabase
