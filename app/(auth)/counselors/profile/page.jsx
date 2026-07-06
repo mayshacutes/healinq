@@ -122,6 +122,16 @@ export default function CounselorProfilePage() {
       return;
     }
 
+    await logActivity({
+      actor_id: counselorData.id,
+      actor_name: counselorData.name,
+      actor_role: "Counselor",
+      action: "Changed password",
+      category: "Counselors",
+      status: "Completed",
+      description: "Counselor changed their account password.",
+    });
+
     setPasswordForm({ newPassword: "", confirmPassword: "" });
     setShowPasswordModal(false);
     setActionMessage("✅ Password berhasil diubah.");
