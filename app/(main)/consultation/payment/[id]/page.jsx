@@ -18,6 +18,7 @@ export default function PaymentPage() {
   const [proofFile, setProofFile] = useState(null);
   const [proofDataUrl, setProofDataUrl] = useState(null);
   const [proofMessage, setProofMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const [consultationId, setConsultationId] = useState(null);
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function PaymentPage() {
         .eq("id", user.id)
         .maybeSingle();
 
-      const clientName = profile?.full_name || profile?.username || user.email;
+      const clientName = profile?.full_name || profile?.username || user.user_metadata?.full_name || user.user_metadata?.name || user.email || "User";
       const bookingCode = `BK-${Date.now()}`;
 
       // 1. INSERT KE TABEL consultations
@@ -86,7 +87,13 @@ export default function PaymentPage() {
 
       if (consultError) {
         console.error("Error insert consultation:", consultError);
-        alert("Gagal membuat booking: " + consultError.message);
+        if (consultError.code === "23505") {
+          alert("Slot ini sudah dibooking oleh pasien lain. Silakan pilih jam lain.");
+          localStorage.removeItem("pendingBooking");
+          router.push(`/consultation/booking/${params.id}?type=${typeFromUrl}`);
+        } else {
+          alert("Gagal membuat booking: " + consultError.message);
+        }
         setIsProcessing(false);
         return;
       }
@@ -137,6 +144,19 @@ export default function PaymentPage() {
   const handleProofFileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Hanya file gambar yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran file maksimal 5MB.");
+      e.target.value = "";
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => { setProofDataUrl(reader.result); setProofFile(file); };
     reader.readAsDataURL(file);
@@ -148,32 +168,33 @@ export default function PaymentPage() {
       return;
     }
 
+    setIsUploading(true);
+    setProofMessage("");
+
     try {
-      const filePath = `proof/${consultationId}_${Date.now()}_${proofFile.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("payment-proofs")
-        .upload(filePath, proofFile);
+      const body = new FormData();
+      body.append("file", proofFile);
+      body.append("consultationId", consultationId.toString());
 
-      if (uploadError) {
-        // Jika storage belum dibuat, tetap update DB tanpa file URL
-        console.warn("Upload storage gagal:", uploadError.message);
+      const res = await fetch("/api/upload-payment-proof", {
+        method: "POST",
+        body,
+      });
+
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        alert(result.error || "Gagal mengupload bukti pembayaran. Coba lagi.");
+        setIsUploading(false);
+        return;
       }
-
-      const { data: urlData } = supabase.storage
-        .from("payment-proofs")
-        .getPublicUrl(filePath);
-
-      await supabase.from("consultations").update({
-        proof_uploaded: true,
-        proof_file_name: proofFile.name,
-        proof_file_url: urlData?.publicUrl || null,
-        proof_uploaded_at: new Date().toISOString(),
-      }).eq("id", consultationId);
 
       setProofMessage("Bukti transfer berhasil diupload. Menunggu verifikasi admin.");
     } catch (err) {
       console.error("Failed to submit proof:", err);
       alert("Gagal mengirim bukti pembayaran. Coba lagi.");
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -289,9 +310,9 @@ export default function PaymentPage() {
                 {proofDataUrl && (
                   <img src={proofDataUrl} alt="Bukti" className="w-full max-h-48 object-contain rounded-xl border mt-3" />
                 )}
-                <button onClick={handleSubmitProof} disabled={!proofDataUrl}
+                <button onClick={handleSubmitProof} disabled={!proofDataUrl || isUploading}
                   className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-4 font-semibold disabled:bg-gray-400">
-                  Upload Bukti
+                  {isUploading ? "Mengupload..." : "Upload Bukti"}
                 </button>
                 {proofMessage && <p className="mt-3 text-sm text-green-600">{proofMessage}</p>}
                 <button onClick={() => router.push("/consultation/my-bookings")}

@@ -31,7 +31,6 @@ export default function AdminDashboardPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [stats, setStats] = useState([]);
   const [newUsers, setNewUsers] = useState([]);
-  const [topCounselors, setTopCounselors] = useState([]);
   const [userGrowthData, setUserGrowthData] = useState([]);
   const [consultationTypeData, setConsultationTypeData] = useState([]);
   const [topCounselorsChart, setTopCounselorsChart] = useState([]);
@@ -47,7 +46,8 @@ export default function AdminDashboardPage() {
     // Stats counts
     const { count: totalUsers } = await supabase
       .from("profiles")
-      .select("*", { count: "exact", head: true });
+      .select("*", { count: "exact", head: true })
+      .eq("role", "user");
     const { count: totalCounselors } = await supabase
       .from("counselors")
       .select("*", { count: "exact", head: true });
@@ -65,8 +65,11 @@ export default function AdminDashboardPage() {
       { title: "Total chats", value: totalChats || 0, icon: "/images/icon_chat.png" },
     ]);
 
-    // User growth (monthly)
-    const { data: growthUsers } = await supabase.from("profiles").select("created_at");
+    // User growth (monthly) — users only, exclude counselors
+    const { data: growthUsers } = await supabase
+      .from("profiles")
+      .select("created_at")
+      .eq("role", "user");
     const monthlyUsers = {};
     growthUsers?.forEach((user) => {
       const month = new Date(user.created_at).toLocaleString("default", { month: "short" });
@@ -83,13 +86,22 @@ export default function AdminDashboardPage() {
       { name: "Offline", value: offlineCount, color: "#ef7bbf" },
     ]);
 
-    // Top counselors (by sessions from counselors table)
-    const { data: counselorsData } = await supabase
-      .from("counselors")
-      .select("name, sessions")
-      .order("sessions", { ascending: false })
-      .limit(5);
-    setTopCounselorsChart(counselorsData?.map((c) => ({ name: c.name || "Counselor", sessions: c.sessions || 0 })) || []);
+    // Top counselors (by actual consultation count)
+    const { data: topConsultData } = await supabase
+      .from("consultations")
+      .select("counselor_name");
+    const groupedSessions = {};
+    topConsultData?.forEach((c) => {
+      if (c.counselor_name) {
+        groupedSessions[c.counselor_name] = (groupedSessions[c.counselor_name] || 0) + 1;
+      }
+    });
+    setTopCounselorsChart(
+      Object.entries(groupedSessions)
+        .map(([name, sessions]) => ({ name, sessions }))
+        .sort((a, b) => b.sessions - a.sessions)
+        .slice(0, 5)
+    );
 
     // Payment status
     const { data: paymentsData } = await supabase.from("payments").select("payment_status");
@@ -102,32 +114,14 @@ export default function AdminDashboardPage() {
       { name: "Failed", value: failed, color: "#f87171" },
     ]);
 
-    // Newest users
+    // Newest users (exclude counselors)
     const { data: newestUsers } = await supabase
       .from("profiles")
       .select("username, address, created_at")
+      .eq("role", "user")
       .order("created_at", { ascending: false })
       .limit(5);
     setNewUsers(newestUsers || []);
-
-    // Top counselors by consultation count (from consultations join)
-    const { data: consultationData } = await supabase.from("consultations").select(`
-      counselor_id,
-      counselors (
-        id,
-        profiles ( full_name )
-      )
-    `);
-    const grouped = {};
-    consultationData?.forEach((item) => {
-      const name = item.counselors?.profiles?.full_name;
-      if (name) grouped[name] = (grouped[name] || 0) + 1;
-    });
-    const ranked = Object.entries(grouped)
-      .map(([name, sessions], idx) => ({ id: idx + 1, name, sessions }))
-      .sort((a, b) => b.sessions - a.sessions)
-      .slice(0, 5);
-    setTopCounselors(ranked);
   };
 
   return (

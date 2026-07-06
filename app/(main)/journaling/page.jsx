@@ -164,7 +164,8 @@ export default function JournalingPage() {
 
   const groupedEntries = useMemo(() => {
     const groups = {};
-    entries.forEach((entry) => {
+    (entries || []).forEach((entry) => {
+      if (!entry) return;
       const label = getDateGroupLabel(entry.created_at);
       if (!groups[label]) groups[label] = [];
       groups[label].push(entry);
@@ -239,7 +240,7 @@ export default function JournalingPage() {
       return;
     }
 
-    setEntries([data[0], ...entries]);
+    await loadJournalEntries(currentUser.id);
     setTitle("");
     setContent("");
     setShowEntryForm(false);
@@ -279,30 +280,32 @@ export default function JournalingPage() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("journal_entries")
       .update({
         title: editTitle.trim() || null,
         content: editContent.trim(),
-        updated_at: new Date().toISOString()
       })
-      .eq("id", editingEntry.id)
-      .select();
+      .eq("id", editingEntry.id);
 
-    if (error) {
-      console.error("Error updating entry:", error);
-      alert("Failed to update entry");
-      return;
-    }
+    const updatedEntry = {
+      ...editingEntry,
+      title: editTitle.trim() || null,
+      content: editContent.trim(),
+    };
 
-    // Update entries list
     setEntries(entries.map(entry =>
-      entry.id === editingEntry.id ? data[0] : entry
+      entry.id === editingEntry.id ? updatedEntry : entry
     ));
-
     setEditingEntry(null);
     setEditTitle("");
     setEditContent("");
+
+    if (error) {
+      console.error("Error updating entry:", error);
+      alert("Failed to sync update to server, but local changes are applied");
+      return;
+    }
 
     await logActivity({
       actor_id: currentUser.id,
@@ -434,21 +437,11 @@ export default function JournalingPage() {
 
             <div className="relative z-10">
               <div className="mb-8 flex justify-end -mt-20">
-                <div className="flex items-center gap-4 rounded-full bg-[#8fd0ef] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#79bde4] bg-[#dff4ff] text-[12px] font-semibold text-[#74a4d4]">
-                      XP
-                    </div>
-                    <span className="text-[18px] font-bold text-white">
-                      {currentUser?.exp?.toLocaleString() || "0"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 rounded-full bg-[#efb7d5] px-4 py-2">
-                    <Image
-                      src="/images/maskot1.png"
-                      alt="Mascot"
-                      width={42}
+                <div className="flex items-center gap-4 rounded-full bg-[#efb7d5] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
+                  <Image
+                    src="/images/maskot1.png"
+                    alt="Mascot"
+                    width={42}
                       height={42}
                       className="h-[42px] w-[42px] object-contain"
                     />
@@ -461,7 +454,6 @@ export default function JournalingPage() {
                     />
                   </div>
                 </div>
-              </div>
 
               <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>

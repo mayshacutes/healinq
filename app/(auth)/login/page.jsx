@@ -191,7 +191,16 @@ export default function LoginPage() {
               full_name: userEmail.split('@')[0],
             });
           
-          console.log("✅ Manual login - redirecting to counselor");
+          await logActivity({
+            actor_id: data.user.id,
+            actor_name: userEmail.split('@')[0],
+            actor_role: "Counselor",
+            action: "Logged in",
+            category: "Authentication",
+            status: "Completed",
+            description: "Counselor logged into the dashboard.",
+          });
+
           router.push("/counselors/schedule");
           router.refresh();
           return;

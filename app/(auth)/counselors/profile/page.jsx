@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { logActivity } from "@/lib/activityLogger";
 
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -87,6 +88,16 @@ export default function CounselorProfilePage() {
     setCounselorData((prev) => ({ ...prev, ...editForm }));
     setShowEditModal(false);
     setActionMessage("✅ Profil berhasil diperbarui.");
+
+    await logActivity({
+      actor_id: counselorData.id,
+      actor_name: counselorData.name || editForm.name,
+      actor_role: "Counselor",
+      action: "Updated profile",
+      category: "Counselors",
+      status: "Completed",
+      description: "Counselor updated their profile information.",
+    });
   };
 
   // GANTI PASSWORD VIA SUPABASE AUTH

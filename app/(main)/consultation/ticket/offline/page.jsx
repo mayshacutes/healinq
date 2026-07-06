@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 import Barcode from "react-barcode";
@@ -133,99 +132,119 @@ export default function TicketOfflinePage() {
   const isPaymentVerified = paymentStatus === "success";
   const bookingStatusLabel = isPaymentVerified ? "Paid & Verified" : "Pending Verification";
   const bookingStatusClass = isPaymentVerified ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700";
-  const adminVerifiedLabel = adminApproved ? "Yes" : "No";
 
   return (
-    <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center justify-center py-10 px-4">
+    <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center py-10 px-4">
       <div className="absolute top-6 left-6 z-10">
         <BackIconButton to="/consultation" />
       </div>
 
-      <div className="relative w-[900px] mx-auto">
-        <Image
-          src="/images/ticket.png"
-          alt="ticket background"
-          width={900}
-          height={420}
-          className="w-full h-auto"
-          priority
-        />
-        {/* Layout dua kolom (sama seperti sebelumnya) */}
-        <div className="absolute inset-0 flex px-8 py-6" style={{ left: "16px" }}>
-          {/* Kolom kiri - konten utama (68% lebar) */}
-          <div className="w-[68%] pr-4">
-            <div className="bg-pink-500 text-white text-center py-1.5 rounded-t-lg font-semibold text-sm">
-              Booking Confirmed!
+      {/* ================= CSS TICKET CARD ================= */}
+      <div className="w-full max-w-[600px] bg-white rounded-3xl shadow-lg overflow-hidden mt-10">
+
+        {/* Pink Header */}
+        <div className="bg-pink-500 text-white text-center py-3 font-semibold text-sm md:text-base tracking-wide">
+          ✅ Booking Confirmed!
+        </div>
+
+        {/* Content */}
+        <div className="p-4 md:p-6 space-y-4">
+          {/* Doctor Info */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="w-14 h-14 md:w-16 md:h-16 bg-pink-100 rounded-full flex items-center justify-center text-2xl md:text-3xl flex-shrink-0">
+              👩‍⚕️
             </div>
-            <div className="bg-[#f3f3f3] p-3 rounded-b-lg space-y-3">
-              <div className="flex gap-3">
-                <div className="w-12 h-12 bg-gray-300 rounded-full flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-bold text-xs leading-tight">{name}</p>
-                  <p className="text-[10px] text-gray-600">Psikolog Klinis | Offline</p>
-                  <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] rounded-full ${bookingStatusClass}`}>
-                    {bookingStatusLabel}
-                  </span>
-                  <p className="text-[10px] text-gray-600 mt-1">{date}</p>
-                </div>
-                <div className="bg-pink-100 px-2 py-1 rounded-lg text-center">
-                  <p className="font-semibold text-[10px]">Time</p>
-                  <p className="text-[10px]">{hour} WIB</p>
-                </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-gray-800 text-sm md:text-base truncate">{name}</p>
+              <p className="text-xs md:text-sm text-gray-600">Psikolog Klinis | Offline</p>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                <span className={`inline-block px-2.5 py-0.5 text-[10px] md:text-xs rounded-full font-medium ${bookingStatusClass}`}>
+                  {bookingStatusLabel}
+                </span>
+                <span className="text-xs md:text-sm text-gray-500">{date}</span>
               </div>
-              <div className="bg-pink-100 px-2 py-1.5 rounded-lg">
-                <p className="font-semibold text-[10px]">Booking Code</p>
-                <p className="text-pink-600 font-semibold text-[10px]">{bookingCode}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-lg text-[10px]">
-                <div><p className="font-semibold">Session Type</p><p>Offline Consultation</p></div>
-                <div><p className="font-semibold">Payment</p><p>{paymentMethod || "-"}</p></div>
-                <div><p className="font-semibold">Status</p><p>{bookingStatusLabel}</p></div>
-                <div><p className="font-semibold">Total</p><p>{formatRupiah(totalPayment)}</p></div>
-                <div><p className="font-semibold">Proof</p><p className="truncate">{proofFileName || "Not uploaded"}</p></div>
-                <div><p className="font-semibold">Admin Verified</p><p>{adminVerifiedLabel}</p></div>
-              </div>
-              <div>
-                <p className="text-[10px] mb-0.5">☐ Consultation Preview</p>
-                <div className="h-10 bg-gray-200 rounded p-1 text-[9px] text-gray-600 overflow-y-auto">
-                  {topic || "No topic written."}
-                </div>
-              </div>
+            </div>
+            <div className="bg-pink-100 px-3 py-1.5 rounded-lg text-xs text-center min-w-[70px] flex-shrink-0 self-start">
+              <p className="font-semibold text-gray-600 text-[10px] md:text-xs">Time</p>
+              <p className="text-pink-600 font-bold text-sm md:text-base">{hour} WIB</p>
             </div>
           </div>
-          {/* Kolom kanan - area untuk barcode (tanpa barcode) */}
-          <div className="w-[32%] flex items-center justify-center border-l-2 border-dashed border-pink-300 pl-4">
-            {/* Barcode dihapus, biarkan kosong */}
+
+          {/* Booking Code */}
+          <div className="bg-pink-50 px-3 py-2 rounded-lg">
+            <p className="text-[11px] font-semibold text-gray-500">Booking Code</p>
+            <p className="text-pink-600 font-bold font-mono text-sm md:text-base tracking-wider">{bookingCode}</p>
+          </div>
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 md:p-4 rounded-2xl">
+            <div>
+              <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Session Type</p>
+              <p className="font-medium text-xs md:text-sm text-gray-800">Offline Consultation</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Payment</p>
+              <p className="font-medium text-xs md:text-sm text-gray-800">{paymentMethod || "-"}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Status</p>
+              <p className="font-medium text-xs md:text-sm text-gray-800">{bookingStatusLabel}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Total</p>
+              <p className="font-medium text-xs md:text-sm text-gray-800">{formatRupiah(totalPayment)}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Proof</p>
+              <p className="font-medium text-xs md:text-sm text-gray-800 truncate">{proofFileName || "Not uploaded"}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Admin Verified</p>
+              <p className="font-medium text-xs md:text-sm text-gray-800">{adminApproved ? "✅ Yes" : "⏳ No"}</p>
+            </div>
+          </div>
+
+          {/* Consultation Preview */}
+          <div>
+            <p className="text-xs md:text-sm font-semibold text-gray-700 mb-1">📋 Consultation Preview</p>
+            <div className="h-12 md:h-14 bg-gray-50 rounded-lg p-2 text-xs text-gray-600 overflow-hidden border border-gray-200">
+              {topic || "No topic written."}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mt-10 text-center">
-        <p className="text-xl font-medium">Your session will start in:</p>
-        <h1 className="text-4xl font-bold text-pink-500 mt-2">{timeLeft || "Calculating..."}</h1>
-        <button
-          onClick={() => {
-            if (!isPaymentVerified) {
-              alert("Bukti transfer belum diverifikasi. Tunggu konfirmasi admin/konselor terlebih dahulu.");
-              return;
-            }
-            if (!attendanceConfirmed) setShowPopup(true);
-          }}
-          disabled={attendanceConfirmed}
-          className={`mt-5 px-6 py-2 rounded-full font-semibold ${
-            attendanceConfirmed
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-pink-300 text-pink-700 hover:opacity-90"
-          }`}
-        >
-          {attendanceConfirmed ? "Confirmed" : isPaymentVerified ? "Confirm Attendance" : "Waiting for Verification"}
-        </button>
-        <button
-          onClick={() => router.push("/consultation/my-bookings")}
-          className="block mx-auto mt-3 px-6 py-2 bg-white text-[#0C72A6] rounded-full font-semibold hover:opacity-90"
-        >
-          My Bookings
-        </button>
+      {/* ================= COUNTDOWN + BUTTONS ================= */}
+      <div className="mt-8 md:mt-10 text-center w-full max-w-[600px]">
+        <p className="text-sm md:text-base font-medium text-gray-600">Your session will start in:</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-pink-500 mt-2">{timeLeft || "Calculating..."}</h1>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-5">
+          <button
+            onClick={() => {
+              if (!isPaymentVerified) {
+                alert("Bukti transfer belum diverifikasi. Tunggu konfirmasi admin/konselor terlebih dahulu.");
+                return;
+              }
+              if (!attendanceConfirmed) setShowPopup(true);
+            }}
+            disabled={attendanceConfirmed}
+            className={`px-6 py-2.5 rounded-full font-semibold transition text-sm md:text-base ${
+              attendanceConfirmed
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-pink-300 text-pink-700 hover:opacity-90"
+            }`}
+          >
+            {attendanceConfirmed ? "Confirmed" : isPaymentVerified ? "Confirm Attendance" : "Waiting for Verification"}
+          </button>
+
+          <button
+            onClick={() => router.push("/consultation/my-bookings")}
+            className="px-6 py-2.5 bg-white text-[#0C72A6] rounded-full font-semibold border border-[#0C72A6] hover:bg-blue-50 transition text-sm md:text-base"
+          >
+            📋 My Bookings
+          </button>
+        </div>
       </div>
 
       {showPopup && (

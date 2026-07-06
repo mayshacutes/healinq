@@ -126,20 +126,29 @@ export default function AdminTransactionsPage() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const resolveProofUrl = async (proofUrl) => {
-    if (!proofUrl) return null;
-    if (isFullUrl(proofUrl)) return proofUrl;
+  const resolveProofUrl = async (proofUrl, proofFileName) => {
+    if (proofUrl && isFullUrl(proofUrl)) return proofUrl;
 
-    const { data, error } = supabase.storage
-      .from("payment-proofs")
-      .getPublicUrl(proofUrl);
-    if (data?.publicUrl) return data.publicUrl;
+    if (!proofUrl && proofFileName) {
+      const { data } = supabase.storage
+        .from("payment-proofs")
+        .getPublicUrl(`proof/${proofFileName}`);
+      if (data?.publicUrl) return data.publicUrl;
+    }
 
-    const signed = await supabase.storage
-      .from("payment-proofs")
-      .createSignedUrl(proofUrl, 60);
-    if (signed.error) return null;
-    return signed.data?.signedUrl || null;
+    if (proofUrl) {
+      const { data } = supabase.storage
+        .from("payment-proofs")
+        .getPublicUrl(proofUrl);
+      if (data?.publicUrl) return data.publicUrl;
+
+      const signed = await supabase.storage
+        .from("payment-proofs")
+        .createSignedUrl(proofUrl, 60);
+      if (!signed.error && signed.data?.signedUrl) return signed.data.signedUrl;
+    }
+
+    return null;
   };
 
   const handleApproveTransaction = async (tx) => {
@@ -196,7 +205,7 @@ export default function AdminTransactionsPage() {
   const handleFilterPending = () => { setStatusFilter("Pending"); setIsStatusOpen(false); setActionMessage("Showing pending transactions only."); };
   const handleViewTransaction = async (tx) => {
     setProofResolving(true);
-    const resolvedUrl = await resolveProofUrl(tx.proofFileUrl);
+    const resolvedUrl = await resolveProofUrl(tx.proofFileUrl, tx.proofFileName);
     setProofResolving(false);
     setSelectedTransaction({ ...tx, proofFileUrl: resolvedUrl });
     setShowViewModal(true);

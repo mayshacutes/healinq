@@ -46,15 +46,8 @@ export default function ConsultationPage() {
           My Bookings
         </button>
 
-        {/* XP & ICON */}
+        {/* ICON */}
         <div className="absolute top-5 right-5 flex items-center gap-3 z-20">
-          {/* XP */}
-          <div className="bg-blue-100 px-4 py-1 rounded-full flex items-center gap-2 shadow">
-            <span className="text-sm font-semibold text-blue-700">XP</span>
-            <span className="text-sm font-bold">1,240</span>
-          </div>
-
-          {/* ICON */}
           <div className="bg-pink-100 px-4 py-2 rounded-full shadow flex items-center gap-2">
             <Image
               src="/images/maskot1.png"

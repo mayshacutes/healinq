@@ -54,7 +54,7 @@ export default function AdminUsersPage() {
     const { data, error } = await supabase
       .from("profiles")
       .select(
-        "id, username, email, status, exp, streak, level, nextLevelXp, bio, telp_number, birth_date, gender, address, last_edu, doctor"
+        "id, username, email, status, bio, telp_number, birth_date, gender, address, last_edu, doctor"
       )
       .eq("role", "user")
       .order("username", { ascending: true });
@@ -124,15 +124,13 @@ export default function AdminUsersPage() {
 
   const handleExportData = () => {
     const rows = [
-      ["Username", "Email", "Gender", "Phone", "Address", "Level", "EXP", "Status", "Joined"],
+      ["Username", "Email", "Gender", "Phone", "Address", "Status", "Joined"],
       ...filteredProfiles.map((u) => [
         u.username || "",
         u.email || "",
         u.gender || "",
         u.telp_number || "",
         u.address || "",
-        u.level ?? "",
-        u.exp ?? "",
         u.status || "",
         u.created_at ? new Date(u.created_at).toLocaleDateString() : "",
       ]),
@@ -344,6 +342,13 @@ export default function AdminUsersPage() {
                     </div>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(true)}
+                  className="h-[44px] shrink-0 rounded-full border-2 border-[#0C72A6] bg-white px-5 text-[14px] font-medium text-[#0C72A6] transition hover:bg-blue-50"
+                >
+                  + Add User
+                </button>
               </div>
             </div>
 
@@ -357,8 +362,7 @@ export default function AdminUsersPage() {
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Gender</th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Phone</th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Address</th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Level</th>
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">EXP</th>
+
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Action</th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Status</th>
                   </tr>
@@ -381,8 +385,7 @@ export default function AdminUsersPage() {
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.gender || "-"}</td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.telp_number || "-"}</td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.address || "-"}</td>
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.level ?? "-"}</td>
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.exp ?? "-"}</td>
+
                         <td className="px-4 py-4">
                           <div className="flex flex-wrap gap-2">
                             <button
@@ -418,9 +421,9 @@ export default function AdminUsersPage() {
               <h2 className="text-[18px] font-bold text-[#1e1e1e]">User Insights</h2>
               <div className="mt-5 space-y-4">
                 <div className="rounded-[14px] bg-white/50 px-4 py-4">
-                  <p className="text-[13px] text-[#ea3f97]">Most active user (by EXP)</p>
+                  <p className="text-[13px] text-[#ea3f97]">Total users</p>
                   <p className="mt-1 text-[16px] font-semibold text-[#222]">
-                    {[...profiles].sort((a, b) => (b.exp || 0) - (a.exp || 0))[0]?.username || "-"}
+                    {profiles.length}
                   </p>
                 </div>
                 <div className="rounded-[14px] bg-white/50 px-4 py-4">
@@ -473,8 +476,6 @@ export default function AdminUsersPage() {
                 <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3"><p className="text-[12px] text-[#0c72a6]">Phone</p><p className="mt-1 text-[15px] font-semibold">{selectedUser.telp_number || "-"}</p></div>
               </div>
               <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3"><p className="text-[12px] text-[#ea3f97]">Address</p><p className="mt-1 text-[15px] font-semibold">{selectedUser.address || "-"}</p></div>
-              <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3"><p className="text-[12px] text-[#0c72a6]">Level</p><p className="mt-1 text-[15px] font-semibold">{selectedUser.level ?? "-"}</p></div>
-              <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3"><p className="text-[12px] text-[#ea3f97]">EXP</p><p className="mt-1 text-[15px] font-semibold">{selectedUser.exp ?? "-"}</p></div>
               <div className="flex justify-end pt-2"><button onClick={() => setShowViewModal(false)} className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]">Close</button></div>
             </div>
           </div>

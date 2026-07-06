@@ -4,65 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getDailyLyric } from "@/lib/dailyLyric";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-const counselors = [
-  { id: 1, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.5 },
-  { id: 2, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.5 },
-  { id: 3, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.5 },
-  { id: 4, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.4 },
-  { id: 5, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.4 },
-  { id: 6, name: "Jessica Atalya Kriswianto", specialty: "Stress Management", rating: 4.3 },
-];
-
-const fallbackJournalEntries = [
-  {
-    id: 1,
-    title: "I Hate My Life Lately...",
-    content: "I feel tired with everything lately, but I am trying to keep going one step at a time.",
-    createdAt: "2026-03-08T15:18:00",
-    mood: "😟",
-  },
-  {
-    id: 2,
-    title: "I Hate My Life Lately...",
-    content: "Some days feel heavier than others, and today was one of those days.",
-    createdAt: "2026-03-09T15:18:00",
-    mood: "😟",
-  },
-  {
-    id: 3,
-    title: "Finally, I Found My Passion...",
-    content: "I finally found something that makes me excited and feel alive again.",
-    createdAt: "2026-03-10T18:18:00",
-    mood: "😄",
-  },
-  {
-    id: 4,
-    title: "People Always Leave. Don’t Get...",
-    content: "It hurts when people leave, but I want to learn how to be okay with myself too.",
-    createdAt: "2026-03-11T12:10:00",
-    mood: "😟",
-  },
-];
-
-const consultationHistory = [
-  { id: 1, day: "16", month: "March" },
-  { id: 2, day: "15", month: "March" },
-  { id: 3, day: "14", month: "March" },
-  { id: 4, day: "13", month: "March" },
-  { id: 5, day: "12", month: "March" },
-  { id: 6, day: "11", month: "March" },
-  { id: 7, day: "10", month: "March" },
-  { id: 8, day: "11", month: "March" },
-  { id: 9, day: "10", month: "March" },
-];
-
+import { supabase } from "@/lib/supabaseClient";
 function formatGreetingDate(date) {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -72,28 +14,36 @@ function formatGreetingDate(date) {
   }).format(date);
 }
 
+function parseSafe(dateString) {
+  const d = new Date(dateString);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function formatMonthShort(dateString) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-  }).format(new Date(dateString));
+  const d = parseSafe(dateString);
+  if (!d) return "-";
+  return new Intl.DateTimeFormat("en-US", { month: "short" }).format(d);
 }
 
 function formatDay(dateString) {
-  return new Intl.DateTimeFormat("en-US", {
-    day: "2-digit",
-  }).format(new Date(dateString));
+  const d = parseSafe(dateString);
+  if (!d) return "--";
+  return new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(d);
 }
 
 function formatTime(dateString) {
+  const d = parseSafe(dateString);
+  if (!d) return "--:--";
   return new Intl.DateTimeFormat("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(new Date(dateString));
+  }).format(d);
 }
 
 function getRelativeLabel(dateString) {
-  const entryDate = new Date(dateString);
+  const entryDate = parseSafe(dateString);
+  if (!entryDate) return "-";
   const today = new Date();
   const yesterday = new Date();
   const twoDaysAgo = new Date();
@@ -125,6 +75,8 @@ export default function UserDashboardPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [recentEntries, setRecentEntries] = useState([]);
+  const [consultations, setConsultations] = useState([]);
+  const [counselorsData, setCounselorsData] = useState([]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -189,10 +141,6 @@ export default function UserDashboardPage() {
               id: user.id,
               username,
               email: user.email,
-              exp: 0,
-              streak: 0,
-              level: 1,
-              nextLevelXp: 260,
             },
             {
               onConflict: "id",
@@ -210,26 +158,37 @@ export default function UserDashboardPage() {
 
       if (!isMounted) return;
 
-      const activeUser = {
+      setCurrentUser({
         username: profile?.username || "Buddy",
         email: user.email,
-        xp: profile?.exp ?? 0,
-        streak: profile?.streak ?? 0,
-        level: profile?.level ?? 1,
-        nextLevelXp: profile?.nextLevelXp ?? 260,
-      };
+      });
 
-      setCurrentUser(activeUser);
+      // Ambil consultation history
+      const { data: consultData } = await supabase
+        .from("consultations")
+        .select("id, consultation_date, consultation_hour, counselor_name, consultation_type, session_duration, status")
+        .eq("client_id", user.id)
+        .order("consultation_date", { ascending: false })
+        .limit(6);
+      if (consultData) setConsultations(consultData);
 
-      // JOURNAL TETAP LOCALSTORAGE
-      const journalKey = `journalEntries_${user.email}`;
-      const existingEntries = JSON.parse(localStorage.getItem(journalKey) || "[]");
+      // Ambil daftar konselor aktif
+      const { data: counselorData } = await supabase
+        .from("counselors")
+        .select("id, name, specialty")
+        .eq("status", "Active")
+        .limit(4);
+      if (counselorData) setCounselorsData(counselorData);
 
-      if (existingEntries.length > 0) {
-        setRecentEntries(existingEntries.slice(0, 4));
-      } else {
-        localStorage.setItem(journalKey, JSON.stringify(fallbackJournalEntries));
-        setRecentEntries(fallbackJournalEntries.slice(0, 4));
+      // Ambil journal entries dari database
+      const { data: journalData } = await supabase
+        .from("journal_entries")
+        .select("id, title, content, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(4);
+      if (journalData && journalData.length > 0) {
+        setRecentEntries(journalData);
       }
     };
 
@@ -241,12 +200,6 @@ export default function UserDashboardPage() {
   }, [router]);
 
   const dailyLyric = useMemo(() => getDailyLyric(), []);
-  const xpValue = currentUser?.xp || 1240;
-  const levelValue = currentUser?.level || 8;
-  const streakValue = currentUser?.streak || 7;
-  const nextLevelXp = currentUser?.nextLevelXp || 260;
-  const progressPercent = Math.min((xpValue / 1500) * 100, 100);
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d7edf7]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0">
@@ -262,32 +215,21 @@ export default function UserDashboardPage() {
 
       <section className="relative z-0 w-full px-4 pb-8 pt-24 md:px-8 xl:px-10">
         <div className="mb-6 flex items-start justify-end">
-          <div className="flex items-center gap-4 rounded-full bg-[#8fd0ef] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
-            <div className="flex items-center gap-2">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#79bde4] bg-[#dff4ff] text-[12px] font-semibold text-[#74a4d4]">
-                XP
-              </div>
-              <span className="text-[18px] font-bold text-white">
-                {xpValue.toLocaleString("en-US")}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 rounded-full bg-[#efb7d5] px-4 py-2">
-              <Image
-                src="/images/maskot1.png"
-                alt="Mascot"
-                width={42}
-                height={42}
-                className="h-[42px] w-[42px] object-contain"
-              />
-              <Image
-                src="/images/logo.png"
-                alt="HealinQ Logo"
-                width={56}
-                height={28}
-                className="h-auto w-[56px] object-contain"
-              />
-            </div>
+          <div className="flex items-center gap-4 rounded-full bg-[#efb7d5] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
+            <Image
+              src="/images/maskot1.png"
+              alt="Mascot"
+              width={42}
+              height={42}
+              className="h-[42px] w-[42px] object-contain"
+            />
+            <Image
+              src="/images/logo.png"
+              alt="HealinQ Logo"
+              width={56}
+              height={28}
+              className="h-auto w-[56px] object-contain"
+            />
           </div>
         </div>
 
@@ -399,9 +341,13 @@ export default function UserDashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {consultationHistory.map((item) => (
+                {consultations.length === 0 ? (
+                  <p className="col-span-full text-center text-gray-400 text-sm py-8">
+                    Belum ada riwayat konsultasi.
+                  </p>
+                ) : consultations.map((c) => (
                   <button
-                    key={item.id}
+                    key={c.id}
                     type="button"
                     onClick={() => router.push("/profile")}
                     className="rounded-[12px] border border-[#ef9fca] bg-[#f7d6ea] p-2 transition hover:scale-[1.02]"
@@ -410,11 +356,12 @@ export default function UserDashboardPage() {
                       <div className="absolute bottom-2 left-2 top-2 w-[6px] rounded-full bg-[#ea4aa0]" />
                       <div className="text-center">
                         <div className="text-[34px] font-bold leading-none text-[#e91c89]">
-                          {item.day}
+                          {formatDay(c.consultation_date)}
                         </div>
                         <div className="mt-1 text-[18px] text-[#f06db2]">
-                          {item.month}
+                          {formatMonthShort(c.consultation_date)}
                         </div>
+                        <p className="mt-1 text-[11px] text-gray-400 truncate">{c.counselor_name}</p>
                       </div>
                     </div>
                   </button>
@@ -493,7 +440,7 @@ export default function UserDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => router.push("/list")}
+                  onClick={() => router.push("/consultation/list")}
                   className="rounded-[8px] border border-[#5a6d73] bg-[#b8edf0] px-4 py-1.5 text-[14px] text-[#28353a] transition hover:scale-[1.02] sm:px-5 sm:text-[16px]"
                 >
                   View All
@@ -501,8 +448,12 @@ export default function UserDashboardPage() {
               </div>
 
               <div className="space-y-3">
-                {counselors.map((counselor, index) => (
-                  <div key={counselor.id}>
+                {counselorsData.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-4">
+                    Belum ada konselor tersedia.
+                  </p>
+                ) : counselorsData.map((c, index) => (
+                  <div key={c.id}>
                     <div className="flex items-center gap-3">
                       <div className="flex h-[54px] w-[54px] items-center justify-center rounded-full border border-[#5166b3] bg-[#bde3f5]">
                         <span className="text-[24px]">👤</span>
@@ -510,28 +461,25 @@ export default function UserDashboardPage() {
 
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[15px] font-bold text-[#1f1f1f]">
-                          {counselor.name}
+                          {c.name}
                         </p>
                         <p className="text-[14px] text-[#4e4e4e]">
-                          {counselor.specialty}
+                          {c.specialty || "Konselor"}
                         </p>
                       </div>
 
                       <div className="text-right">
-                        <p className="text-[18px] font-semibold text-[#1f1f1f]">
-                          ⭐ {counselor.rating}
-                        </p>
                         <button
                           type="button"
-                          onClick={() => router.push(`/consultation/booking/${counselor.id}`)}
-                          className="mt-1 rounded-full bg-[#80b8ea] px-4 py-1 text-[14px] text-white transition hover:bg-[#6aa9e2]"
+                          onClick={() => router.push(`/consultation/booking/${c.id}`)}
+                          className="rounded-full bg-[#80b8ea] px-4 py-1 text-[14px] text-white transition hover:bg-[#6aa9e2]"
                         >
                           Book
                         </button>
                       </div>
                     </div>
 
-                    {index !== counselors.length - 1 && (
+                    {index !== counselorsData.length - 1 && (
                       <div className="mt-3 border-b border-[#707070]" />
                     )}
                   </div>
@@ -545,36 +493,9 @@ export default function UserDashboardPage() {
               className="block w-full rounded-[18px] bg-[#dbe7ef] p-5 text-left shadow-[0_4px_10px_rgba(0,0,0,0.12)] transition hover:scale-[1.01]"
             >
               <h3 className="text-[22px] font-extrabold text-[#e91c89] sm:text-[28px]">
-                Your Score Progress
+                My Profile
               </h3>
-
-              <div className="mt-4 rounded-[16px] bg-[#d7eef0] p-4">
-                <div className="mb-2 flex items-center justify-between text-[16px] text-[#f06db2]">
-                  <span>Streak</span>
-                  <span className="font-semibold">{streakValue} days</span>
-                </div>
-
-                <div className="mb-2 flex items-center justify-between text-[16px] text-[#f06db2]">
-                  <span>XP</span>
-                  <span className="font-semibold">{xpValue.toLocaleString("en-US")}</span>
-                </div>
-
-                <div className="mb-3 flex items-center justify-between text-[16px] text-[#f06db2]">
-                  <span>Level</span>
-                  <span className="font-semibold">{levelValue}</span>
-                </div>
-
-                <div className="h-[10px] w-full overflow-hidden rounded-full bg-[#c3d6d9]">
-                  <div
-                    className="h-full rounded-full bg-[#ea1e8c]"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-
-                <p className="mt-3 text-[14px] text-[#f06db2]">
-                  Next level in {nextLevelXp} XP
-                </p>
-              </div>
+              <p className="mt-2 text-[14px] text-[#f06db2]">Lihat dan edit informasi profil kamu</p>
             </button>
           </div>
         </div>

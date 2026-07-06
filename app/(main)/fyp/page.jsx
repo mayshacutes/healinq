@@ -297,21 +297,11 @@ export default function FypPage() {
       <section className="relative z-10 px-4 pb-10 pt-24 md:px-6 lg:px-8">
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-6 flex justify-end">
-            <div className="flex items-center gap-4 rounded-full bg-[#8fd0ef] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
-              <div className="flex items-center gap-2">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[#79bde4] bg-[#dff4ff] text-[12px] font-semibold text-[#74a4d4]">
-                  XP
-                </div>
-                <span className="text-[18px] font-bold text-white">
-                  {currentUser?.exp?.toLocaleString() || "1,240"}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 rounded-full bg-[#efb7d5] px-4 py-2">
-                <Image
-                  src="/images/maskot1.png"
-                  alt="Mascot"
-                  width={42}
+            <div className="flex items-center gap-4 rounded-full bg-[#efb7d5] px-4 py-3 shadow-[0_4px_14px_rgba(0,0,0,0.12)]">
+              <Image
+                src="/images/maskot1.png"
+                alt="Mascot"
+                width={42}
                   height={42}
                   className="h-[42px] w-[42px] object-contain"
                 />
@@ -324,7 +314,6 @@ export default function FypPage() {
                 />
               </div>
             </div>
-          </div>
 
           {/* Lyric of The Day - Dari Supabase */}
           <section className="mb-8 rounded-[18px] bg-[#cfeef3] p-5 shadow-[0_4px_14px_rgba(0,0,0,0.15)]">

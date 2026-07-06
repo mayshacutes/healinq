@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Barcode from "react-barcode";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 import Barcode from "react-barcode";
@@ -126,110 +126,98 @@ export default function TicketOnlinePage() {
   const bookingStatusClass = isPaymentVerified ? "bg-green-100 text-green-600" : "bg-yellow-100 text-yellow-700";
   const sessionStatus = getSessionStatus(date, hour, sessionDuration || 60);
   const canEnterChat = sessionStatus === "ongoing" && isPaymentVerified;
-  const adminVerifiedLabel = adminApproved ? "Yes" : "No";
 
   return (
-    <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center justify-center py-10 px-4">
-      {/* Back Button */}
+    <div className="min-h-screen bg-[#d4eefb] flex flex-col items-center py-10 px-4">
       <div className="absolute top-6 left-6">
         <BackIconButton to="/consultation" />
       </div>
 
-      {/* ================= TICKET ================= */}
-      <div className="relative w-full max-w-[900px]">
-        <Image 
-          src="/images/ticket.png" 
-          alt="ticket" 
-          width={900} 
-          height={500} 
-          className="w-full h-auto"
-          priority
-        />
-        <div className="absolute inset-0 flex flex-col md:flex-row px-4 md:px-8 py-5 md:py-7">
-          {/* LEFT */}
-          <div className="w-full md:w-[68%] md:pr-5">
-            {/* Header */}
-            <div className="bg-pink-500 text-white text-center py-1.5 rounded-t-xl font-semibold text-xs md:text-sm tracking-wide">
-              ✅ Booking Confirmed!
+      {/* ================= CSS TICKET CARD ================= */}
+      <div className="w-full max-w-[900px] bg-white rounded-3xl shadow-lg overflow-hidden mt-10">
+
+        {/* Pink Header */}
+        <div className="bg-pink-500 text-white text-center py-3 font-semibold text-sm md:text-base tracking-wide">
+          ✅ Booking Confirmed!
+        </div>
+
+        {/* Two-column body */}
+        <div className="flex flex-col md:flex-row">
+          {/* LEFT - Content */}
+          <div className="flex-1 p-4 md:p-6 space-y-4">
+            {/* Doctor Info */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-pink-100 rounded-full flex items-center justify-center text-2xl md:text-3xl flex-shrink-0">
+                👩‍⚕️
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-800 text-sm md:text-base truncate">{name}</p>
+                <p className="text-xs md:text-sm text-gray-600">Psikolog Klinis | Online</p>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  <span className={`inline-block px-2.5 py-0.5 text-[10px] md:text-xs rounded-full font-medium ${bookingStatusClass}`}>
+                    {bookingStatusLabel}
+                  </span>
+                  <span className="text-xs md:text-sm text-gray-500">{date}</span>
+                </div>
+              </div>
+              <div className="bg-pink-100 px-3 py-1.5 rounded-lg text-xs text-center min-w-[70px] flex-shrink-0 self-start">
+                <p className="font-semibold text-gray-600 text-[10px] md:text-xs">Time Session</p>
+                <p className="text-pink-600 font-bold text-sm md:text-base">{hour} WIB</p>
+              </div>
             </div>
-            
-            <div className="bg-[#f3f3f3] p-3 md:p-4 rounded-b-xl space-y-3">
-              {/* Doctor Info */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="w-14 h-14 md:w-16 md:h-16 bg-pink-100 rounded-full flex items-center justify-center text-2xl md:text-3xl flex-shrink-0">
-                  👩‍⚕️
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-800 text-sm md:text-base truncate">{name}</p>
-                  <p className="text-xs md:text-sm text-gray-600">Psikolog Klinis | Online</p>
-                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                    <span className={`inline-block px-2.5 py-0.5 text-[10px] md:text-xs rounded-full ${bookingStatusClass}`}>
-                      {bookingStatusLabel}
-                    </span>
-                    <span className="text-xs md:text-sm text-gray-500">{date}</span>
-                  </div>
-                </div>
-                <div className="bg-pink-100 px-3 py-1.5 rounded-lg text-xs text-center min-w-[70px] flex-shrink-0">
-                  <p className="font-semibold text-gray-600 text-[10px] md:text-xs">Time Session</p>
-                  <p className="text-pink-600 font-bold text-sm md:text-base">{hour} WIB</p>
-                </div>
-              </div>
 
-              {/* Booking Code */}
-              <div className="bg-pink-100 px-3 py-1.5 rounded-lg text-xs">
-                <p className="font-semibold text-gray-600">Booking Code</p>
-                <p className="text-pink-600 font-bold font-mono text-sm">{bookingCode}</p>
-              </div>
+            {/* Booking Code */}
+            <div className="bg-pink-50 px-3 py-2 rounded-lg">
+              <p className="text-[11px] font-semibold text-gray-500">Booking Code</p>
+              <p className="text-pink-600 font-bold font-mono text-sm md:text-base tracking-wider">{bookingCode}</p>
+            </div>
 
-              {/* Details Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 bg-white p-3 md:p-4 rounded-2xl text-xs text-gray-700">
-                <div>
-                  <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Session Type</p>
-                  <p className="font-medium text-xs md:text-sm">Online Consultation</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Payment</p>
-                  <p className="font-medium text-xs md:text-sm">{ticketData.paymentMethod || "-"}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Status</p>
-                  <p className="font-medium text-xs md:text-sm">{bookingStatusLabel}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Total</p>
-                  <p className="font-medium text-xs md:text-sm">{formatRupiah(ticketData.totalPayment)}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Proof</p>
-                  <p className="font-medium text-xs md:text-sm">{ticketData.proofFileName || "Not uploaded"}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Admin Verified</p>
-                  <p className="font-medium text-xs md:text-sm">{ticketData.adminApproved ? "✅ Yes" : "⏳ No"}</p>
-                </div>
-              </div>
-
-              {/* Consultation Preview */}
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-gray-50 p-3 md:p-4 rounded-2xl">
               <div>
-                <p className="text-xs md:text-sm font-semibold text-gray-700 mb-1">📋 Consultation Preview</p>
-                <div className="h-12 md:h-14 bg-white rounded-lg p-2 text-xs text-gray-600 overflow-hidden border border-gray-200">
-                  {topic || "No topic written."}
-                </div>
+                <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Session Type</p>
+                <p className="font-medium text-xs md:text-sm text-gray-800">Online Consultation</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Payment</p>
+                <p className="font-medium text-xs md:text-sm text-gray-800">{paymentMethod || "-"}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Status</p>
+                <p className="font-medium text-xs md:text-sm text-gray-800">{bookingStatusLabel}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Total</p>
+                <p className="font-medium text-xs md:text-sm text-gray-800">{formatRupiah(totalPayment)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Proof</p>
+                <p className="font-medium text-xs md:text-sm text-gray-800 truncate">{proofFileName || "Not uploaded"}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-400 text-[10px] md:text-xs">Admin Verified</p>
+                <p className="font-medium text-xs md:text-sm text-gray-800">{adminApproved ? "✅ Yes" : "⏳ No"}</p>
+              </div>
+            </div>
+
+            {/* Consultation Preview */}
+            <div>
+              <p className="text-xs md:text-sm font-semibold text-gray-700 mb-1">📋 Consultation Preview</p>
+              <div className="h-12 md:h-14 bg-gray-50 rounded-lg p-2 text-xs text-gray-600 overflow-hidden border border-gray-200">
+                {topic || "No topic written."}
               </div>
             </div>
           </div>
 
           {/* RIGHT - Barcode */}
-          <div className="hidden md:flex w-[32%] items-center justify-center border-l-2 border-dashed border-pink-300">
-            <div className="rotate-90">
-              <Barcode value={bookingCode} height={90} width={1.8} displayValue={false} />
-            </div>
+          <div className="hidden md:flex w-[220px] flex-shrink-0 items-center justify-center border-l-2 border-dashed border-pink-300 p-4">
+            <Barcode value={bookingCode} height={80} width={1.6} displayValue={false} />
           </div>
         </div>
       </div>
 
       {/* ================= COUNTDOWN + BUTTONS ================= */}
-      <div className="mt-8 md:mt-12 text-center w-full max-w-[900px]">
+      <div className="mt-8 md:mt-10 text-center w-full max-w-[900px]">
         <p className="text-sm md:text-base font-medium text-gray-600">
           {sessionStatus === "upcoming" ? "⏳ Your session will be started at:" :
            sessionStatus === "ongoing" ? "🔴 Session is ongoing!" :
@@ -240,7 +228,7 @@ export default function TicketOnlinePage() {
         }`}>
           {timeLeft}
         </h1>
-        
+
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-5">
           <button
             onClick={() => {
@@ -262,7 +250,7 @@ export default function TicketOnlinePage() {
               ? "⏰ Session Ended"
               : "💬 Go to Room Chat"}
           </button>
-          
+
           <button
             onClick={() => router.push("/consultation/my-bookings")}
             className="px-6 py-2.5 bg-white text-[#0C72A6] rounded-full font-semibold border border-[#0C72A6] hover:bg-blue-50 transition text-sm md:text-base"
@@ -271,7 +259,6 @@ export default function TicketOnlinePage() {
           </button>
         </div>
 
-        {/* Info tambahan */}
         <p className="text-xs text-gray-400 mt-4">
           Booking Code: {bookingCode} • {date} • {hour} WIB
         </p>

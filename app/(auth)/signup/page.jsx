@@ -140,10 +140,6 @@ export default function SignUp() {
               id: user.id,
               username: formData.username,
               email: formData.email,
-              exp: 0,
-              streak: 0,
-              level: 1,
-              nextLevelXp: 260,
             },
             {
               onConflict: "id",

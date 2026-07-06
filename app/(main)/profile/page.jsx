@@ -6,50 +6,7 @@ import { useRouter } from "next/navigation";
 import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
-const MISSIONS = {
-  daily: [
-    { id: 1, icon: "📔", title: "Tulis Jurnal Hari Ini", desc: "Ungkapkan perasaanmu dalam tulisan bebas minimal 50 kata", progress: 1, total: 1, xp: 50, status: "done" },
-    { id: 2, icon: "🧘", title: "Sesi Meditasi 10 Menit", desc: "Luangkan waktu untuk bernapas dan hadir di momen ini", progress: 0, total: 1, xp: 30, status: "active" },
-    { id: 3, icon: "🌞", title: "Mood Check-in Pagi", desc: "Catat bagaimana perasaanmu di awal hari", progress: 1, total: 1, xp: 20, status: "done" },
-  ],
-  weekly: [
-    { id: 4, icon: "💬", title: "Sesi Konsultasi Minggu Ini", desc: "Jadwalkan & hadiri sesi bersama psikiatermu", progress: 0, total: 1, xp: 150, status: "active" },
-    { id: 5, icon: "🍀", title: "Tambah 3 Momen di Jar of Happiness", desc: "Simpan hal-hal kecil yang membuatmu bahagia minggu ini", progress: 2, total: 3, xp: 80, status: "active" },
-    { id: 6, icon: "🔥", title: "Jaga Streak 7 Hari", desc: "Login dan lakukan aktivitas selama 7 hari berturut-turut", progress: 7, total: 7, xp: 200, status: "done" },
-  ],
-  special: [
-    { id: 7, icon: "📚", title: "Baca 5 Artikel Kesehatan Mental", desc: "Perkaya pengetahuanmu lewat konten edukasi di HealinQ", progress: 3, total: 5, xp: 100, status: "active" },
-    { id: 8, icon: "🔒", title: "Capai Level 15", desc: "Lanjutkan perjalananmu untuk membuka misi ini", progress: 0, total: 1, xp: 500, status: "locked" },
-  ],
-};
 
-const BADGES = [
-  { emoji: "📝", name: "First Word", earned: true },
-  { emoji: "🔥", name: "On Fire", earned: true },
-  { emoji: "💬", name: "Open Up", earned: true },
-  { emoji: "🌟", name: "Star Habit", earned: true },
-  { emoji: "🧘", name: "Calm Mind", earned: true },
-  { emoji: "🍀", name: "Happy Jar", earned: true },
-  { emoji: "🌈", name: "Good Vibes", earned: true },
-  { emoji: "💪", name: "Resilient", earned: true },
-  { emoji: "🦋", name: "Transform", earned: false },
-  { emoji: "🌙", name: "Night Owl", earned: false },
-  { emoji: "👑", name: "Legend", earned: false },
-  { emoji: "🚀", name: "Max Level", earned: false },
-];
-
-const CONSULTATIONS = [
-  { id: 1, day: 28, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "15:00 • 60 menit", type: "online", status: "done", note: "Teknik grounding & CBT" },
-  { id: 2, day: 16, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "10:00 • 45 menit", type: "offline", status: "done", note: "Evaluasi perkembangan" },
-  { id: 3, day: 15, month: "March", doctor: "dr. Sari Dewi, Sp.KJ", time: "13:00 • 60 menit", type: "online", status: "done", note: "Manajemen kecemasan" },
-  { id: 4, day: 14, month: "March", doctor: "dr. Budi Santoso, Sp.KJ", time: "09:00 • 30 menit", type: "online", status: "cancelled", note: "Dibatalkan pasien" },
-];
-
-const REWARDS = [
-  { id: 1, emoji: "🖼️", name: "Frame Profil Bunga", desc: "Hiasi profilmu dengan border bunga cherry blossom", xp: 200, state: "claimed" },
-  { id: 2, emoji: "🐰", name: "Avatar Kelinci Sakura", desc: "Avatar eksklusif kelinci dengan mahkota bunga sakura", xp: 300, state: "available" },
-  { id: 3, emoji: "💊", name: "Diskon Konsultasi 20%", desc: "Dapatkan potongan harga 20% untuk sesi konsultasi", xp: 500, state: "available" },
-];
 
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -60,22 +17,16 @@ function formatTopDate(date) {
   }).format(date);
 }
 
-function getMissionStatusColor(status) {
-  if (status === "done") return "bg-[#dff7eb] text-[#1f9d62]";
-  if (status === "active") return "bg-[#fde8f3] text-[#db2d8d]";
-  return "bg-[#f3f3f3] text-[#7b7b7b]";
-}
-
 export default function UserProfilePage() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [activeTab, setActiveTab] = useState("missions");
   const [actionMessage, setActionMessage] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
-  const [rewards, setRewards] = useState(REWARDS);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [consultationHistory, setConsultationHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
@@ -142,6 +93,24 @@ export default function UserProfilePage() {
     }
     loadProfile();
   }, [router]);
+
+  useEffect(() => {
+    async function fetchConsultations() {
+      setLoadingHistory(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoadingHistory(false); return; }
+
+      const { data } = await supabase
+        .from("consultations")
+        .select("id, counselor_name, consultation_type, consultation_date, consultation_hour, topic, status, session_duration, created_at")
+        .eq("client_id", user.id)
+        .order("consultation_date", { ascending: false });
+
+      setConsultationHistory(data || []);
+      setLoadingHistory(false);
+    }
+    fetchConsultations();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
@@ -322,11 +291,6 @@ export default function UserProfilePage() {
     }
   };
 
-  const claimReward = (id, name) => {
-    setRewards((prev) => prev.map((r) => (r.id === id ? { ...r, state: "claimed" } : r)));
-    setActionMessage(`🎉 "${name}" berhasil diklaim!`);
-  };
-
   if (isLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-[#d9edf8]">
@@ -424,189 +388,63 @@ export default function UserProfilePage() {
                   🚪 Logout
                 </button>
               </div>
-
-              {/* Level & Stats (sementara) */}
-              <div className="rounded-[22px] bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[40px]">🌟</span>
-                    <div>
-                      <p className="text-[12px] font-bold text-white/80 uppercase tracking-wider">Level Saat Ini</p>
-                      <p className="text-[22px] font-bold text-white">Mind Explorer</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[32px] font-bold text-[#fff1a8]">12</p>
-                    <p className="text-[12px] text-white/80">dari 50 level</p>
-                  </div>
-                </div>
-                <div className="mb-3 flex justify-between text-[12px] font-bold text-white/90">
-                  <span>⚡ 2.400 XP</span>
-                  <span>Target: 3.500 XP</span>
-                </div>
-                <div className="mb-3 h-[10px] rounded-full bg-white/25 overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-white to-[#fff1a8]" style={{ width: "68%" }} />
-                </div>
-                <p className="text-[12px] text-white/90">1.100 XP lagi → Level 13: Soul Seeker ✨</p>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                {[
-                  { icon: "📔", val: "47", label: "Hari Journaling" },
-                  { icon: "🧠", val: "8", label: "Sesi Konsultasi" },
-                  { icon: "🔥", val: "14", label: "Streak Hari" },
-                  { icon: "🏆", val: "9", label: "Badge" },
-                ].map((stat, i) => (
-                  <div key={i} className="rounded-[16px] bg-white/90 p-4 text-center shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-                    <p className="text-[28px] mb-2">{stat.icon}</p>
-                    <p className="text-[20px] font-bold text-[#222]">{stat.val}</p>
-                    <p className="text-[12px] text-[#666] mt-1">{stat.label}</p>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* RIGHT SECTION */}
             <div className="space-y-5">
-              <div className="flex gap-2 rounded-full bg-white/90 p-2 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-                {[
-                  { id: "missions", label: "🎯 Misi" },
-                  { id: "rewards", label: "🎁 Reward" },
-                  { id: "history", label: "📋 Riwayat" },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 rounded-full px-4 py-2.5 text-[13px] font-bold transition ${activeTab === tab.id
-                      ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
-                      : "text-[#666] hover:text-[#222]"
-                      }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              {activeTab === "missions" && (
-                <div className="space-y-4">
-                  {Object.entries(MISSIONS).map(([section, missions]) => (
-                    <div key={section}>
-                      <h3 className="text-[14px] font-bold text-[#0c72a6] uppercase tracking-wider mb-3 px-2">
-                        {section === "daily" && "🌅 Harian"}
-                        {section === "weekly" && "📅 Mingguan"}
-                        {section === "special" && "🌠 Misi Spesial"}
-                      </h3>
-                      <div className="space-y-3">
-                        {missions.map((m) => {
-                          const pct = m.total > 0 ? Math.round((m.progress / m.total) * 100) : 0;
-                          return (
-                            <div key={m.id} className="rounded-[16px] bg-white/90 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
-                              <div className="flex items-start gap-4">
-                                <span className="text-[28px]">{m.icon}</span>
-                                <div className="flex-1">
-                                  <p className="text-[14px] font-bold text-[#222]">{m.title}</p>
-                                  <p className="text-[12px] text-[#666] mt-1">{m.desc}</p>
-                                  <div className="mt-3 flex items-center gap-2">
-                                    <div className="flex-1 h-[6px] bg-[#edf5fa] rounded-full overflow-hidden">
-                                      <div className="h-full bg-gradient-to-r from-[#ea1e8c] to-[#8fd0ef]" style={{ width: `${pct}%` }} />
-                                    </div>
-                                    <span className="text-[11px] font-bold text-[#0c72a6]">
-                                      {m.status === "done" ? "✓" : `${m.progress}/${m.total}`}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                  <span className="text-[12px] font-bold bg-[#fff4bf] text-[#9b6b00] px-3 py-1 rounded-full">⚡ +{m.xp}</span>
-                                  <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${getMissionStatusColor(m.status)}`}>
-                                    {m.status === "done" ? "✓ Done" : m.status === "active" ? "● Progress" : "🔒 Locked"}
-                                  </span>
-                                </div>
-                              </div>
+              <h2 className="text-[18px] font-bold text-[#0c72a6]">📋 Riwayat Konsultasi</h2>
+              <div className="space-y-3">
+                {loadingHistory ? (
+                  <div className="text-center text-gray-400 py-8 text-sm">Memuat riwayat...</div>
+                ) : consultationHistory.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8 text-sm">Belum ada riwayat konsultasi.</div>
+                ) : (
+                  consultationHistory.map((c) => {
+                    const date = new Date(c.consultation_date);
+                    const day = date.getDate();
+                    const month = date.toLocaleString("en-US", { month: "long" });
+                    const timeStr = `${c.consultation_hour?.replace(".", ":")} • ${c.session_duration || 60} menit`;
+                    const sessionStart = new Date(`${c.consultation_date}T${c.consultation_hour?.replace(".", ":")}:00`);
+                    const sessionEnd = new Date(sessionStart.getTime() + (c.session_duration || 60) * 60000);
+                    const now = new Date();
+                    let statusLabel, statusClass;
+                    if (c.status === "cancelled") {
+                      statusLabel = "✕ Cancelled";
+                      statusClass = "bg-[#f3f3f3] text-[#7b7b7b]";
+                    } else if (now < sessionStart) {
+                      statusLabel = "📅 Akan Datang";
+                      statusClass = "bg-blue-100 text-blue-600";
+                    } else if (now >= sessionStart && now <= sessionEnd) {
+                      statusLabel = "💬 Berlangsung";
+                      statusClass = "bg-green-100 text-green-600";
+                    } else {
+                      statusLabel = "✓ Selesai";
+                      statusClass = "bg-[#dff7eb] text-[#1f9d62]";
+                    }
+                    return (
+                      <div key={c.id} className="rounded-[16px] bg-white/90 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] transition border-l-[4px] border-[#8fd0ef]">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[20px] font-bold text-[#ea1e8c]">{day}</span>
+                              <span className="text-[13px] font-bold text-[#0c72a6]">{month}</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === "rewards" && (
-                <div className="grid grid-cols-1 gap-4">
-                  {rewards.map((r) => (
-                    <div key={r.id} className="rounded-[16px] bg-white/90 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] transition">
-                      <div className="flex items-start gap-4">
-                        <span className="text-[40px]">{r.emoji}</span>
-                        <div className="flex-1">
-                          <p className="text-[15px] font-bold text-[#222]">{r.name}</p>
-                          <p className="text-[13px] text-[#666] mt-1">{r.desc}</p>
-                          <div className="mt-3 flex items-center gap-2">
-                            <span className={`text-[12px] font-bold px-3 py-1 rounded-full ${r.state === "locked" ? "bg-[#f1f5f8] text-[#94a3b8]" : "bg-[#fff4bf] text-[#9b6b00]"}`}>
-                              {r.state === "locked" ? "🔒 Level 20" : `⚡ ${r.xp} XP`}
-                            </span>
-                            <button
-                              onClick={() => r.state === "available" && claimReward(r.id, r.name)}
-                              disabled={r.state !== "available"}
-                              className={`ml-auto px-4 py-2 rounded-full text-[12px] font-bold transition ${r.state === "available"
-                                ? "bg-gradient-to-r from-[#8fd0ef] to-[#efb7d5] text-white hover:shadow-lg"
-                                : "bg-[#f1f5f8] text-[#94a3b8] cursor-not-allowed"
-                                }`}
-                            >
-                              {r.state === "claimed" ? "✓ Claimed" : r.state === "locked" ? "Locked" : "Claim"}
-                            </button>
+                            <p className="text-[14px] font-bold text-[#222]">🩺 {c.counselor_name}</p>
+                            <p className="text-[12px] text-[#666] mt-1">🕐 {timeStr}</p>
+                            <div className="flex gap-2 mt-3">
+                              <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.consultation_type === "online" ? "bg-[#dff4ff] text-[#0c72a6]" : "bg-[#fde8f3] text-[#db2d8d]"}`}>
+                                {c.consultation_type === "online" ? "💻 Online" : "🏥 Offline"}
+                              </span>
+                              <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${statusClass}`}>
+                                {statusLabel}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === "history" && (
-                <div className="space-y-3">
-                  {CONSULTATIONS.map((c) => (
-                    <div key={c.id} className="rounded-[16px] bg-white/90 p-4 shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] transition border-l-[4px] border-[#8fd0ef]">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[20px] font-bold text-[#ea1e8c]">{c.day}</span>
-                            <span className="text-[13px] font-bold text-[#0c72a6]">{c.month}</span>
-                          </div>
-                          <p className="text-[14px] font-bold text-[#222]">🩺 {c.doctor}</p>
-                          <p className="text-[12px] text-[#666] mt-1">🕐 {c.time}</p>
-                          <div className="flex gap-2 mt-3">
-                            <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.type === "online" ? "bg-[#dff4ff] text-[#0c72a6]" : "bg-[#fde8f3] text-[#db2d8d]"}`}>
-                              {c.type === "online" ? "💻 Online" : "🏥 Offline"}
-                            </span>
-                            <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.status === "done" ? "bg-[#dff7eb] text-[#1f9d62]" : "bg-[#f3f3f3] text-[#7b7b7b]"}`}>
-                              {c.status === "done" ? "✓ Done" : "✕ Cancelled"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="rounded-[22px] bg-white/90 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
-                <h3 className="text-[16px] font-bold text-[#222] mb-4">🏅 Badges</h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {BADGES.map((b, i) => (
-                    <div
-                      key={i}
-                      className={`aspect-square flex flex-col items-center justify-center rounded-[14px] cursor-pointer transition ${b.earned
-                        ? "bg-gradient-to-br from-[#fde8f3] to-[#dff4ff]"
-                        : "bg-[#f3f3f3] opacity-50"
-                        }`}
-                      title={b.name}
-                    >
-                      <span className="text-[24px]">{b.emoji}</span>
-                      {b.earned && <span className="text-[10px] font-bold text-[#db2d8d] mt-1">✓</span>}
-                    </div>
-                  ))}
-                </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </div>

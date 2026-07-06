@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 
+function splitIntoHourlySlots(startTime, endTime) {
+  const slots = [];
+  let [h] = startTime.split(":").map(Number);
+  const [endH] = endTime.split(":").map(Number);
+  while (h < endH) {
+    slots.push(`${String(h).padStart(2, "0")}.00`);
+    h += 1;
+  }
+  return slots;
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return "";
   const date = new Date(dateStr);
@@ -23,6 +34,8 @@ export default function CounselorSchedulePage() {
   const [counselorProfile, setCounselorProfile] = useState(null);
   const [counselorData, setCounselorData] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [bookedSlotsMap, setBookedSlotsMap] = useState({});
+  const [filterTab, setFilterTab] = useState("all");
 
   const [form, setForm] = useState({
     scheduleDate: "",
@@ -87,7 +100,7 @@ export default function CounselorSchedulePage() {
     checkUser();
   }, []);
 
-  // Fetch schedules dari Supabase
+  // Fetch schedules + booked consultations dari Supabase
   const fetchSchedules = async () => {
     if (!counselorProfile) return;
     setIsLoading(true);
@@ -104,6 +117,31 @@ export default function CounselorSchedulePage() {
         return;
       }
       setSchedules(data || []);
+
+      // Ambil counselor_id dari tabel counselors via email (beda tabel, beda ID)
+      const { data: counselorData } = await supabase
+        .from("counselors")
+        .select("id")
+        .eq("email", counselorProfile.email)
+        .maybeSingle();
+
+      if (counselorData) {
+        const { data: consultations } = await supabase
+          .from("consultations")
+          .select("consultation_date, consultation_hour")
+          .eq("counselor_id", counselorData.id)
+          .neq("status", "cancelled");
+
+        const map = {};
+        consultations?.forEach((c) => {
+          const hour = c.consultation_hour?.replace(":", ".");
+          if (hour) {
+            if (!map[c.consultation_date]) map[c.consultation_date] = [];
+            if (!map[c.consultation_date].includes(hour)) map[c.consultation_date].push(hour);
+          }
+        });
+        setBookedSlotsMap(map);
+      }
     } catch (error) {
       setActionMessage(`Error: ${error.message}`);
     } finally {
@@ -374,9 +412,25 @@ export default function CounselorSchedulePage() {
 
       {/* Schedules List */}
       <section className="mt-8">
-        <h2 className="mb-4 text-xl font-bold text-[#0c72a6]">
-          Your Schedules ({schedules.length})
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-4 flex-wrap">
+          <h2 className="text-xl font-bold text-[#0c72a6]">
+            Your Schedules ({schedules.length})
+          </h2>
+
+          {/* Filter tabs */}
+          <div className="flex gap-2">
+            {["all", "available", "booked"].map((tab) => (
+              <button key={tab} onClick={() => setFilterTab(tab)}
+                className={`px-4 py-1.5 rounded-full text-xs font-medium transition ${
+                  filterTab === tab
+                    ? "bg-[#0C72A6] text-white"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                }`}>
+                {tab === "all" ? "All" : tab === "available" ? "🟢 Available" : "🔴 Booked"}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {isLoading && schedules.length === 0 && (
           <div className="flex justify-center py-10">
@@ -395,7 +449,23 @@ export default function CounselorSchedulePage() {
 
         {schedules.length > 0 && (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {schedules.map((item) => (
+            {schedules
+              .filter((item) => {
+                if (filterTab === "all") return true;
+                const slots = splitIntoHourlySlots(item.start_time, item.end_time);
+                const booked = bookedSlotsMap[item.schedule_date] || [];
+                const hasBooked = slots.some((s) => booked.includes(s));
+                const hasAvailable = slots.some((s) => !booked.includes(s));
+                if (filterTab === "booked") return hasBooked;
+                if (filterTab === "available") return hasAvailable;
+                return true;
+              })
+              .map((item) => {
+                const slots = splitIntoHourlySlots(item.start_time, item.end_time);
+                const booked = bookedSlotsMap[item.schedule_date] || [];
+                const totalBooked = slots.filter((s) => booked.includes(s)).length;
+
+                return (
               <div
                 key={item.id}
                 className="rounded-2xl bg-white p-5 shadow-lg transition hover:shadow-xl"
@@ -411,18 +481,38 @@ export default function CounselorSchedulePage() {
                 <p className="mt-3 text-gray-700">
                   🕐 {item.start_time.slice(0,5)} - {item.end_time.slice(0,5)}
                 </p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Status: <span className="font-medium text-green-600">{item.status || "Available"}</span>
-                </p>
+
+                {/* Per-slot status */}
+                <div className="mt-3 space-y-1">
+                  {slots.map((slot) => {
+                    const isBooked = booked.includes(slot);
+                    return (
+                      <div key={slot} className="flex items-center gap-2 text-sm">
+                        <span className="w-12 font-mono text-gray-600">{slot}</span>
+                        {isBooked ? (
+                          <span className="text-red-500 text-xs font-medium">🔴 Booked</span>
+                        ) : (
+                          <span className="text-green-600 text-xs font-medium">🟢 Available</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 text-xs text-gray-400">
+                  {totalBooked} of {slots.length} slot{slots.length > 1 ? "s" : ""} booked
+                </div>
+
                 <button
                   onClick={() => handleDeleteSchedule(item.id)}
                   disabled={isLoading}
-                  className="mt-4 rounded-full bg-pink-100 px-4 py-2 text-sm font-semibold text-pink-600 transition hover:bg-pink-200 disabled:opacity-50"
+                  className="mt-3 rounded-full bg-pink-100 px-4 py-2 text-sm font-semibold text-pink-600 transition hover:bg-pink-200 disabled:opacity-50"
                 >
                   Delete Schedule
                 </button>
               </div>
-            ))}
+                );
+              })}
           </div>
         )}
       </section>

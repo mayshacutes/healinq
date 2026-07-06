@@ -14,7 +14,7 @@ function formatDate(d) {
 }
 
 const STATUS_CLASS = {
-  paid: "bg-green-100 text-green-700",
+  success: "bg-green-100 text-green-700",
   pending: "bg-yellow-100 text-yellow-700",
   failed: "bg-red-100 text-red-700",
 };
@@ -89,8 +89,8 @@ export default function CounselorTransactionPage() {
   }, [transactions, search, filterStatus]);
 
   const totalEarning = filtered
-    .filter((t) => t.payments?.[0]?.payment_status === "paid")
-    .reduce((sum, t) => sum + (t.counselor_earning || t.price || 0), 0);
+    .filter((t) => t.payments?.[0]?.payment_status === "success")
+    .reduce((sum, t) => sum + (t.counselor_earning ?? t.price ?? 0), 0);
 
   if (isLoading) {
     return (
@@ -117,7 +117,7 @@ export default function CounselorTransactionPage() {
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
             { label: "Total Consultations", value: transactions.length },
-            { label: "Completed", value: transactions.filter(t => t.payments?.[0]?.payment_status === "paid").length },
+            { label: "Completed", value: transactions.filter(t => t.payments?.[0]?.payment_status === "success").length },
             { label: "Total Earning", value: formatRupiah(totalEarning) },
           ].map((s) => (
             <div key={s.label} className="rounded-2xl bg-white/70 p-5 shadow text-center">
@@ -132,7 +132,7 @@ export default function CounselorTransactionPage() {
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama pasien / kode booking..."
             className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm focus:outline-none flex-1 min-w-[200px]" />
-          {["all", "paid", "pending", "failed"].map((s) => (
+          {["all", "success", "pending", "failed"].map((s) => (
             <button key={s} onClick={() => setFilterStatus(s)}
               className={`rounded-full px-4 py-2 text-sm font-medium capitalize ${filterStatus === s ? "bg-[#db2d8d] text-white" : "bg-white text-gray-600"}`}>
               {s === "all" ? "Semua" : s}
