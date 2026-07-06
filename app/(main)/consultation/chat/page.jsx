@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 import { useChat } from "@/lib/useChat";
@@ -103,49 +103,52 @@ function ChatRoom({ roomId, currentUserId, counselorName }) {
 
 export default function UserChatPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const roomId = searchParams.get("roomId");
-  const bookingCode = searchParams.get("bookingCode");
-
+  const [roomId, setRoomId] = useState(null);
+  const [bookingCode, setBookingCode] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [consultation, setConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    const init = async () => {
-      setIsLoading(true);
+  const params = new URLSearchParams(window.location.search);
+  const roomIdFromUrl = params.get("roomId");
+  const bookingCodeFromUrl = params.get("bookingCode");
 
-      if (!roomId) {
-        setErrorMessage("Room ID tidak ditemukan.");
-        setIsLoading(false);
-        return;
-      }
+  setRoomId(roomIdFromUrl);
+  setBookingCode(bookingCodeFromUrl);
 
-      // Ambil user yang sedang login
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setErrorMessage("Kamu harus login terlebih dahulu.");
-        setIsLoading(false);
-        return;
-      }
-      setCurrentUser(user);
+  const init = async () => {
+    setIsLoading(true);
 
-      // Ambil info consultation dari booking code
-      if (bookingCode) {
-        const { data } = await supabase
-          .from("consultations")
-          .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic")
-          .eq("booking_code", bookingCode)
-          .maybeSingle();
-        if (data) setConsultation(data);
-      }
-
+    if (!roomIdFromUrl) {
+      setErrorMessage("Room ID tidak ditemukan.");
       setIsLoading(false);
-    };
+      return;
+    }
 
-    init();
-  }, [roomId, bookingCode]);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setErrorMessage("Kamu harus login terlebih dahulu.");
+      setIsLoading(false);
+      return;
+    }
+    setCurrentUser(user);
+
+    if (bookingCodeFromUrl) {
+      const { data } = await supabase
+        .from("consultations")
+        .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic")
+        .eq("booking_code", bookingCodeFromUrl)
+        .maybeSingle();
+      if (data) setConsultation(data);
+    }
+
+    setIsLoading(false);
+  };
+
+  init();
+}, []);
 
   if (isLoading) {
     return (

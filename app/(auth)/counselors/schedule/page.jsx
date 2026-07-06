@@ -21,6 +21,7 @@ export default function CounselorSchedulePage() {
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [actionMessage, setActionMessage] = useState("");
   const [counselorProfile, setCounselorProfile] = useState(null);
+  const [counselorData, setCounselorData] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const [form, setForm] = useState({
@@ -68,6 +69,14 @@ export default function CounselorSchedulePage() {
         }
 
         setCounselorProfile(profileData);
+        // Ambil counselors.id berdasarkan email login
+        const { data: cData } = await supabase
+          .from("counselors")
+          .select("id, name, email")
+          .or(`email.eq.${user.email},auth_email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (cData) setCounselorData(cData);
       } catch (error) {
         console.error("Error in checkUser:", error);
         setActionMessage(`Error: ${error.message}`);
@@ -86,7 +95,7 @@ export default function CounselorSchedulePage() {
       const { data, error } = await supabase
         .from("counselor_schedules")
         .select("*")
-        .eq("counselor_id", counselorProfile.id)
+        .eq("counselor_id", counselorData?.id || counselorProfile.id)
         .order("schedule_date", { ascending: true })
         .order("start_time", { ascending: true });
 
@@ -156,7 +165,7 @@ export default function CounselorSchedulePage() {
     setActionMessage("Saving schedule...");
     try {
       const scheduleData = {
-        counselor_id: counselorProfile.id,
+        counselor_id: counselorData?.id || counselorProfile.id,
         counselor_email: counselorProfile.email,
         counselor_name: counselorProfile.full_name || counselorProfile.name,
         schedule_date: form.scheduleDate,

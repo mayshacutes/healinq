@@ -1,10 +1,11 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
+import Barcode from "react-barcode";
 
 function normalizeHour(hour) {
   return hour?.replace(".", ":") || "00:00";
@@ -21,12 +22,16 @@ function formatRupiah(number) {
 
 export default function TicketOfflinePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const bookingCodeFromUrl = searchParams.get("bookingCode");
+  const [bookingCodeFromUrl, setBookingCodeFromUrl] = useState(null);
   const [ticketData, setTicketData] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
   const [showPopup, setShowPopup] = useState(false);
   const [attendanceConfirmed, setAttendanceConfirmed] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setBookingCodeFromUrl(params.get("bookingCode"));
+  }, []);
 
   useEffect(() => {
     const fetchTicket = async () => {

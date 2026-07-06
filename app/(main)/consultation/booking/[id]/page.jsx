@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import BackIconButton from "@/components/BackIconButton";
@@ -20,8 +20,7 @@ function splitIntoHourlySlots(startTime, endTime) {
 export default function BookingPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const type = searchParams.get("type") || "online";
+  const [type, setType] = useState("online");
 
   const [selected, setSelected] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,40 +29,6 @@ export default function BookingPage() {
   const [selectedHour, setSelectedHour] = useState(null);
   const [date, setDate] = useState("");
   const [topic, setTopic] = useState("");
-  const [counselor, setCounselor] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [availableSlots, setAvailableSlots] = useState([]);
-  const [allSchedules, setAllSchedules] = useState([]);
-
-  useEffect(() => {
-    const fetchCounselor = async () => {
-      const { data, error } = await supabase
-        .from("counselors")
-        .select("*")
-        .eq("id", params.id)
-        .single();
-      if (!error) setCounselor(data);
-      setLoading(false);
-    };
-    fetchCounselor();
-  }, [params.id]);
-
-  useEffect(() => {
-    if (!counselor) return;
-    const fetchAllSchedules = async () => {
-      const { data, error } = await supabase
-        .from("counselor_schedules")
-        .select("*")
-        .eq("counselor_id", counselor.id);
-      if (!error && data) {
-        setAllSchedules(data);
-        console.log("✅ Jadwal dari database:", data);
-      } else {
-        console.error("❌ Gagal ambil jadwal:", error);
-      }
-    };
-    fetchAllSchedules();
-  }, [counselor]);
 
   const [availableHours, setAvailableHours] = useState([]);
   const [isLoadingHours, setIsLoadingHours] = useState(false);
@@ -104,12 +69,12 @@ export default function BookingPage() {
 
       // Query pakai counselor_email dan schedule_date (bukan day)
       const { data: schedules, error: scheduleError } = await supabase
-        .from("counselor_schedules")
-        .select("*")
-        .eq("counselor_email", selected.email)
-        .eq("schedule_date", date)
-        .eq("mode", type)
-        .eq("status", "available");
+      .from("counselor_schedules")
+      .select("*")
+      .eq("counselor_id", selected.id)
+      .eq("schedule_date", date)
+      .eq("mode", type)
+      .eq("status", "available");
 
       console.log("Schedules:", schedules, scheduleError);
 
@@ -158,28 +123,25 @@ export default function BookingPage() {
   }, [date, selected, type]);
 
   const handleBooking = () => {
-    if (!date || !selectedHour) {
-      alert("Pilih tanggal dan jam terlebih dahulu!");
-      return;
-    }
-    if (!availableSlots.includes(selectedHour)) {
-      alert("Jam yang dipilih tidak tersedia.");
-      return;
-    }
-    const price = type === "online" ? counselor.online_price : counselor.offline_price;
-    const bookingData = {
-      counselorId: selected.id,
-      counselorName: selected.name,
-      location: selected.address || selected.location || "-",
-      type: type,
-      date: date,
-      hour: selectedHour,
-      topic,
-      price,
-    };
-    localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
-    router.push(`/consultation/payment/${params.id}?type=${type}`);
+  if (!date || !selectedHour) {
+    alert("Pilih tanggal dan jam terlebih dahulu!");
+    return;
+  }
+
+  const bookingData = {
+    counselorId: selected.id,
+    counselorName: selected.name,
+    location: selected.address || selected.location || "-",
+    type: type,
+    date: date,
+    hour: selectedHour,
+    topic: topic,
+    price: type === "offline" ? 75000 : 50000,
   };
+
+  localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
+  router.push(`/consultation/payment/${params.id}?type=${type}`);
+};
 
   if (isLoading) {
     return (

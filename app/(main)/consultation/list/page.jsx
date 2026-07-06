@@ -1,16 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import BackIconButton from "@/components/BackIconButton";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function ListPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [type, setType] = useState("online");
 
-  const type = searchParams.get("type") || "online";
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setType(params.get("type") || "online");
+  }, []);
 
   const [counselors, setCounselors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
