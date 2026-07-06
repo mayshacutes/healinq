@@ -141,7 +141,18 @@ export default function UserChatPage() {
         .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic")
         .eq("booking_code", bookingCodeFromUrl)
         .maybeSingle();
-      if (data) setConsultation(data);
+      if (data) {
+        // Cek apakah sesi sedang berlangsung
+        const start = new Date(`${data.consultation_date}T${data.consultation_hour?.replace(".", ":")}:00`);
+        const end = new Date(start.getTime() + (data.session_duration || 60) * 60000);
+        const now = new Date();
+        if (now < start || now > end) {
+          setErrorMessage("Room chat hanya bisa dibuka selama sesi konsultasi berlangsung.");
+          setIsLoading(false);
+          return;
+        }
+        setConsultation(data);
+      }
     }
 
     setIsLoading(false);

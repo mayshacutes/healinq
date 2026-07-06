@@ -131,20 +131,25 @@ export default function CounselorChatPage() {
   }, []);
 
   const handleSelectConsultation = async (consultation) => {
-  setSelectedConsultation(consultation);
-  setSelectedRoomId(null);
+    const status = getSessionStatus(consultation);
+    if (status !== "ongoing") {
+      alert("Room chat hanya bisa dibuka selama sesi konsultasi berlangsung.");
+      return;
+    }
 
-  // Fetch room secara terpisah
-  const { data: roomData } = await supabase
-    .from("chat_rooms")
-    .select("id")
-    .eq("consultation_id", consultation.id)
-    .maybeSingle();
+    setSelectedConsultation(consultation);
+    setSelectedRoomId(null);
 
-  if (roomData?.id) {
-    setSelectedRoomId(roomData.id);
-  }
-};
+    const { data: roomData } = await supabase
+      .from("chat_rooms")
+      .select("id")
+      .eq("consultation_id", consultation.id)
+      .maybeSingle();
+
+    if (roomData?.id) {
+      setSelectedRoomId(roomData.id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -172,7 +177,7 @@ export default function CounselorChatPage() {
             const isSelected = selectedConsultation?.id === c.id;
             return (
               <div key={c.id} onClick={() => handleSelectConsultation(c)}
-                className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-pink-50 border-l-4 border-l-pink-400" : ""}`}>
+                className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-pink-50 border-l-4 border-l-pink-400" : ""} ${sessionStatus !== "ongoing" ? "opacity-40" : ""}`}>
                 <p className="font-semibold text-sm">{c.client_name || "Pasien"}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{formatDate(c.consultation_date)} · {c.consultation_hour}</p>
                 <div className="flex gap-2 mt-1">
