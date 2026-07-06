@@ -35,6 +35,8 @@ export default function AdminActivityPage() {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
 
   const fetchActivities = async () => {
     const { data, error } = await supabase
@@ -117,6 +119,16 @@ export default function AdminActivityPage() {
       return matchSearch && matchStatus;
     });
   }, [activities, search, statusFilter]);
+
+  const totalPages = Math.ceil(filteredActivities.length / itemsPerPage);
+  const paginatedActivities = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredActivities.slice(start, start + itemsPerPage);
+  }, [filteredActivities, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
 
   const totalActivities = activities.length;
   const completedActivities = activities.filter(
@@ -364,7 +376,7 @@ export default function AdminActivityPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredActivities.map((activity) => (
+                  {paginatedActivities.map((activity) => (
                     <tr
                       key={activity.id}
                       className="border-b border-[#f2f2f2] last:border-b-0"
@@ -405,7 +417,7 @@ export default function AdminActivityPage() {
                     </tr>
                   ))}
 
-                  {filteredActivities.length === 0 && (
+                  {paginatedActivities.length === 0 && (
                     <tr>
                       <td
                         colSpan={7}
@@ -418,6 +430,53 @@ export default function AdminActivityPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-[13px] text-[#666]">
+                  Page {currentPage} of {totalPages} ({filteredActivities.length} total)
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-1.5 text-[13px] text-[#333] transition hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ← Prev
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                    .map((p, idx, arr) => (
+                      <span key={p}>
+                        {idx > 0 && arr[idx - 1] !== p - 1 && (
+                          <span className="px-1 text-[13px] text-[#999]">...</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`min-w-[36px] rounded-full px-3 py-1.5 text-[13px] font-medium transition ${
+                            currentPage === p
+                              ? "bg-[#db2d8d] text-white"
+                              : "border border-[#e6e6e6] bg-white text-[#333] hover:bg-gray-50"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </span>
+                    ))}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-1.5 text-[13px] text-[#333] transition hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
