@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 
 function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -82,14 +83,24 @@ export async function POST(request) {
       );
     }
 
-    // SEMENTARA: password_hash dibandingkan langsung dengan password input
-    // Jadi di database, kolom password_hash isi dulu dengan password biasa.
-    // Nanti kalau mau lebih aman, baru kita ubah ke bcrypt.
-    if (password !== admin.password_hash) {
+    const isPasswordValid = admin.password_hash.startsWith("$2")
+      ? bcrypt.compareSync(password, admin.password_hash)
+      : password === admin.password_hash;
+
+    if (!isPasswordValid) {
       return NextResponse.json(
         { success: false, message: "Password admin salah." },
         { status: 401 }
       );
+    }
+
+    // Jika password masih plain text, hash dan simpan ke database
+    if (!admin.password_hash.startsWith("$2")) {
+      const hashedPassword = bcrypt.hashSync(admin.password_hash, 10);
+      await supabaseAdmin
+        .from("admin")
+        .update({ password_hash: hashedPassword, updated_at: new Date() })
+        .eq("admin_id", admin.admin_id);
     }
 
     const adminSession = {

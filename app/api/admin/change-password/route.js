@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 
 export async function POST(request) {
   try {
@@ -36,18 +37,23 @@ export async function POST(request) {
       );
     }
 
-    // sementara plain text sesuai login admin kamu sekarang
-    if (admin.password_hash !== currentPassword) {
+    const isCurrentPasswordValid = admin.password_hash.startsWith("$2")
+      ? bcrypt.compareSync(currentPassword, admin.password_hash)
+      : currentPassword === admin.password_hash;
+
+    if (!isCurrentPasswordValid) {
       return NextResponse.json(
         { success: false, message: "Password lama salah" },
         { status: 400 }
       );
     }
 
+    const hashedNewPassword = bcrypt.hashSync(newPassword, 10);
+
     const { error: updateError } = await supabase
       .from("admin")
       .update({
-        password_hash: newPassword,
+        password_hash: hashedNewPassword,
         updated_at: new Date(),
       })
       .eq("admin_id", admin.admin_id);
