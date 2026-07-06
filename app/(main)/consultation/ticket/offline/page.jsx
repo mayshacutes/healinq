@@ -46,6 +46,15 @@ export default function TicketOfflinePage() {
         .single();
       if (!error && data) {
         const isSuccess = data.payments?.[0]?.payment_status === "success";
+
+        // Redirect kalo belum diverifikasi
+        if (!isSuccess) {
+          alert("Booking belum diverifikasi. Silakan tunggu konfirmasi admin.");
+          localStorage.removeItem("latestTicket");
+          router.push("/consultation/my-bookings");
+          return;
+        }
+
         const mapped = {
           id: data.id,
           bookingCode: data.booking_code,
