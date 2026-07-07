@@ -199,7 +199,7 @@ export default function SignUp() {
         <div className="absolute left-[-6rem] top-[-3rem] h-72 w-72 rounded-full bg-[#9ad9f8cc] blur-[100px]" />
       </div>
 
-      <section className="relative z-10 min-h-screen w-full overflow-hidden px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
+      <section className="relative z-10 min-h-screen w-full overflow-y-auto px-3 py-4 sm:px-5 sm:py-5 lg:px-10 lg:py-6">
         {/* ILLUSTRATION */}
         <div className="absolute inset-y-0 right-0 hidden w-[80vw] xl:block">
           <img

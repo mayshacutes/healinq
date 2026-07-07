@@ -493,6 +493,39 @@ const css = `
   /* ── SCROLL REVEAL ── */
   .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
   .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 768px) {
+    .nav { padding: 0 20px; }
+    .nav-links { display: none; }
+
+    .hero { padding: 80px 20px 40px; }
+    .hero-inner { flex-direction: column; gap: 40px; }
+    .hero-title { font-size: 2rem; }
+    .hero-desc { font-size: 0.92rem; }
+    .hero-stats { flex-wrap: wrap; gap: 20px; justify-content: center; }
+    .hero-visual { flex: none; width: 100%; }
+    .hero-floater.f1 { top: -10px; right: 0; }
+    .hero-floater.f2 { bottom: 10px; left: 0; }
+
+    .section { padding: 60px 20px; }
+    .section-title { font-size: 1.6rem; }
+
+    .about-grid { grid-template-columns: 1fr; gap: 40px; }
+    .vm-grid { grid-template-columns: 1fr; }
+
+    .feat-row { flex-direction: column; padding: 24px; gap: 20px; }
+    .feat-icon-wrap { width: 56px; height: 56px; font-size: 1.6rem; border-radius: 14px; }
+
+    .testi-grid { grid-template-columns: 1fr; }
+    .testi-card { padding: 20px; }
+
+    .cta { padding: 60px 20px; }
+    .cta-title { font-size: 1.6rem; }
+
+    .footer { padding: 40px 20px 24px; }
+    .footer-simple { grid-template-columns: 1fr; gap: 32px; }
+    .footer-bottom { flex-direction: column; text-align: center; }
+  }
 `;
 
 // ─── COMPONENT ─────────────────────────────────────────────────────────────────
