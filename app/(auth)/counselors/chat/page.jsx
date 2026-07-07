@@ -30,7 +30,6 @@ function getSessionStatus(consultation) {
   return "finished";
 }
 
-// Komponen chat yang pakai useChat hook
 function ChatArea({ roomId, currentUserId, patientName }) {
   const { messages, loading, sendMessage } = useChat(roomId);
   const [input, setInput] = useState("");
@@ -38,8 +37,6 @@ function ChatArea({ roomId, currentUserId, patientName }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    console.log("[ChatArea] currentUserId:", currentUserId);
-    messages.forEach(m => console.log(`[ChatArea] msg id=${m.id.slice(0,8)} sender_id=${m.sender_id} match=${m.sender_id === currentUserId}`));
   }, [messages, currentUserId]);
 
   const handleSend = async () => {
@@ -76,7 +73,6 @@ function ChatArea({ roomId, currentUserId, patientName }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* QUICK REPLY */}
       <div className="px-4 pb-2 flex gap-2 flex-wrap">
         {quickReplies.map((q, i) => (
           <button key={i} onClick={() => setInput(q)}
@@ -86,7 +82,6 @@ function ChatArea({ roomId, currentUserId, patientName }) {
         ))}
       </div>
 
-      {/* INPUT */}
       <div className="p-3 bg-white flex gap-2 border-t">
         <input value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -108,6 +103,7 @@ export default function CounselorChatPage() {
   const [selectedConsultation, setSelectedConsultation] = useState(null);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showMobileList, setShowMobileList] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -115,7 +111,6 @@ export default function CounselorChatPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
 
-      // Cari counselor: prioritas dari sessionStorage (tahan session sharing)
       const storedId = sessionStorage.getItem("counselorId");
       let counselorData = null;
 
@@ -125,13 +120,11 @@ export default function CounselorChatPage() {
           .select("id, name, email, auth_email")
           .eq("id", storedId)
           .maybeSingle();
-        // Pastikan masih cocok dengan session (kalo ganti akun)
         if (data && (data.email === user.email || data.auth_email === user.email)) {
           counselorData = data;
         }
       }
 
-      // Fallback: cari via session email
       if (!counselorData) {
         const { data } = await supabase
           .from("counselors")
@@ -147,14 +140,11 @@ export default function CounselorChatPage() {
       if (!counselorData) { setIsLoading(false); return; }
       setCounselor(counselorData);
 
-      // Cari UUID auth asli konselor pake email dari counselors (bukan user.email)
       const targetEmail = counselorData.auth_email || counselorData.email;
       const res = await fetch(`/api/get-auth-id?email=${encodeURIComponent(targetEmail)}`);
       const { id: realAuthId } = await res.json();
       setCounselorRealAuthId(realAuthId || user.id);
-      console.log("[CounselorChat] counselorRealAuthId:", realAuthId, "| targetEmail:", targetEmail, "| session user.id:", user.id);
 
-      // Ambil semua consultasi milik counselor ini
       const data = await getCounselorConsultations(counselorData.id);
       setConsultations(data || []);
       setIsLoading(false);
@@ -181,6 +171,11 @@ export default function CounselorChatPage() {
     if (roomData?.id) {
       setSelectedRoomId(roomData.id);
     }
+    setShowMobileList(false);
+  };
+
+  const handleBackToList = () => {
+    setShowMobileList(true);
   };
 
   if (isLoading) {
@@ -194,8 +189,10 @@ export default function CounselorChatPage() {
   return (
     <div className="flex h-screen bg-[#f5f7fb]">
 
-      {/* SIDEBAR KIRI - DAFTAR PASIEN */}
-      <div className="w-1/3 bg-white border-r overflow-y-auto">
+      {/* SIDEBAR - DAFTAR PASIEN */}
+      <div className={`${
+        showMobileList ? "flex" : "hidden"
+      } md:flex w-full md:w-1/3 bg-white border-r overflow-y-auto flex-col`}>
         <div className="p-4 border-b">
           <h1 className="font-bold text-[#0c72a6]">Chat Pasien</h1>
           <p className="text-xs text-gray-400 mt-1">{counselor?.name}</p>
@@ -231,22 +228,29 @@ export default function CounselorChatPage() {
       </div>
 
       {/* AREA CHAT */}
-      <div className="flex-1 flex flex-col">
+      <div className={`${
+        showMobileList ? "hidden" : "flex"
+      } md:flex flex-1 flex-col`}>
         {!selectedConsultation ? (
           <div className="flex-1 flex items-center justify-center text-gray-400">
             Pilih pasien untuk mulai chat
           </div>
         ) : (
           <>
-            {/* HEADER */}
-            <div className="p-4 bg-white border-b shadow-sm">
-              <p className="font-semibold">{selectedConsultation.client_name || "Pasien"}</p>
-              <p className="text-xs text-gray-400">
-                {formatDate(selectedConsultation.consultation_date)} · {selectedConsultation.consultation_hour} · {selectedConsultation.consultation_type}
-              </p>
-              {selectedConsultation.topic && (
-                <p className="text-xs text-gray-500 mt-1">Topik: {selectedConsultation.topic}</p>
-              )}
+            <div className="p-4 bg-white border-b shadow-sm flex items-center gap-3">
+              <button onClick={handleBackToList}
+                className="md:hidden text-[#0c72a6] font-bold text-lg leading-none">
+                ←
+              </button>
+              <div>
+                <p className="font-semibold">{selectedConsultation.client_name || "Pasien"}</p>
+                <p className="text-xs text-gray-400">
+                  {formatDate(selectedConsultation.consultation_date)} · {selectedConsultation.consultation_hour} · {selectedConsultation.consultation_type}
+                </p>
+                {selectedConsultation.topic && (
+                  <p className="text-xs text-gray-500 mt-1">Topik: {selectedConsultation.topic}</p>
+                )}
+              </div>
             </div>
 
             {selectedRoomId && counselorRealAuthId ? (

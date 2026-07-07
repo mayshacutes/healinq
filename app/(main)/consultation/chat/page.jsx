@@ -201,7 +201,7 @@ export default function UserChatPage() {
   if (errorMessage || !roomId) {
     return (
       <div className="min-h-screen bg-[#d4effc] flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow text-center w-[400px]">
+        <div className="bg-white p-8 rounded-2xl shadow text-center max-w-[400px] w-full">
           <p className="text-lg font-bold text-red-500">{errorMessage || "Room tidak ditemukan"}</p>
           <button onClick={() => router.push("/consultation/my-bookings")}
             className="mt-5 bg-[#0C72A6] text-white px-6 py-2 rounded-full">

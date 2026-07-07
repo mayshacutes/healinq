@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { signCookie } from "@/lib/adminCookie";
 
 function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -116,8 +117,8 @@ export async function POST(request) {
       admin: adminSession,
     });
 
-    const cookieValue = Buffer.from(JSON.stringify(adminSession)).toString(
-      "base64url"
+    const cookieValue = await signCookie(
+      Buffer.from(JSON.stringify(adminSession)).toString("base64url")
     );
 
     response.cookies.set("healinq_admin", cookieValue, {

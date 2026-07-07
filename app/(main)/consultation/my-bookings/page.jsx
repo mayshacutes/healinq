@@ -150,7 +150,7 @@ export default function MyBookingsPage() {
     const canChat = isOnline && sessionStatus === "ongoing" && verified;
 
     return (
-      <div key={booking.id} className="bg-white rounded-2xl p-6 shadow flex justify-between gap-6">
+      <div key={booking.id} className="bg-white rounded-2xl p-6 shadow flex flex-col md:flex-row justify-between gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-3 flex-wrap">
             <h2 className="text-xl font-bold text-gray-800">{booking.counselor_name}</h2>
@@ -198,7 +198,7 @@ export default function MyBookingsPage() {
           </div>
         </div>
 
-        <div className="w-[210px] flex flex-col gap-3 justify-center">
+        <div className="w-full md:w-[210px] flex flex-row md:flex-col gap-3 justify-center">
           <button
             onClick={() => handleViewTicket(booking)}
             disabled={!verified}
@@ -238,7 +238,7 @@ export default function MyBookingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-4 md:p-10">
       <div className="max-w-5xl mx-auto">
         <div className="mb-5">
           <BackIconButton to="/consultation" />

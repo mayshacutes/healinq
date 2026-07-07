@@ -21,7 +21,12 @@ export default function BookingPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [type, setType] = useState(searchParams.get("type") || "online");
+  const [type, setType] = useState("online");
+
+  useEffect(() => {
+    const t = searchParams.get("type");
+    if (t) setType(t);
+  }, [searchParams]);
 
   const [selected, setSelected] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -183,7 +188,7 @@ export default function BookingPage() {
   if (errorMessage || !selected) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow text-center w-[420px]">
+        <div className="bg-white p-8 rounded-2xl shadow text-center max-w-[420px] w-full">
           <h1 className="text-xl font-bold text-[#0C72A6]">
             {errorMessage || "Counselor not found"}
           </h1>
@@ -199,14 +204,14 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-4 md:p-10">
       <div className="mb-5">
         <BackIconButton to={`/consultation/list?type=${type}`} />
       </div>
-      <div className="flex gap-10">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-10">
 
         {/* LEFT - INFO KONSELOR */}
-        <div className="bg-white p-6 rounded-2xl w-1/2 shadow">
+        <div className="bg-white p-6 rounded-2xl w-full md:w-1/2 shadow">
           <h2 className="text-xl font-bold text-[#0C72A6] mb-6 text-center">
             Counselor Information
           </h2>
@@ -248,7 +253,7 @@ export default function BookingPage() {
         </div>
 
         {/* RIGHT - BOOKING FORM */}
-        <div className="bg-pink-200 p-6 rounded-2xl w-1/2 shadow">
+        <div className="bg-pink-200 p-6 rounded-2xl w-full md:w-1/2 shadow">
           <h2 className="text-xl font-bold text-pink-600 mb-6 text-center">
             Booking Form
           </h2>
@@ -279,7 +284,7 @@ export default function BookingPage() {
                 <p className="text-sm text-pink-700 mt-2">{hoursMessage}</p>
               )}
               {date && !isLoadingHours && availableHours.length > 0 && (
-                <div className="grid grid-cols-5 gap-2 mt-2">
+                <div className="grid grid-cols-3 md:grid-cols-5 gap-2 mt-2">
                   {availableHours.map((hour) => (
                     <button
                       key={hour}

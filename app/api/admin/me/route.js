@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyCookie } from "@/lib/adminCookie";
 
 export async function GET(request) {
   try {
@@ -14,11 +15,18 @@ export async function GET(request) {
       );
     }
 
-    const decoded = Buffer.from(
-      cookie.value,
-      "base64url"
-    ).toString("utf-8");
+    const verified = await verifyCookie(cookie.value);
+    if (!verified) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid admin session",
+        },
+        { status: 401 }
+      );
+    }
 
+    const decoded = Buffer.from(verified, "base64url").toString("utf-8");
     const admin = JSON.parse(decoded);
 
     return NextResponse.json({

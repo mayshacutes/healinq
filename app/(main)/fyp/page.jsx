@@ -69,16 +69,22 @@ function buildSegmentedResults(questions, answers) {
   });
 
   const rankedCategories = Object.entries(scoreMap)
+    .filter(([key]) => categoryProfiles[key])
     .sort((a, b) => b[1] - a[1])
     .map(([key, score]) => ({ key, score }));
 
-  const topCategory = rankedCategories[0];
-  const secondCategory = rankedCategories[1];
-  const thirdCategory = rankedCategories[2];
+  if (rankedCategories.length === 0) {
+    rankedCategories.push({ key: "explorative", score: 0 });
+  }
+  while (rankedCategories.length < 3) {
+    const fallback = Object.keys(categoryProfiles).find(k => !rankedCategories.some(r => r.key === k));
+    if (fallback) rankedCategories.push({ key: fallback, score: 0 });
+    else break;
+  }
 
-  const topProfile = categoryProfiles[topCategory.key];
-  const secondProfile = categoryProfiles[secondCategory.key];
-  const thirdProfile = categoryProfiles[thirdCategory.key];
+  const topProfile = categoryProfiles[rankedCategories[0]?.key] || categoryProfiles.explorative;
+  const secondProfile = categoryProfiles[rankedCategories[1]?.key] || topProfile;
+  const thirdProfile = categoryProfiles[rankedCategories[2]?.key] || topProfile;
 
   const resultCards = [
     ...topProfile.primary.slice(0, 2),
@@ -157,14 +163,23 @@ export default function FypPage() {
   // Ambil user session
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
-          .single();
-        setCurrentUser(profile);
+          .maybeSingle();
+
+        setCurrentUser(profile || {
+          id: user.id,
+          username: user.email?.split("@")[0],
+          email: user.email,
+        });
+      } catch (error) {
+        console.error("Error loading user:", error);
       }
     };
     getUser();
@@ -247,6 +262,7 @@ export default function FypPage() {
         actor_id: currentUser.id,
 
         actor_name:
+          currentUser.full_name ||
           currentUser.username ||
           currentUser.email,
 

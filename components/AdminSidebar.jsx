@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ isOpen, onClose }) {
   const pathname = usePathname();
 
   const menu = [
@@ -23,10 +23,11 @@ export default function AdminSidebar() {
 
   const isProfileActive = pathname === "/admin/profile";
 
-  return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[160px] flex-col items-center bg-[#efc6dc] px-4 py-6 shadow-sm">
+  const sidebarContent = (
+    <>
       <Link
         href="/admin/profile"
+        onClick={onClose}
         className={`mb-10 flex h-[64px] w-[64px] items-center justify-center rounded-full transition hover:scale-105 ${
           isProfileActive ? "ring-4 ring-white/70" : ""
         }`}
@@ -46,6 +47,7 @@ export default function AdminSidebar() {
           <Link
             key={item.name}
             href={item.href}
+            onClick={onClose}
             className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
               isActive(item.href)
                 ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
@@ -56,6 +58,36 @@ export default function AdminSidebar() {
           </Link>
         ))}
       </nav>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed left-0 top-0 z-50 h-screen w-[160px] flex-col items-center bg-[#efc6dc] px-4 py-6 shadow-sm transition-transform duration-300 md:flex ${
+          isOpen ? "flex translate-x-0" : "hidden -translate-x-full md:hidden"
+        }`}
+      >
+        <button
+          onClick={onClose}
+          className="absolute -right-10 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow md:hidden"
+        >
+          ✕
+        </button>
+
+        {sidebarContent}
+      </aside>
+
+      <aside className="fixed left-0 top-0 z-50 hidden h-screen w-[160px] flex-col items-center bg-[#efc6dc] px-4 py-6 shadow-sm md:flex">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

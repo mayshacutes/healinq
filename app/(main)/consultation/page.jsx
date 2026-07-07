@@ -108,7 +108,7 @@ export default function ConsultationPage() {
           {consultationCards.map((card, index) => (
             <div
               key={index}
-              className="w-[450px] bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 flex flex-col gap-4"
+              className="w-full max-w-[450px] bg-white/90 backdrop-blur rounded-2xl shadow-lg p-6 flex flex-col gap-4"
             >
               {/* ICON */}
               <div className="w-12 h-12">

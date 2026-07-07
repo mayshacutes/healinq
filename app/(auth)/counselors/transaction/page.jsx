@@ -109,12 +109,12 @@ export default function CounselorTransactionPage() {
           className="absolute top-0 left-0 w-full object-cover opacity-80" />
       </div>
 
-      <section className="relative z-10 px-6 pt-40 pb-10 sm:px-10">
+      <section className="relative z-10 px-4 pt-36 pb-10 sm:px-6 sm:pt-40 md:px-10">
         <h1 className="text-3xl font-bold text-[#db2d8d] mb-1">Transactions</h1>
         <p className="text-sm text-[#0c72a6] mb-6">Riwayat konsultasi & pembayaran kamu</p>
 
         {/* SUMMARY */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {[
             { label: "Total Consultations", value: transactions.length },
             { label: "Completed", value: transactions.filter(t => t.payments?.[0]?.payment_status === "success").length },

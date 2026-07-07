@@ -202,7 +202,7 @@ export default function PaymentPage() {
   if (!bookingData) {
     return (
       <div className="min-h-screen bg-[#d4eefb] flex items-center justify-center">
-        <div className="bg-white p-8 rounded-2xl shadow text-center w-[420px]">
+        <div className="bg-white p-8 rounded-2xl shadow text-center max-w-[420px] w-full">
           <h1 className="text-xl font-bold text-[#0C72A6]">Booking Data Not Found</h1>
           <p className="text-sm text-gray-500 mt-3">Isi form booking terlebih dahulu.</p>
           <button onClick={() => router.push(`/consultation/booking/${params.id}?type=${typeFromUrl}`)}
@@ -215,7 +215,7 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-10">
+    <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-4 md:p-10">
       <div className="max-w-5xl mx-auto">
         <div className="mb-5">
           <BackIconButton to={`/consultation/booking/${params.id}?type=${typeFromUrl}`} />
@@ -223,7 +223,7 @@ export default function PaymentPage() {
         <h1 className="text-3xl font-bold text-[#0C72A6] mb-2">Payment</h1>
         <p className="text-gray-600 mb-8">Selesaikan pembayaran untuk konfirmasi booking konsultasi.</p>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* KIRI - PILIH METODE */}
           <div className="bg-white rounded-2xl p-6 shadow">
             <h2 className="text-xl font-bold text-pink-600 mb-5">Pilih Metode Pembayaran</h2>

@@ -131,18 +131,12 @@ export default function CounselorSchedulePage() {
       }
       setSchedules(data || []);
 
-      // Ambil counselor_id dari tabel counselors via email (beda tabel, beda ID)
-      const { data: cData } = await supabase
-        .from("counselors")
-        .select("id")
-        .eq("email", counselorProfile.email)
-        .maybeSingle();
-
-      if (cData) {
+      // Gunakan counselorData yang sudah ada (dari checkUser)
+      if (counselorData) {
         const { data: consultations } = await supabase
           .from("consultations")
           .select("consultation_date, consultation_hour")
-          .eq("counselor_id", cData.id)
+          .eq("counselor_id", counselorData.id)
           .neq("status", "cancelled");
 
         const map = {};
@@ -217,9 +211,13 @@ export default function CounselorSchedulePage() {
     setIsLoading(true);
     setActionMessage("Saving schedule...");
     try {
-      const counselorIdForDb = counselorData?.id || counselorProfile.id;
+      if (!counselorData) {
+        setActionMessage("Data konselor tidak ditemukan. Hubungi admin.");
+        setIsLoading(false);
+        return;
+      }
       const scheduleData = {
-        counselor_id: counselorIdForDb,
+        counselor_id: counselorData.id,
         counselor_email: counselorProfile.email,
         counselor_name: counselorProfile.full_name || counselorProfile.name,
         schedule_date: form.scheduleDate,

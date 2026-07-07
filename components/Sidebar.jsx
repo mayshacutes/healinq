@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
 
   const menu = [
@@ -34,29 +34,26 @@ export default function Sidebar() {
     },
   ];
 
-  return (
-    <div className="fixed left-0 top-0 w-[87px] h-screen bg-pink-200 flex flex-col items-center py-4 gap-4">
-      
-          {/* PROFILE */}
-          <Link href="/profile" className="flex flex-col items-center gap-2 mb-2">
-              <div className="w-[52px] h-[52px] rounded-full overflow-hidden">
-                  <Image
-                      src="/images/icon_profile.png"
-                      alt="profile"
-                      width={52}
-                      height={52}
-                  />
-              </div>
-          </Link>
+  const sidebarContent = (
+    <>
+      <Link href="/profile" className="flex flex-col items-center gap-2 mb-2" onClick={onClose}>
+        <div className="w-[52px] h-[52px] rounded-full overflow-hidden">
+          <Image
+            src="/images/icon_profile.png"
+            alt="profile"
+            width={52}
+            height={52}
+          />
+        </div>
+      </Link>
 
-      {/* MENU */}
       {menu.map((item) => {
         const isActive = pathname === item.href;
-
         return (
           <Link
             key={item.name}
             href={item.href}
+            onClick={onClose}
             className="flex flex-col items-center gap-[2px]"
           >
             <Image
@@ -65,11 +62,8 @@ export default function Sidebar() {
               width={25}
               height={25}
             />
-
             <span
-              className={`text-[8px] ${
-                isActive ? "font-semibold" : ""
-              }`}
+              className={`text-[8px] ${isActive ? "font-semibold" : ""}`}
               style={{ color: isActive ? "#AF628E" : "white" }}
             >
               {item.name}
@@ -77,6 +71,36 @@ export default function Sidebar() {
           </Link>
         );
       })}
-    </div>
+    </>
+  );
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed left-0 top-0 z-50 h-screen w-[87px] bg-pink-200 flex-col items-center py-4 gap-4 transition-transform duration-300 md:flex ${
+          isOpen ? "flex translate-x-0" : "hidden -translate-x-full md:hidden"
+        }`}
+      >
+        <button
+          onClick={onClose}
+          className="absolute -right-10 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow md:hidden"
+        >
+          ✕
+        </button>
+
+        {sidebarContent}
+      </aside>
+
+      <aside className="fixed left-0 top-0 z-50 hidden h-screen w-[87px] bg-pink-200 flex-col items-center py-4 gap-4 md:flex">
+        {sidebarContent}
+      </aside>
+    </>
   );
 }
