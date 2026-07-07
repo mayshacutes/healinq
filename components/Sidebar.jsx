@@ -37,12 +37,13 @@ export default function Sidebar({ isOpen, onClose }) {
   const sidebarContent = (
     <>
       <Link href="/profile" className="flex flex-col items-center gap-2 mb-2" onClick={onClose}>
-        <div className="w-[52px] h-[52px] rounded-full overflow-hidden">
+        <div className="w-[52px] h-[52px] rounded-full bg-pink-300 flex items-center justify-center overflow-hidden">
           <Image
-            src="/images/icon_profile.png"
-            alt="profile"
-            width={52}
-            height={52}
+            src="/images/logo.png"
+            alt="HealinQ"
+            width={36}
+            height={36}
+            className="object-contain"
           />
         </div>
       </Link>
