@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { verifyCookie } from "@/lib/adminCookie";
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
   // Allow login and logout endpoints
