@@ -299,10 +299,10 @@ export default function UserDashboardPage() {
                     <div className="flex items-center gap-4 py-2">
                       <div className="flex h-[96px] w-[82px] shrink-0 flex-col items-center justify-center rounded-[14px] bg-[#ace7ef] text-center shadow-inner">
                         <span className="text-[28px] font-bold leading-none text-[#eb1987]">
-                          {formatDay(entry.createdAt)}
+                          {formatDay(entry.created_at)}
                         </span>
                         <span className="mt-1 text-[18px] leading-none text-[#f06db2]">
-                          {formatMonthShort(entry.createdAt)}
+                          {formatMonthShort(entry.created_at)}
                         </span>
                       </div>
 
@@ -312,7 +312,7 @@ export default function UserDashboardPage() {
                           {entry.title || entry.content}
                         </p>
                         <p className="mt-1 text-[14px] font-semibold text-[#f06db2] sm:text-[16px]">
-                          {formatTime(entry.createdAt)} . {getRelativeLabel(entry.createdAt)}
+                          {formatTime(entry.created_at)} . {getRelativeLabel(entry.created_at)}
                         </p>
                       </div>
                     </div>
