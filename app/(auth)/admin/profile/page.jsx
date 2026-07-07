@@ -137,7 +137,6 @@ export default function AdminProfilePage() {
       name: editForm.name.trim(),
       email: editForm.email.trim(),
       role: editForm.role.trim(),
-      image: editForm.image.trim() || "/images/icon_profile.png",
     };
 
     setAdminData(updatedProfile);
@@ -304,13 +303,13 @@ export default function AdminProfilePage() {
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-[22px] bg-white/90 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
               <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
-                <div className="flex h-[110px] w-[110px] items-center justify-center rounded-full bg-[#f7d3e4] p-3">
+                <div className="flex h-[110px] w-[110px] items-center justify-center">
                   <Image
                     src={adminData.image || "/images/icon_profile.png"}
                     alt="Admin Profile"
-                    width={90}
-                    height={90}
-                    className="h-[90px] w-[90px] object-contain"
+                    width={110}
+                    height={110}
+                    className="h-[110px] w-[110px] object-contain"
                   />
                 </div>
 
@@ -401,7 +400,7 @@ export default function AdminProfilePage() {
                       Edit Profile
                     </p>
                     <p className="mt-1 text-[12px] text-[#666]">
-                      Update admin name, email, role, or image path
+                      Update admin name, email, or role
                     </p>
                   </button>
 
@@ -483,15 +482,6 @@ export default function AdminProfilePage() {
                 name="role"
                 placeholder="Role"
                 value={editForm.role}
-                onChange={handleEditFormChange}
-                className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
-              />
-
-              <input
-                type="text"
-                name="image"
-                placeholder="/images/icon_profile.png"
-                value={editForm.image}
                 onChange={handleEditFormChange}
                 className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
               />

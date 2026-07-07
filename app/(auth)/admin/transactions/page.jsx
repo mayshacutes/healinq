@@ -39,6 +39,8 @@ export default function AdminTransactionsPage() {
   const [actionMessage, setActionMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [proofResolving, setProofResolving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentDate(new Date()), 1000);
@@ -60,6 +62,10 @@ export default function AdminTransactionsPage() {
     const timer = setTimeout(() => setActionMessage(""), 2500);
     return () => clearTimeout(timer);
   }, [actionMessage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, rowsPerPage]);
 
   const fetchTransactions = async () => {
     setLoading(true);
@@ -178,6 +184,11 @@ export default function AdminTransactionsPage() {
     });
   }, [transactions, search, statusFilter]);
 
+  const totalPages = Math.ceil(filteredTransactions.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
   const totalRevenue = transactions.filter((tx) => tx.status === "Paid").reduce((sum, tx) => sum + tx.amount, 0);
   const paidTransactions = transactions.filter((tx) => tx.status === "Paid").length;
   const pendingTransactions = transactions.filter((tx) => tx.status === "Pending").length;
@@ -249,7 +260,7 @@ export default function AdminTransactionsPage() {
                 <input type="text" placeholder="Search user, counselor, or reference..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-[44px] min-w-[280px] rounded-full border border-[#e6e6e6] bg-white px-4 text-[14px] text-[#333] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
                 <div ref={dropdownRef} className="relative min-w-[180px]">
                   <button onClick={() => setIsStatusOpen(prev => !prev)} className="flex h-[44px] w-full items-center rounded-full border border-[#e6e6e6] bg-white pl-5 pr-4 text-[14px] text-[#333] shadow-sm"><span className="flex-1 text-center">{statusFilter === "All" ? "All Status" : statusFilter}</span><span className="ml-3 shrink-0 text-[12px] text-[#666]">▼</span></button>
-                  {isStatusOpen && <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-[18px] border border-[#f0d8e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">{["All","Paid","Pending","Failed"].map(s => <button key={s} onClick={() => { setStatusFilter(s); setIsStatusOpen(false); }} className={`w-full px-4 py-3 text-center text-[14px] transition ${statusFilter===s ? "bg-[#ffe7f1] font-medium text-[#db2d8d]" : "text-[#333] hover:bg-[#fff5fa]"}`}>{s==="All"?"All Status":s}</button>)}</div>}
+                  {isStatusOpen && <div className="absolute right-0 z-20 mt-2 w-full overflow-hidden rounded-[18px] border border-[#f0d8e5] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.12)]">{["All", "Paid", "Pending", "Failed"].map(s => <button key={s} onClick={() => { setStatusFilter(s); setIsStatusOpen(false); }} className={`w-full px-4 py-3 text-center text-[14px] transition ${statusFilter === s ? "bg-[#ffe7f1] font-medium text-[#db2d8d]" : "text-[#333] hover:bg-[#fff5fa]"}`}>{s === "All" ? "All Status" : s}</button>)}</div>}
                 </div>
                 <button onClick={handleExportData} className="h-[44px] rounded-full bg-[#db2d8d] px-5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]">Export</button>
               </div>
@@ -257,14 +268,97 @@ export default function AdminTransactionsPage() {
             <div className="mt-6 overflow-x-auto">
               <table className="w-full min-w-[980px] border-collapse">
                 <thead><tr className="border-b border-[#ea3f97]"><th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">User</th><th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Counselor</th><th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Amount</th><th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Date</th><th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Status</th><th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Actions</th></tr></thead>
-                <tbody>{filteredTransactions.map(tx => <tr key={tx.id} className="border-b border-[#f2f2f2] last:border-b-0"><td className="px-4 py-4 text-[14px] font-medium text-[#262626]">{tx.user}</td><td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{tx.counselor}</td><td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{formatCurrency(tx.amount)}</td><td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{tx.date}</td><td className="px-4 py-4"><span className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(tx.status)}`}>{tx.status}</span></td><td className="px-4 py-4"><button onClick={() => handleViewTransaction(tx)} className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90">View</button></td></tr>)}</tbody>
+                <tbody>
+                  {paginatedTransactions.map((tx) => (
+                    <tr key={tx.id} className="border-b border-[#f2f2f2] last:border-b-0">
+                      <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">
+                        {tx.user}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {tx.counselor}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {formatCurrency(tx.amount)}
+                      </td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
+                        {tx.date}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(tx.status)}`}>
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={() => handleViewTransaction(tx)}
+                          className="rounded-full bg-[#dff1ff] px-3 py-1.5 text-[12px] font-medium text-[#0c72a6] transition hover:opacity-90"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {filteredTransactions.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]">
+                        No transactions found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
               </table>
             </div>
+            {!loading && filteredTransactions.length > 0 && (
+              <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-[13px] text-[#666]">
+                  <span>Show</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                  </select>
+                  <span>transactions per page</span>
+                </div>
+
+                <div className="text-[13px] text-[#666]">
+                  Showing {startIndex + 1} - {Math.min(endIndex, filteredTransactions.length)} of{" "}
+                  {filteredTransactions.length} transactions
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="rounded-full bg-[#ffe7f1] px-4 py-2 text-[13px] font-medium text-[#db2d8d]">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bottom cards - tetap sama */}
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            <div className="rounded-[20px] bg-[#e7daf0]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"><h2 className="text-[18px] font-bold text-[#1e1e1e]">Payment Insights</h2><div className="mt-5 space-y-4"><div className="rounded-[14px] bg-white/50 px-4 py-4"><p className="text-[13px] text-[#ea3f97]">Top payment method</p><p className="mt-1 text-[16px] font-semibold text-[#222]">E-Wallet</p></div><div className="rounded-[14px] bg-white/50 px-4 py-4"><p className="text-[13px] text-[#ea3f97]">Highest transaction</p><p className="mt-1 text-[16px] font-semibold text-[#222]">{formatCurrency(Math.max(...transactions.map(tx=>tx.amount),0))}</p></div><div className="rounded-[14px] bg-white/50 px-4 py-4"><p className="text-[13px] text-[#ea3f97]">Most common status</p><p className="mt-1 text-[16px] font-semibold text-[#222]">{paidTransactions>=pendingTransactions && paidTransactions>=failedTransactions?"Paid":pendingTransactions>=failedTransactions?"Pending":"Failed"}</p></div></div></div>
+            <div className="rounded-[20px] bg-[#e7daf0]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"><h2 className="text-[18px] font-bold text-[#1e1e1e]">Payment Insights</h2><div className="mt-5 space-y-4"><div className="rounded-[14px] bg-white/50 px-4 py-4"><p className="text-[13px] text-[#ea3f97]">Top payment method</p><p className="mt-1 text-[16px] font-semibold text-[#222]">E-Wallet</p></div><div className="rounded-[14px] bg-white/50 px-4 py-4"><p className="text-[13px] text-[#ea3f97]">Highest transaction</p><p className="mt-1 text-[16px] font-semibold text-[#222]">{formatCurrency(Math.max(...transactions.map(tx => tx.amount), 0))}</p></div><div className="rounded-[14px] bg-white/50 px-4 py-4"><p className="text-[13px] text-[#ea3f97]">Most common status</p><p className="mt-1 text-[16px] font-semibold text-[#222]">{paidTransactions >= pendingTransactions && paidTransactions >= failedTransactions ? "Paid" : pendingTransactions >= failedTransactions ? "Pending" : "Failed"}</p></div></div></div>
             <div className="rounded-[20px] bg-[#bde6e5]/85 p-5 shadow-[0_4px_12px_rgba(0,0,0,0.12)]"><h2 className="text-[18px] font-bold text-[#1e1e1e]">Quick Actions</h2><div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2"><button onClick={handleExportData} className="rounded-[14px] bg-white/60 px-4 py-4 text-left"><p className="text-[15px] font-semibold text-[#db2d8d]">Export Data</p><p className="mt-1 text-[12px] text-[#666]">Download transaction records</p></button><button onClick={handleFilterPaid} className="rounded-[14px] bg-white/60 px-4 py-4 text-left"><p className="text-[15px] font-semibold text-[#db2d8d]">Show Paid</p><p className="mt-1 text-[12px] text-[#666]">Filter successfully paid transactions</p></button><button onClick={handleFilterPending} className="rounded-[14px] bg-white/60 px-4 py-4 text-left"><p className="text-[15px] font-semibold text-[#db2d8d]">Review Pending</p><p className="mt-1 text-[12px] text-[#666]">Check transactions awaiting payment</p></button><button onClick={() => { setStatusFilter("All"); setSearch(""); setActionMessage("All filters have been reset."); }} className="rounded-[14px] bg-white/60 px-4 py-4 text-left"><p className="text-[15px] font-semibold text-[#db2d8d]">Reset Filters</p><p className="mt-1 text-[12px] text-[#666]">Show all transaction records again</p></button></div></div>
           </div>
         </div>
@@ -291,7 +385,7 @@ export default function AdminTransactionsPage() {
                 <div className="rounded-[14px] bg-[#fff5fa] px-4 py-3"><p className="text-[12px] text-[#ea3f97]">Session Type</p><p className="mt-1 text-[15px] font-semibold text-[#222]">{selectedTransaction.sessionType}</p></div>
               </div>
               <div className="rounded-[14px] bg-[#f4fbff] px-4 py-3"><p className="text-[12px] text-[#0c72a6]">Status</p><div className="mt-2"><span className={`rounded-full px-3 py-1 text-[12px] font-medium ${getStatusClass(selectedTransaction.status)}`}>{selectedTransaction.status}</span></div></div>
-              
+
               {/* TAMPILKAN GAMBAR BUKTI JIKA ADA */}
               {selectedTransaction.proofFileUrl ? (
                 <div className="rounded-[14px] bg-[#fff0f7] p-4">

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
+import { Icon } from "@iconify/react";
 
 
 
@@ -40,9 +41,13 @@ export default function UserProfilePage() {
     gender: "",
     address: "",
     doctor: "",
+    avatar_url: "",
   });
 
   const [editForm, setEditForm] = useState(profile);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     async function loadProfile() {
@@ -78,6 +83,7 @@ export default function UserProfilePage() {
             address: "",
             last_edu: "",
             doctor: "",
+            avatar_url: "",
           };
           await supabase.from("profiles").insert(defaultProfile);
           setProfile(defaultProfile);
@@ -132,12 +138,33 @@ export default function UserProfilePage() {
 
   const handleOpenEditModal = () => {
     setEditForm(profile);
+    setAvatarFile(null);
+    setAvatarPreview(profile.avatar_url || "");
     setShowEditModal(true);
   };
 
   const handleEditFormChange = (e) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setActionMessage("File harus berupa gambar.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setActionMessage("Ukuran gambar maksimal 2MB.");
+      return;
+    }
+
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   };
 
   const handleSaveProfile = async (e) => {
@@ -153,18 +180,63 @@ export default function UserProfilePage() {
       return;
     }
 
+    let avatarUrl = editForm.avatar_url || "";
+
+    if (avatarFile) {
+      setUploadingAvatar(true);
+
+      const fileExt = avatarFile.name.split(".").pop();
+      const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profile-pictures")
+        .upload(filePath, avatarFile, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error(uploadError);
+        setUploadingAvatar(false);
+        setActionMessage("Gagal upload foto profile.");
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("profile-pictures")
+        .getPublicUrl(filePath);
+
+      avatarUrl = publicUrlData.publicUrl;
+      setUploadingAvatar(false);
+    }
+
+    const updatedProfile = {
+      ...editForm,
+      full_name: editForm.full_name,
+      username: editForm.username,
+      bio: editForm.bio,
+      telp_number: editForm.telp_number,
+      birth_date: editForm.birth_date,
+      gender: editForm.gender,
+      address: editForm.address,
+      last_edu: editForm.last_edu,
+      doctor: editForm.doctor,
+      avatar_url: avatarUrl,
+    };
+
     const { error } = await supabase
       .from("profiles")
       .update({
-        full_name: editForm.full_name,
-        username: editForm.username,
-        bio: editForm.bio,
-        telp_number: editForm.telp_number,
-        birth_date: editForm.birth_date,
-        gender: editForm.gender,
-        address: editForm.address,
-        last_edu: editForm.last_edu,
-        doctor: editForm.doctor,
+        full_name: updatedProfile.full_name,
+        username: updatedProfile.username,
+        bio: updatedProfile.bio,
+        telp_number: updatedProfile.telp_number,
+        birth_date: updatedProfile.birth_date,
+        gender: updatedProfile.gender,
+        address: updatedProfile.address,
+        last_edu: updatedProfile.last_edu,
+        doctor: updatedProfile.doctor,
+        avatar_url: updatedProfile.avatar_url,
       })
       .eq("id", user.id);
 
@@ -172,7 +244,10 @@ export default function UserProfilePage() {
       console.error(error);
       setActionMessage("Gagal menyimpan perubahan.");
     } else {
-      setProfile(editForm);
+      setProfile(updatedProfile);
+      setEditForm(updatedProfile);
+      setAvatarFile(null);
+      setAvatarPreview("");
       setShowEditModal(false);
       setActionMessage("Profil berhasil diperbarui!");
     }
@@ -343,8 +418,18 @@ export default function UserProfilePage() {
               {/* Profile Card */}
               <div className="rounded-[22px] bg-white/90 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
                 <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
-                  <div className="flex h-[110px] w-[110px] items-center justify-center rounded-full bg-[#f7d3e4] p-3">
-                    <span className="text-[80px]">🐰</span>
+                  <div className="h-[110px] w-[110px] overflow-hidden rounded-full bg-[#f7d3e4]">
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Icon icon="solar:user-circle-bold" className="text-[78px] text-[#db2d8d]" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <h2 className="text-[28px] font-bold text-[#222]">{profile.full_name || profile.username}</h2>
@@ -354,45 +439,75 @@ export default function UserProfilePage() {
                 </div>
                 <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">📍 Lokasi</p>
+                    <p className="flex items-center gap-2 text-[13px] text-[#ea3f97]">
+                      <Icon icon="solar:map-point-bold" className="text-[16px]" />
+                      Lokasi
+                    </p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.address}</p>
                   </div>
                   <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
-                    <p className="text-[13px] text-[#0c72a6]">🎂 Usia</p>
+                    <p className="flex items-center gap-2 text-[13px] text-[#0c72a6]">
+                      <Icon icon="solar:calendar-date-bold" className="text-[16px]" />
+                      Usia
+                    </p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">{calcAge(profile.birth_date)}</p>
                   </div>
                   <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">⚧️ Jenis Kelamin</p>
+                    <p className="flex items-center gap-2 text-[13px] text-[#ea3f97]">
+                      <Icon icon="solar:user-rounded-bold" className="text-[16px]" />
+                      Jenis Kelamin
+                    </p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.gender}</p>
                   </div>
                   <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
-                    <p className="text-[13px] text-[#0c72a6]">🎓 Pendidikan</p>
+                    <p className="flex items-center gap-2 text-[13px] text-[#0c72a6]">
+                      <Icon icon="solar:square-academic-cap-bold" className="text-[16px]" />
+                      Pendidikan
+                    </p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.last_edu}</p>
                   </div>
                   <div className="rounded-[16px] bg-[#fff5fa] px-4 py-4">
-                    <p className="text-[13px] text-[#ea3f97]">📞 Telepon</p>
+                    <p className="flex items-center gap-2 text-[13px] text-[#ea3f97]">
+                      <Icon icon="solar:phone-bold" className="text-[16px]" />
+                      Telepon
+                    </p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.telp_number}</p>
                   </div>
                   <div className="rounded-[16px] bg-[#f4fbff] px-4 py-4">
-                    <p className="text-[13px] text-[#0c72a6]">🩺 Psikiater</p>
+                    <p className="flex items-center gap-2 text-[13px] text-[#0c72a6]">
+                      <Icon icon="solar:health-bold" className="text-[16px]" />
+                      Psikiater
+                    </p>
                     <p className="mt-1 text-[16px] font-semibold text-[#222]">{profile.doctor}</p>
                   </div>
                 </div>
                 <button onClick={handleOpenEditModal} className="mt-6 w-full rounded-full bg-[#db2d8d] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#c8277e]">
-                  ✏️ Edit Profile
+                  <span className="flex items-center justify-center gap-2">
+                    <Icon icon="solar:pen-bold" className="text-[17px]" />
+                    Edit Profile
+                  </span>
                 </button>
                 <button onClick={() => setShowPasswordModal(true)} className="mt-3 w-full rounded-full bg-[#f28a50] px-5 py-3 text-[14px] font-bold text-white transition hover:bg-[#d76a44]">
-                  🔑 Ubah Password
+                  <span className="flex items-center justify-center gap-2">
+                    <Icon icon="solar:key-bold" className="text-[17px]" />
+                    Ubah Password
+                  </span>
                 </button>
                 <button onClick={handleLogout} className="mt-3 w-full rounded-full border border-[#db2d8d] bg-white px-5 py-3 text-[14px] font-bold text-[#db2d8d] transition hover:bg-[#fff0f8]">
-                  🚪 Logout
+                  <span className="flex items-center justify-center gap-2">
+                    <Icon icon="solar:logout-2-bold" className="text-[17px]" />
+                    Logout
+                  </span>
                 </button>
               </div>
             </div>
 
             {/* RIGHT SECTION */}
             <div className="space-y-5">
-              <h2 className="text-[18px] font-bold text-[#0c72a6]">📋 Riwayat Konsultasi</h2>
+              <h2 className="flex items-center gap-2 text-[18px] font-bold text-[#0c72a6]">
+                <Icon icon="solar:clipboard-list-bold" className="text-[20px]" />
+                Riwayat Konsultasi
+              </h2>
               <div className="space-y-3">
                 {loadingHistory ? (
                   <div className="text-center text-gray-400 py-8 text-sm">Memuat riwayat...</div>
@@ -409,16 +524,16 @@ export default function UserProfilePage() {
                     const now = new Date();
                     let statusLabel, statusClass;
                     if (c.status === "cancelled") {
-                      statusLabel = "✕ Cancelled";
+                      statusLabel = "Cancelled";
                       statusClass = "bg-[#f3f3f3] text-[#7b7b7b]";
                     } else if (now < sessionStart) {
-                      statusLabel = "📅 Akan Datang";
+                      statusLabel = "Akan Datang";
                       statusClass = "bg-blue-100 text-blue-600";
                     } else if (now >= sessionStart && now <= sessionEnd) {
-                      statusLabel = "💬 Berlangsung";
+                      statusLabel = "Berlangsung";
                       statusClass = "bg-green-100 text-green-600";
                     } else {
-                      statusLabel = "✓ Selesai";
+                      statusLabel = "Selesai";
                       statusClass = "bg-[#dff7eb] text-[#1f9d62]";
                     }
                     return (
@@ -429,13 +544,38 @@ export default function UserProfilePage() {
                               <span className="text-[20px] font-bold text-[#ea1e8c]">{day}</span>
                               <span className="text-[13px] font-bold text-[#0c72a6]">{month}</span>
                             </div>
-                            <p className="text-[14px] font-bold text-[#222]">🩺 {c.counselor_name}</p>
-                            <p className="text-[12px] text-[#666] mt-1">🕐 {timeStr}</p>
+                            <p className="flex items-center gap-2 text-[14px] font-bold text-[#222]">
+                              <Icon icon="solar:health-bold" className="text-[15px]" />
+                              {c.counselor_name}
+                            </p>
+                            <p className="mt-1 flex items-center gap-2 text-[12px] text-[#666]">
+                              <Icon icon="solar:clock-circle-bold" className="text-[14px]" />
+                              {timeStr}
+                            </p>
                             <div className="flex gap-2 mt-3">
-                              <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${c.consultation_type === "online" ? "bg-[#dff4ff] text-[#0c72a6]" : "bg-[#fde8f3] text-[#db2d8d]"}`}>
-                                {c.consultation_type === "online" ? "💻 Online" : "🏥 Offline"}
+                              <span className={`flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full ${c.consultation_type === "online" ? "bg-[#dff4ff] text-[#0c72a6]" : "bg-[#fde8f3] text-[#db2d8d]"}`}>
+                                {c.consultation_type === "online" ? (
+                                  <>
+                                    <Icon icon="solar:monitor-bold" className="text-[13px]" />
+                                    Online
+                                  </>
+                                ) : (
+                                  <>
+                                    <Icon icon="solar:hospital-bold" className="text-[13px]" />
+                                    Offline
+                                  </>
+                                )}
                               </span>
-                              <span className={`text-[11px] font-bold px-3 py-1 rounded-full ${statusClass}`}>
+                              <span className={`flex items-center gap-1 text-[11px] font-bold px-3 py-1 rounded-full ${statusClass}`}>
+                                {c.status === "cancelled" ? (
+                                  <Icon icon="solar:close-circle-bold" className="text-[13px]" />
+                                ) : now < sessionStart ? (
+                                  <Icon icon="solar:calendar-bold" className="text-[13px]" />
+                                ) : now >= sessionStart && now <= sessionEnd ? (
+                                  <Icon icon="solar:chat-round-dots-bold" className="text-[13px]" />
+                                ) : (
+                                  <Icon icon="solar:check-circle-bold" className="text-[13px]" />
+                                )}
                                 {statusLabel}
                               </span>
                             </div>
@@ -453,16 +593,51 @@ export default function UserProfilePage() {
 
       {/* EDIT MODAL */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/25 px-4 py-8">
+          <div className="mx-auto w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-[26px] font-bold text-[#db2d8d]">Edit Profile</h2>
                 <p className="mt-1 text-[14px] text-[#777]">Update informasi pribadi kamu</p>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]">×</button>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]"
+              >
+                ×
+              </button>
             </div>
             <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-[110px] w-[110px] overflow-hidden rounded-full bg-[#f7d3e4]">
+                  {avatarPreview ? (
+                    <img
+                      src={avatarPreview}
+                      alt="Profile preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <span className="text-[70px]">🐰</span>
+                    </div>
+                  )}
+                </div>
+
+                <label className="cursor-pointer rounded-full bg-[#0c72a6] px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-[#0a5f8a]">
+                  Upload Foto Profile
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </label>
+
+                <p className="text-[12px] text-[#777]">
+                  Format gambar, maksimal 2MB
+                </p>
+              </div>
               <input type="text" name="full_name" placeholder="Nama lengkap" value={editForm.full_name || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" required />
               <input type="text" name="username" placeholder="Username" value={editForm.username || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" required />
               <textarea name="bio" placeholder="Bio singkat tentang dirimu" value={editForm.bio || ""} onChange={handleEditFormChange} className="w-full rounded-[14px] border border-[#e6e6e6] px-4 py-3 text-[14px]" rows={2} />
@@ -479,7 +654,13 @@ export default function UserProfilePage() {
               <input type="text" name="doctor" placeholder="Nama psikiater/konselor" value={editForm.doctor || ""} onChange={handleEditFormChange} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
               <div className="flex flex-wrap justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setShowEditModal(false)} className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555]">Cancel</button>
-                <button type="submit" className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white">Save Changes</button>
+                <button
+                  type="submit"
+                  disabled={uploadingAvatar}
+                  className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {uploadingAvatar ? "Uploading..." : "Save Changes"}
+                </button>
               </div>
             </form>
           </div>

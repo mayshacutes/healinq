@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
+import { getDailyLyric } from "@/lib/dailyLyric";
 
 const answerOptions = [
   { label: "Tidak Pernah", value: 1 },
@@ -115,41 +116,41 @@ function buildSegmentedResults(questions, answers) {
 }
 
 // Fungsi untuk mengambil lyric random dari Supabase
-async function getDailyLyricFromSupabase() {
-  try {
-    const { data, error } = await supabase
-      .from("lyrics")
-      .select("*")
-      .order("created_at", { ascending: false });
+// async function getDailyLyricFromSupabase() {
+//   try {
+//     const { data, error } = await supabase
+//       .from("lyrics")
+//       .select("*")
+//       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+//     if (error) throw error;
 
-    if (data && data.length > 0) {
-      // Ambil lyric random atau berdasarkan tanggal
-      // Bisa pakai random atau berdasarkan indeks tanggal
-      const today = new Date();
-      const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
-      const index = dayOfYear % data.length;
+//     if (data && data.length > 0) {
+//       // Ambil lyric random atau berdasarkan tanggal
+//       // Bisa pakai random atau berdasarkan indeks tanggal
+//       const today = new Date();
+//       const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+//       const index = dayOfYear % data.length;
 
-      return {
-        title: data[index].title,
-        lyric: data[index].lyric
-      };
-    }
+//       return {
+//         title: data[index].title,
+//         lyric: data[index].lyric
+//       };
+//     }
 
-    // Fallback jika belum ada data
-    return {
-      title: "You Are Enough",
-      lyric: "You don't have to be perfect to be worthy of love and respect."
-    };
-  } catch (error) {
-    console.error("Error fetching daily lyric:", error);
-    return {
-      title: "Keep Going",
-      lyric: "Every step forward is a step closer to your goal."
-    };
-  }
-}
+//     // Fallback jika belum ada data
+//     return {
+//       title: "You Are Enough",
+//       lyric: "You don't have to be perfect to be worthy of love and respect."
+//     };
+//   } catch (error) {
+//     console.error("Error fetching daily lyric:", error);
+//     return {
+//       title: "Keep Going",
+//       lyric: "Every step forward is a step closer to your goal."
+//     };
+//   }
+// }
 
 export default function FypPage() {
   const [dailyLyric, setDailyLyric] = useState({ title: "", lyric: "" });
@@ -187,11 +188,21 @@ export default function FypPage() {
 
   // Fetch daily lyric dari Supabase
   useEffect(() => {
+    let isMounted = true;
+
     const fetchDailyLyric = async () => {
-      const lyric = await getDailyLyricFromSupabase();
-      setDailyLyric(lyric);
+      const lyric = await getDailyLyric();
+
+      if (isMounted) {
+        setDailyLyric(lyric);
+      }
     };
+
     fetchDailyLyric();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Fetch questions dari Supabase
@@ -318,18 +329,18 @@ export default function FypPage() {
                 src="/images/maskot1.png"
                 alt="Mascot"
                 width={42}
-                  height={42}
-                  className="h-[42px] w-[42px] object-contain"
-                />
-                <Image
-                  src="/images/logo.png"
-                  alt="HealinQ Logo"
-                  width={56}
-                  height={28}
-                  className="h-auto w-[56px] object-contain"
-                />
-              </div>
+                height={42}
+                className="h-[42px] w-[42px] object-contain"
+              />
+              <Image
+                src="/images/logo.png"
+                alt="HealinQ Logo"
+                width={56}
+                height={28}
+                className="h-auto w-[56px] object-contain"
+              />
             </div>
+          </div>
 
           {/* Lyric of The Day - Dari Supabase */}
           <section className="mb-8 rounded-[18px] bg-[#cfeef3] p-5 shadow-[0_4px_14px_rgba(0,0,0,0.15)]">
@@ -387,8 +398,8 @@ export default function FypPage() {
                         >
                           <span
                             className={`flex h-[50px] w-[50px] items-center justify-center rounded-full border-[3px] transition ${active
-                                ? "border-[#5eaee0] bg-[#dff4ff]"
-                                : "border-[#b8d0dd] bg-white hover:border-[#7db9de]"
+                              ? "border-[#5eaee0] bg-[#dff4ff]"
+                              : "border-[#b8d0dd] bg-white hover:border-[#7db9de]"
                               }`}
                           >
                             {active && (

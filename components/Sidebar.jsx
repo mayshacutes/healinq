@@ -36,16 +36,18 @@ export default function Sidebar({ isOpen, onClose }) {
 
   const sidebarContent = (
     <>
-      <Link href="/profile" className="flex flex-col items-center gap-2 mb-2" onClick={onClose}>
-        <div className="w-[52px] h-[52px] rounded-full bg-pink-300 flex items-center justify-center overflow-hidden">
-          <Image
-            src="/images/logo.png"
-            alt="HealinQ"
-            width={36}
-            height={36}
-            className="object-contain"
-          />
-        </div>
+      <Link
+        href="/profile"
+        className="mb-2 flex flex-col items-center gap-2"
+        onClick={onClose}
+      >
+        <Image
+          src="/images/icon_profile.png"
+          alt="Profile"
+          width={52}
+          height={52}
+          className="h-[52px] w-[52px] object-contain"
+        />
       </Link>
 
       {menu.map((item) => {
@@ -85,9 +87,8 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 h-screen w-[87px] bg-pink-200 flex-col items-center py-4 gap-4 transition-transform duration-300 md:flex ${
-          isOpen ? "flex translate-x-0" : "hidden -translate-x-full md:hidden"
-        }`}
+        className={`fixed left-0 top-0 z-50 h-screen w-[87px] bg-pink-200 flex-col items-center py-4 gap-4 transition-transform duration-300 md:flex ${isOpen ? "flex translate-x-0" : "hidden -translate-x-full md:hidden"
+          }`}
       >
         <button
           onClick={onClose}

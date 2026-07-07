@@ -13,6 +13,10 @@ const moodOptions = [
   { id: "great", emoji: "😄", label: "Great" },
 ];
 
+function getMoodEmoji(moodId) {
+  return moodOptions.find((mood) => mood.id === moodId)?.emoji || "😐";
+}
+
 const ballColors = [
   "bg-[#f7a8d4]",
   "bg-[#8bd9d2]",
@@ -226,6 +230,7 @@ export default function JournalingPage() {
       user_id: currentUser.id,
       title: title.trim() || null,
       content: content.trim(),
+      mood: selectedMood || null,
       created_at: new Date().toISOString(),
     };
 
@@ -442,18 +447,18 @@ export default function JournalingPage() {
                     src="/images/maskot1.png"
                     alt="Mascot"
                     width={42}
-                      height={42}
-                      className="h-[42px] w-[42px] object-contain"
-                    />
-                    <Image
-                      src="/images/logo.png"
-                      alt="HealinQ Logo"
-                      width={56}
-                      height={28}
-                      className="h-auto w-[56px] object-contain"
-                    />
-                  </div>
+                    height={42}
+                    className="h-[42px] w-[42px] object-contain"
+                  />
+                  <Image
+                    src="/images/logo.png"
+                    alt="HealinQ Logo"
+                    width={56}
+                    height={28}
+                    className="h-auto w-[56px] object-contain"
+                  />
                 </div>
+              </div>
 
               <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -648,11 +653,17 @@ export default function JournalingPage() {
                             className="overflow-hidden rounded-[18px] bg-white/95 shadow-[0_4px_18px_rgba(0,0,0,0.08)] transition hover:shadow-md"
                           >
                             <div className="px-5 py-5">
-                              {entry.title ? (
-                                <h4 className="mb-1 text-[18px] font-semibold text-[#1f1f1f]">
-                                  {entry.title}
-                                </h4>
-                              ) : null}
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className="text-[24px]">
+                                  {getMoodEmoji(entry.mood)}
+                                </span>
+
+                                {entry.title ? (
+                                  <h4 className="text-[18px] font-semibold text-[#1f1f1f]">
+                                    {entry.title}
+                                  </h4>
+                                ) : null}
+                              </div>
 
                               <p className="text-[16px] leading-7 text-[#2e2e2e]">
                                 {entry.content}

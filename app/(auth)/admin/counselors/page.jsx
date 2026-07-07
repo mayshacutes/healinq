@@ -42,6 +42,8 @@ export default function AdminCounselorsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [selectedCounselor, setSelectedCounselor] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -115,6 +117,10 @@ export default function AdminCounselorsPage() {
     return () => clearTimeout(timer);
   }, [actionMessage]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, rowsPerPage]);
+
   // Filter counselors berdasarkan search dan status
   const filteredCounselors = useMemo(() => {
     return counselors.filter((counselor) => {
@@ -129,6 +135,11 @@ export default function AdminCounselorsPage() {
       return matchSearch && matchStatus;
     });
   }, [counselors, search, statusFilter]);
+
+  const totalPages = Math.ceil(filteredCounselors.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedCounselors = filteredCounselors.slice(startIndex, endIndex);
 
   // Statistik
   const totalCounselors = counselors.length;
@@ -541,7 +552,7 @@ export default function AdminCounselorsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredCounselors.map((counselor) => (
+                  {paginatedCounselors.map((counselor, index) => (
                     <tr key={counselor.id} className="border-b border-[#f2f2f2] hover:bg-[#f9f9f9]">
                       <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">{counselor.name || counselor.full_name}</td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{counselor.email}</td>
@@ -572,6 +583,51 @@ export default function AdminCounselorsPage() {
                 </tbody>
               </table>
             </div>
+            {!isLoading && filteredCounselors.length > 0 && (
+              <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-[13px] text-[#666]">
+                  <span>Show</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                  </select>
+                  <span>counselors per page</span>
+                </div>
+
+                <div className="text-[13px] text-[#666]">
+                  Showing {startIndex + 1} - {Math.min(endIndex, filteredCounselors.length)} of{" "}
+                  {filteredCounselors.length} counselors
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="rounded-full bg-[#ffe7f1] px-4 py-2 text-[13px] font-medium text-[#db2d8d]">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Insights & Quick Actions */}

@@ -4,18 +4,6 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-const emptyForm = {
-  username: "",
-  email: "",
-  address: "",
-  telp_number: "",
-  birth_date: "",
-  gender: "",
-  last_edu: "",
-  doctor: "",
-  status: "",
-};
-
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "long",
@@ -41,13 +29,13 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newUserForm, setNewUserForm] = useState(emptyForm);
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -103,6 +91,10 @@ export default function AdminUsersPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, rowsPerPage]);
+
   const filteredProfiles = useMemo(() => {
     const keyword = search.toLowerCase().trim();
     return profiles.filter((user) => {
@@ -115,6 +107,11 @@ export default function AdminUsersPage() {
       return matchSearch && matchStatus;
     });
   }, [profiles, search, statusFilter]);
+
+  const totalPages = Math.ceil(filteredProfiles.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedProfiles = filteredProfiles.slice(startIndex, endIndex);
 
   const totalUsers = profiles.length;
   const activeUsers = profiles.filter((u) => u.status === "Active").length;
@@ -148,28 +145,6 @@ export default function AdminUsersPage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     setActionMessage("User data exported successfully.");
-  };
-
-  const handleAddUser = async (e) => {
-    e.preventDefault();
-    if (!newUserForm.username.trim() || !newUserForm.email.trim()) {
-      setActionMessage("Username and Email are required.");
-      return;
-    }
-    setSaving(true);
-    const { data, error } = await supabase
-      .from("profiles")
-      .insert([{ ...newUserForm, role: "user" }])
-      .select();
-    setSaving(false);
-    if (error) {
-      setActionMessage(error.message);
-      return;
-    }
-    setProfiles((prev) => [...data, ...prev]);
-    setShowAddModal(false);
-    setNewUserForm(emptyForm);
-    setActionMessage("User added successfully.");
   };
 
   const handleOpenEdit = (user) => {
@@ -332,8 +307,8 @@ export default function AdminUsersPage() {
                             setIsStatusOpen(false);
                           }}
                           className={`w-full px-4 py-3 text-center text-[14px] transition ${statusFilter === status
-                              ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
-                              : "text-[#333] hover:bg-[#fff5fa]"
+                            ? "bg-[#ffe7f1] font-medium text-[#db2d8d]"
+                            : "text-[#333] hover:bg-[#fff5fa]"
                             }`}
                         >
                           {status === "All" ? "All Status" : status}
@@ -342,13 +317,6 @@ export default function AdminUsersPage() {
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(true)}
-                  className="h-[44px] shrink-0 rounded-full border-2 border-[#0C72A6] bg-white px-5 text-[14px] font-medium text-[#0C72A6] transition hover:bg-blue-50"
-                >
-                  + Add User
-                </button>
               </div>
             </div>
 
@@ -356,7 +324,6 @@ export default function AdminUsersPage() {
               <table className="w-full min-w-[1050px] border-collapse">
                 <thead>
                   <tr className="border-b border-[#ea3f97]">
-                    <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">No</th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Username</th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Email</th>
                     <th className="px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#ea3f97]">Gender</th>
@@ -370,16 +337,15 @@ export default function AdminUsersPage() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan="10" className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]">Loading users...</td>
+                      <td colSpan="7" className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]">Loading users...</td>
                     </tr>
                   ) : filteredProfiles.length === 0 ? (
                     <tr>
-                      <td colSpan="10" className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]">No users found.</td>
+                      <td colSpan="7" className="px-4 py-10 text-center text-[14px] text-[#7a7a7a]">No users found.</td>
                     </tr>
                   ) : (
-                    filteredProfiles.map((user, index) => (
+                    paginatedProfiles.map((user) => (
                       <tr key={user.id} className="border-b border-[#f2f2f2] last:border-b-0">
-                        <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{index + 1}</td>
                         <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">{user.username || "-"}</td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.email || "-"}</td>
                         <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{user.gender || "-"}</td>
@@ -413,6 +379,51 @@ export default function AdminUsersPage() {
                 </tbody>
               </table>
             </div>
+            {!loading && filteredProfiles.length > 0 && (
+              <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-[13px] text-[#666]">
+                  <span>Show</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                  </select>
+                  <span>users per page</span>
+                </div>
+
+                <div className="text-[13px] text-[#666]">
+                  Showing {startIndex + 1} - {Math.min(endIndex, filteredProfiles.length)} of{" "}
+                  {filteredProfiles.length} users
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="rounded-full bg-[#ffe7f1] px-4 py-2 text-[13px] font-medium text-[#db2d8d]">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Quick Actions & Insights (tetap sama) */}
@@ -506,33 +517,6 @@ export default function AdminUsersPage() {
                   <button type="button" onClick={() => setShowEditModal(false)} className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]">Cancel</button>
                   <button type="submit" disabled={saving} className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]">{saving ? "Saving..." : "Save Changes"}</button>
                 </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Add User Modal (sama) */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4">
-          <div className="w-full max-w-[560px] rounded-[24px] bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.18)]">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div><h2 className="text-[26px] font-bold text-[#db2d8d]">Add New User</h2><p className="mt-1 text-[14px] text-[#777]">Fill in the user details</p></div>
-              <button onClick={() => setShowAddModal(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f7] text-[18px] text-[#555] transition hover:bg-[#efefef]">×</button>
-            </div>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <input type="text" name="username" value={newUserForm.username} onChange={(e) => setNewUserForm({ ...newUserForm, username: e.target.value })} placeholder="Full name" className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" required />
-              <input type="email" name="email" value={newUserForm.email} onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })} placeholder="Email address" className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px] placeholder:text-[#9b9b9b] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" required />
-              <div className="grid grid-cols-2 gap-4">
-                <input type="text" name="telp_number" value={newUserForm.telp_number} onChange={(e) => setNewUserForm({ ...newUserForm, telp_number: e.target.value })} placeholder="Phone number" className="h-[48px] rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
-                <select name="gender" value={newUserForm.gender} onChange={(e) => setNewUserForm({ ...newUserForm, gender: e.target.value })} className="h-[48px] rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]"><option value="">Gender</option><option>Female</option><option>Male</option><option>Other</option></select>
-              </div>
-              <input type="text" name="address" value={newUserForm.address} onChange={(e) => setNewUserForm({ ...newUserForm, address: e.target.value })} placeholder="Address" className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
-              <input type="text" name="doctor" value={newUserForm.doctor} onChange={(e) => setNewUserForm({ ...newUserForm, doctor: e.target.value })} placeholder="Doctor (optional)" className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]" />
-              <select name="status" value={newUserForm.status} onChange={(e) => setNewUserForm({ ...newUserForm, status: e.target.value })} className="h-[48px] w-full rounded-[14px] border border-[#e6e6e6] px-4 text-[14px]"><option>Pending</option><option>Active</option><option>Suspended</option></select>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)} className="rounded-full border border-[#d8d8d8] bg-white px-5 py-2.5 text-[14px] font-medium text-[#555] transition hover:bg-[#f8f8f8]">Cancel</button>
-                <button type="submit" className="rounded-full bg-[#db2d8d] px-5 py-2.5 text-[14px] font-medium text-white transition hover:bg-[#c8277e]">Add User</button>
               </div>
             </form>
           </div>

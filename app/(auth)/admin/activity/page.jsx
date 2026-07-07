@@ -36,7 +36,7 @@ export default function AdminActivityPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [actionMessage, setActionMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const fetchActivities = async () => {
     const { data, error } = await supabase
@@ -120,15 +120,14 @@ export default function AdminActivityPage() {
     });
   }, [activities, search, statusFilter]);
 
-  const totalPages = Math.ceil(filteredActivities.length / itemsPerPage);
-  const paginatedActivities = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredActivities.slice(start, start + itemsPerPage);
-  }, [filteredActivities, currentPage]);
+  const totalPages = Math.ceil(filteredActivities.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedActivities = filteredActivities.slice(startIndex, endIndex);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter]);
+  }, [search, statusFilter, rowsPerPage]);
 
   const totalActivities = activities.length;
   const completedActivities = activities.filter(
@@ -201,6 +200,41 @@ export default function AdminActivityPage() {
     setStatusFilter("All");
     setSearch("");
     setActionMessage("All filters have been reset.");
+  };
+
+  const handleClearOldActivities = async () => {
+    const confirmed = window.confirm(
+      "Delete activity logs older than 14 days? Recent logs will be kept."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setActionMessage("Deleting old activity logs...");
+
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+      const { error } = await supabase
+        .from("activity_logs")
+        .delete()
+        .lt("created_at", fourteenDaysAgo.toISOString());
+
+      if (error) {
+        console.error(error);
+        setActionMessage(`Error: ${error.message}`);
+        return;
+      }
+
+      await fetchActivities();
+      setCurrentPage(1);
+      setSelectedActivity(null);
+      setShowViewModal(false);
+      setActionMessage("Activity logs older than 14 days have been deleted successfully.");
+    } catch (error) {
+      console.error(error);
+      setActionMessage(error.message || "Failed to delete old activity logs.");
+    }
   };
 
   const handleViewActivity = (activity) => {
@@ -432,47 +466,47 @@ export default function AdminActivityPage() {
             </div>
 
             {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-[13px] text-[#666]">
-                  Page {currentPage} of {totalPages} ({filteredActivities.length} total)
-                </p>
-                <div className="flex gap-2">
+            {filteredActivities.length > 0 && (
+              <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-[13px] text-[#666]">
+                  <span>Show</span>
+                  <select
+                    value={rowsPerPage}
+                    onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                    className="rounded-full border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                  >
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                  </select>
+                  <span>activities per page</span>
+                </div>
+
+                <div className="text-[13px] text-[#666]">
+                  Showing {startIndex + 1} - {Math.min(endIndex, filteredActivities.length)} of{" "}
+                  {filteredActivities.length} activities
+                </div>
+
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-1.5 text-[13px] text-[#333] transition hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    ← Prev
+                    Previous
                   </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                    .map((p, idx, arr) => (
-                      <span key={p}>
-                        {idx > 0 && arr[idx - 1] !== p - 1 && (
-                          <span className="px-1 text-[13px] text-[#999]">...</span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setCurrentPage(p)}
-                          className={`min-w-[36px] rounded-full px-3 py-1.5 text-[13px] font-medium transition ${
-                            currentPage === p
-                              ? "bg-[#db2d8d] text-white"
-                              : "border border-[#e6e6e6] bg-white text-[#333] hover:bg-gray-50"
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      </span>
-                    ))}
+
+                  <span className="rounded-full bg-[#ffe7f1] px-4 py-2 text-[13px] font-medium text-[#db2d8d]">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
                   <button
                     type="button"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-1.5 text-[13px] text-[#333] transition hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    Next →
+                    Next
                   </button>
                 </div>
               </div>
@@ -569,6 +603,18 @@ export default function AdminActivityPage() {
                   </p>
                   <p className="mt-1 text-[12px] text-[#666]">
                     Show all activity records again
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearOldActivities}
+                  className="rounded-[14px] bg-white/60 px-4 py-4 text-left transition hover:bg-white/80"
+                >
+                  <p className="text-[15px] font-semibold text-[#db2d8d]">
+                    Clear Old Logs
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#666]">
+                    Delete activity logs older than 14 days
                   </p>
                 </button>
               </div>

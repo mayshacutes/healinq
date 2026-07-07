@@ -25,6 +25,8 @@ export default function CounselorTransactionPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [counselor, setCounselor] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -88,9 +90,18 @@ export default function CounselorTransactionPage() {
     });
   }, [transactions, search, filterStatus]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, rowsPerPage]);
+
   const totalEarning = filtered
     .filter((t) => t.payments?.[0]?.payment_status === "success")
     .reduce((sum, t) => sum + (t.counselor_earning ?? t.price ?? 0), 0);
+
+  const totalPages = Math.ceil(filtered.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedTransactions = filtered.slice(startIndex, endIndex);
 
   if (isLoading) {
     return (
@@ -120,7 +131,10 @@ export default function CounselorTransactionPage() {
             { label: "Completed", value: transactions.filter(t => t.payments?.[0]?.payment_status === "success").length },
             { label: "Total Earning", value: formatRupiah(totalEarning) },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl bg-white/70 p-5 shadow text-center">
+            <div
+              key={s.label}
+              className="rounded-[22px] bg-white/90 p-5 text-center shadow-[0_4px_12px_rgba(0,0,0,0.12)]"
+            >
               <p className="text-2xl font-bold text-[#0c72a6]">{s.value}</p>
               <p className="text-sm text-gray-500 mt-1">{s.label}</p>
             </div>
@@ -131,10 +145,13 @@ export default function CounselorTransactionPage() {
         <div className="flex gap-3 mb-5 flex-wrap">
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari nama pasien / kode booking..."
-            className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm focus:outline-none flex-1 min-w-[200px]" />
+            className="min-w-[200px] flex-1 rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-sm text-[#333] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20" />
           {["all", "success", "pending", "failed"].map((s) => (
             <button key={s} onClick={() => setFilterStatus(s)}
-              className={`rounded-full px-4 py-2 text-sm font-medium capitalize ${filterStatus === s ? "bg-[#db2d8d] text-white" : "bg-white text-gray-600"}`}>
+              className={`rounded-full px-4 py-2 text-sm font-medium capitalize transition ${filterStatus === s
+                ? "bg-[#db2d8d] text-white shadow-sm"
+                : "border border-[#f3c5dc] bg-white text-[#666] hover:bg-[#fff5fa]"
+                }`}>
               {s === "all" ? "Semua" : s}
             </button>
           ))}
@@ -146,43 +163,93 @@ export default function CounselorTransactionPage() {
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#db2d8d] border-t-transparent"></div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-2xl bg-white/70 p-10 text-center text-gray-400 shadow">
+          <div className="rounded-[22px] bg-white/90 p-10 text-center text-gray-400 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
             Belum ada transaksi.
           </div>
         ) : (
-          <div className="rounded-2xl bg-white/70 shadow overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-gray-500 text-left">
-                  {["Kode Booking", "Pasien", "Tipe", "Tanggal", "Jam", "Harga", "Metode", "Status"].map((h) => (
-                    <th key={h} className="px-4 py-3 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((t) => {
-                  const pay = t.payments?.[0];
-                  const payStatus = pay?.payment_status || "pending";
-                  return (
-                    <tr key={t.id} className="border-b border-gray-50 hover:bg-white/50">
-                      <td className="px-4 py-3 font-mono text-xs">{t.booking_code || "-"}</td>
-                      <td className="px-4 py-3 font-medium">{t.client_name || "-"}</td>
-                      <td className="px-4 py-3 capitalize">{t.consultation_type || "-"}</td>
-                      <td className="px-4 py-3">{formatDate(t.consultation_date)}</td>
-                      <td className="px-4 py-3">{t.consultation_hour || "-"}</td>
-                      <td className="px-4 py-3">{formatRupiah(t.price)}</td>
-                      <td className="px-4 py-3 capitalize">{pay?.payment_method || "-"}</td>
-                      <td className="px-4 py-3">
-                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${STATUS_CLASS[payStatus] || "bg-gray-100 text-gray-500"}`}>
-                          {payStatus}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="overflow-x-auto rounded-[22px] bg-white/90 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-left text-gray-500">
+                    {["Kode Booking", "Pasien", "Tipe", "Tanggal", "Jam", "Harga", "Metode", "Status"].map((h) => (
+                      <th key={h} className="px-4 py-3 font-medium">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {paginatedTransactions.map((t) => {
+                    const pay = t.payments?.[0];
+                    const payStatus = pay?.payment_status || "pending";
+
+                    return (
+                      <tr key={t.id} className="border-b border-gray-50 transition hover:bg-[#fff5fa]/60">
+                        <td className="px-4 py-3 font-mono text-xs">{t.booking_code || "-"}</td>
+                        <td className="px-4 py-3 font-medium">{t.client_name || "-"}</td>
+                        <td className="px-4 py-3 capitalize">{t.consultation_type || "-"}</td>
+                        <td className="px-4 py-3">{formatDate(t.consultation_date)}</td>
+                        <td className="px-4 py-3">{t.consultation_hour || "-"}</td>
+                        <td className="px-4 py-3">{formatRupiah(t.price)}</td>
+                        <td className="px-4 py-3 capitalize">{pay?.payment_method || "-"}</td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_CLASS[payStatus] || "bg-gray-100 text-gray-500"}`}>
+                            {payStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 text-[13px] text-[#666]">
+                <span>Show</span>
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
+                  className="rounded-full border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+                >
+                  <option value={10}>10</option>
+                  <option value={15}>15</option>
+                </select>
+                <span>transactions per page</span>
+              </div>
+
+              <div className="text-[13px] text-[#666]">
+                Showing {startIndex + 1} - {Math.min(endIndex, filtered.length)} of{" "}
+                {filtered.length} transactions
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Previous
+                </button>
+
+                <span className="rounded-full bg-[#ffe7f1] px-4 py-2 text-[13px] font-medium text-[#db2d8d]">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </section>
     </main>

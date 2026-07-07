@@ -552,7 +552,16 @@ export default function AdminContentPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex gap-2">
-                          <button onClick={() => { setEditingLyric(item); setShowEditLyricModal(true); }} className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90">Edit</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingLyric(item);
+                              setShowEditLyricModal(true);
+                            }}
+                            className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90"
+                          >
+                            Edit
+                          </button>
                           <button onClick={() => handleDeleteLyric(item.id)} className="rounded-full bg-[#f3f3f3] px-3 py-1.5 text-[12px] font-medium text-[#666] transition hover:opacity-90">Delete</button>
                         </div>
                       </td>
@@ -601,7 +610,16 @@ export default function AdminContentPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex gap-2">
-                          <button onClick={() => { setEditingJar(item); setShowEditJarModal(true); }} className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90">Edit</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingJar(item);
+                              setShowEditJarModal(true);
+                            }}
+                            className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90"
+                          >
+                            Edit
+                          </button>
                           <button onClick={() => handleDeleteJar(item.id)} className="rounded-full bg-[#f3f3f3] px-3 py-1.5 text-[12px] font-medium text-[#666] transition hover:opacity-90">Delete</button>
                         </div>
                       </td>
@@ -646,7 +664,16 @@ export default function AdminContentPage() {
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{getCategoryLabel(item.category)}</td>
                       <td className="px-4 py-4">
                         <div className="flex gap-2">
-                          <button onClick={() => { setEditingQuestion(item); setShowEditQuestionModal(true); }} className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90">Edit</button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingQuestion(item);
+                              setShowEditQuestionModal(true);
+                            }}
+                            className="rounded-full bg-[#ffe7f1] px-3 py-1.5 text-[12px] font-medium text-[#db2d8d] transition hover:opacity-90"
+                          >
+                            Edit
+                          </button>
                           <button onClick={() => handleDeleteQuestion(item.id)} className="rounded-full bg-[#f3f3f3] px-3 py-1.5 text-[12px] font-medium text-[#666] transition hover:opacity-90">Delete</button>
                         </div>
                       </td>

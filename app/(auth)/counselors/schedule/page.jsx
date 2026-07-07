@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
+import { Icon } from "@iconify/react";
 
 function splitIntoHourlySlots(startTime, endTime) {
   const slots = [];
@@ -200,8 +201,8 @@ export default function CounselorSchedulePage() {
         s.schedule_date === form.scheduleDate &&
         s.mode === form.mode &&
         ((form.startTime >= s.start_time && form.startTime < s.end_time) ||
-         (form.endTime > s.start_time && form.endTime <= s.end_time) ||
-         (form.startTime <= s.start_time && form.endTime >= s.end_time))
+          (form.endTime > s.start_time && form.endTime <= s.end_time) ||
+          (form.startTime <= s.start_time && form.endTime >= s.end_time))
     );
     if (existing) {
       setActionMessage("Schedule already exists for this time range on the same date and mode.");
@@ -307,7 +308,7 @@ export default function CounselorSchedulePage() {
   };
 
   const formatMode = (mode) => {
-    return mode === "online" ? "Online (Video Call)" : "Offline (Tatap Muka)";
+    return mode === "online" ? "Online (Chat)" : "Offline (Tatap Muka)";
   };
 
   if (isPageLoading) {
@@ -328,14 +329,16 @@ export default function CounselorSchedulePage() {
       <main className="min-h-screen bg-[#d9edf8] px-8 py-10">
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center max-w-md mx-auto bg-white rounded-2xl p-8 shadow-lg">
-            <div className="text-6xl mb-4">🔒</div>
+            <div className="mb-4 flex justify-center text-[#db2d8d]">
+              <Icon icon="solar:lock-keyhole-bold" className="text-[58px]" />
+            </div>
             <h2 className="text-2xl font-bold text-[#e1268d] mb-2">Access Denied</h2>
             <p className="text-gray-600 mb-6">
               {actionMessage || "Please login as a counselor to access this page."}
             </p>
             <button
               onClick={() => window.location.href = "/login"}
-              className="rounded-full bg-[#0C72A6] px-6 py-2 text-white hover:bg-[#095f8c]"
+              className="rounded-full bg-[#db2d8d] px-6 py-2 font-semibold text-white transition hover:bg-[#c8277e]"
             >
               Go to Login
             </button>
@@ -408,7 +411,7 @@ export default function CounselorSchedulePage() {
               onChange={handleChange}
               className="w-full rounded-lg border border-[#e6e6e6] bg-pink-50 p-3 outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
             >
-              <option value="online">Online (Video Call)</option>
+              <option value="online">Online (Chat)</option>
               <option value="offline">Offline (Tatap Muka)</option>
             </select>
           </div>
@@ -416,9 +419,16 @@ export default function CounselorSchedulePage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="mt-6 rounded-full bg-[#0C72A6] px-6 py-3 font-semibold text-white transition hover:bg-[#095f8c] disabled:opacity-50"
+          className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#db2d8d] px-6 py-3 font-semibold text-white transition hover:bg-[#c8277e] disabled:opacity-50"
         >
-          {isLoading ? "Saving..." : "+ Add Schedule"}
+          {isLoading ? (
+            "Saving..."
+          ) : (
+            <>
+              <Icon icon="solar:add-circle-bold" className="text-[18px]" />
+              Add Schedule
+            </>
+          )}
         </button>
       </form>
 
@@ -433,12 +443,19 @@ export default function CounselorSchedulePage() {
           <div className="flex gap-2">
             {["all", "available", "booked"].map((tab) => (
               <button key={tab} onClick={() => setFilterTab(tab)}
-                className={`px-4 py-1.5 rounded-full text-xs font-medium transition ${
-                  filterTab === tab
-                    ? "bg-[#0C72A6] text-white"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}>
-                {tab === "all" ? "All" : tab === "available" ? "🟢 Available" : "🔴 Booked"}
+                className={`rounded-full px-4 py-1.5 text-xs font-medium transition ${filterTab === tab
+                  ? "bg-[#db2d8d] text-white"
+                  : "border border-[#f3c5dc] bg-white text-[#666] hover:bg-[#fff5fa]"
+                  }`}>
+                <span className="flex items-center gap-1.5">
+                  {tab === "available" && (
+                    <Icon icon="solar:check-circle-bold" className="text-[14px]" />
+                  )}
+                  {tab === "booked" && (
+                    <Icon icon="solar:close-circle-bold" className="text-[14px]" />
+                  )}
+                  {tab === "all" ? "All" : tab === "available" ? "Available" : "Booked"}
+                </span>
               </button>
             ))}
           </div>
@@ -478,51 +495,68 @@ export default function CounselorSchedulePage() {
                 const totalBooked = slots.filter((s) => booked.includes(s)).length;
 
                 return (
-              <div
-                key={item.id}
-                className="rounded-2xl bg-white p-5 shadow-lg transition hover:shadow-xl"
-              >
-                <div className="flex items-start justify-between">
-                  <h2 className="text-lg font-bold text-[#0C72A6]">
-                    {formatDate(item.schedule_date)}
-                  </h2>
-                  <span className={`rounded-full px-2 py-1 text-xs font-medium ${item.mode === "online" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}>
-                    {formatMode(item.mode)}
-                  </span>
-                </div>
-                <p className="mt-3 text-gray-700">
-                  🕐 {item.start_time.slice(0,5)} - {item.end_time.slice(0,5)}
-                </p>
+                  <div
+                    key={item.id}
+                    className="rounded-2xl bg-white p-5 shadow-lg transition hover:shadow-xl"
+                  >
+                    <div className="flex items-start justify-between">
+                      <h2 className="text-lg font-bold text-[#0C72A6]">
+                        {formatDate(item.schedule_date)}
+                      </h2>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${item.mode === "online"
+                          ? "bg-[#dff4ff] text-[#0c72a6]"
+                          : "bg-[#fde8f3] text-[#db2d8d]"
+                          }`}
+                      >
+                        <Icon
+                          icon={item.mode === "online" ? "solar:chat-round-dots-bold" : "solar:hospital-bold"}
+                          className="text-[14px]"
+                        />
+                        {formatMode(item.mode)}
+                      </span>
+                    </div>
+                    <p className="mt-3 flex items-center gap-2 text-gray-700">
+                      <Icon icon="solar:clock-circle-bold" className="text-[17px] text-[#0c72a6]" />
+                      {item.start_time.slice(0, 5)} - {item.end_time.slice(0, 5)}
+                    </p>
 
-                {/* Per-slot status */}
-                <div className="mt-3 space-y-1">
-                  {slots.map((slot) => {
-                    const isBooked = booked.includes(slot);
-                    return (
-                      <div key={slot} className="flex items-center gap-2 text-sm">
-                        <span className="w-12 font-mono text-gray-600">{slot}</span>
-                        {isBooked ? (
-                          <span className="text-red-500 text-xs font-medium">🔴 Booked</span>
-                        ) : (
-                          <span className="text-green-600 text-xs font-medium">🟢 Available</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                    {/* Per-slot status */}
+                    <div className="mt-3 space-y-1">
+                      {slots.map((slot) => {
+                        const isBooked = booked.includes(slot);
+                        return (
+                          <div key={slot} className="flex items-center gap-2 text-sm">
+                            <span className="w-12 font-mono text-gray-600">{slot}</span>
+                            {isBooked ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#e5486d]">
+                                <Icon icon="solar:close-circle-bold" className="text-[14px]" />
+                                Booked
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#1f9d62]">
+                                <Icon icon="solar:check-circle-bold" className="text-[14px]" />
+                                Available
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                <div className="mt-3 text-xs text-gray-400">
-                  {totalBooked} of {slots.length} slot{slots.length > 1 ? "s" : ""} booked
-                </div>
+                    <div className="mt-3 text-xs text-gray-400">
+                      {totalBooked} of {slots.length} slot{slots.length > 1 ? "s" : ""} booked
+                    </div>
 
-                <button
-                  onClick={() => handleDeleteSchedule(item.id)}
-                  disabled={isLoading}
-                  className="mt-3 rounded-full bg-pink-100 px-4 py-2 text-sm font-semibold text-pink-600 transition hover:bg-pink-200 disabled:opacity-50"
-                >
-                  Delete Schedule
-                </button>
-              </div>
+                    <button
+                      onClick={() => handleDeleteSchedule(item.id)}
+                      disabled={isLoading}
+                      className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#fff5fa] px-4 py-2 text-sm font-semibold text-[#db2d8d] transition hover:bg-[#ffe7f1] disabled:opacity-50"
+                    >
+                      <Icon icon="solar:trash-bin-trash-bold" className="text-[16px]" />
+                      Delete Schedule
+                    </button>
+                  </div>
                 );
               })}
           </div>

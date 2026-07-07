@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { getDailyLyric } from "@/lib/dailyLyric";
@@ -69,6 +69,18 @@ function getRelativeLabel(dateString) {
   }).format(entryDate);
 }
 
+const moodOptions = [
+  { id: "awful", emoji: "😞", label: "Awful" },
+  { id: "sad", emoji: "😟", label: "Sad" },
+  { id: "okay", emoji: "😐", label: "Okay" },
+  { id: "good", emoji: "🙂", label: "Good" },
+  { id: "great", emoji: "😄", label: "Great" },
+];
+
+function getMoodEmoji(moodId) {
+  return moodOptions.find((mood) => mood.id === moodId)?.emoji || "😐";
+}
+
 export default function UserDashboardPage() {
   const router = useRouter();
 
@@ -77,6 +89,29 @@ export default function UserDashboardPage() {
   const [recentEntries, setRecentEntries] = useState([]);
   const [consultations, setConsultations] = useState([]);
   const [counselorsData, setCounselorsData] = useState([]);
+
+  const [dailyLyric, setDailyLyric] = useState({
+    title: "Loading...",
+    lyric: "Loading...",
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDailyLyric = async () => {
+      const lyric = await getDailyLyric();
+
+      if (isMounted) {
+        setDailyLyric(lyric);
+      }
+    };
+
+    loadDailyLyric();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -183,7 +218,7 @@ export default function UserDashboardPage() {
       // Ambil journal entries dari database
       const { data: journalData } = await supabase
         .from("journal_entries")
-        .select("id, title, content, created_at")
+        .select("id, title, content, mood, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(4);
@@ -199,7 +234,23 @@ export default function UserDashboardPage() {
     };
   }, [router]);
 
-  const dailyLyric = useMemo(() => getDailyLyric(), []);
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDailyLyric = async () => {
+      const lyric = await getDailyLyric();
+      if (isMounted) {
+        setDailyLyric(lyric);
+      }
+    };
+
+    loadDailyLyric();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#d7edf7]">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0">
@@ -307,7 +358,9 @@ export default function UserDashboardPage() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="mb-1 text-[24px]">{entry.mood || "😟"}</div>
+                        <div className="mb-1 text-[24px]">
+                          {getMoodEmoji(entry.mood)}
+                        </div>
                         <p className="truncate text-[16px] text-[#2d2d2d] sm:text-[18px]">
                           {entry.title || entry.content}
                         </p>

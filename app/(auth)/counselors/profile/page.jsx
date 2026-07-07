@@ -187,7 +187,7 @@ export default function CounselorProfilePage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* KARTU PROFIL */}
-          <div className="rounded-[24px] bg-white/70 p-6 shadow flex flex-col items-center gap-3">
+          <div className="rounded-[22px] bg-white/90 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex flex-col items-center gap-3">
             <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100">
               <Image src={counselorData.photo_url || "/images/icon_profile.png"}
                 alt="profile" width={96} height={96} className="object-cover" />
@@ -211,15 +211,15 @@ export default function CounselorProfilePage() {
           </div>
 
           {/* MENU */}
-          <div className="lg:col-span-2 rounded-[24px] bg-white/70 p-6 shadow space-y-3">
+          <div className="lg:col-span-2 rounded-[22px] bg-white/90 p-6 shadow-[0_4px_12px_rgba(0,0,0,0.12)] space-y-3">
             <h3 className="text-lg font-bold text-[#0c72a6] mb-4">Account Settings</h3>
             <button onClick={() => setShowPasswordModal(true)}
-              className="w-full rounded-[14px] bg-white/60 px-4 py-4 text-left hover:bg-white/80">
+              className="w-full rounded-[14px] bg-[#fff5fa] px-4 py-4 text-left transition hover:bg-[#ffe7f1]">
               <p className="font-semibold text-[#db2d8d]">Change Password</p>
               <p className="text-xs text-[#666] mt-1">Update your account password</p>
             </button>
             <button onClick={handleLogout}
-              className="w-full rounded-[14px] bg-white/60 px-4 py-4 text-left hover:bg-white/80">
+              className="w-full rounded-[14px] bg-[#fff5fa] px-4 py-4 text-left transition hover:bg-[#ffe7f1]">
               <p className="font-semibold text-[#db2d8d]">Logout</p>
               <p className="text-xs text-[#666] mt-1">End the current session</p>
             </button>
