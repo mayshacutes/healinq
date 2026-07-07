@@ -65,7 +65,7 @@ export default function PaymentPage() {
       const { data: consultation, error: consultError } = await supabase
         .from("consultations")
         .insert({
-          client_id: user.id,
+          client_id: bookingData.clientId || user.id,
           counselor_id: bookingData.counselorId,
           counselor_name: bookingData.counselorName,
           client_name: clientName,

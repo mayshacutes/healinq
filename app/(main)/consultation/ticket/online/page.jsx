@@ -33,32 +33,26 @@ export default function TicketOnlinePage() {
   const router = useRouter();
   const [ticketData, setTicketData] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
-  const [bookingCodeFromUrl, setBookingCodeFromUrl] = useState(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setBookingCodeFromUrl(params.get("bookingCode"));
-  }, []);
-
   useEffect(() => {
     const fetchTicket = async () => {
-      if (!bookingCodeFromUrl) {
-        const savedLatest = localStorage.getItem("latestTicket");
-        if (savedLatest) setTicketData(JSON.parse(savedLatest));
+      const params = new URLSearchParams(window.location.search);
+      const bookingCode = params.get("bookingCode");
+
+      if (!bookingCode) {
+        alert("Data tiket tidak ditemukan.");
+        router.push("/consultation/my-bookings");
         return;
       }
       const { data, error } = await supabase
         .from("consultations")
         .select(`*, payments (payment_method, payment_status, paid_at)`)
-        .eq("booking_code", bookingCodeFromUrl)
+        .eq("booking_code", bookingCode)
         .single();
       if (!error && data) {
         const isSuccess = data.payments?.[0]?.payment_status === "success";
 
-        // Redirect kalo belum diverifikasi
         if (!isSuccess) {
           alert("Booking belum diverifikasi. Silakan tunggu konfirmasi admin.");
-          localStorage.removeItem("latestTicket");
           router.push("/consultation/my-bookings");
           return;
         }
@@ -80,14 +74,13 @@ export default function TicketOnlinePage() {
           sessionDuration: data.session_duration,
         };
         setTicketData(mapped);
-        localStorage.setItem("latestTicket", JSON.stringify(mapped));
       } else {
-        const savedLatest = localStorage.getItem("latestTicket");
-        if (savedLatest) setTicketData(JSON.parse(savedLatest));
+        alert("Data tiket tidak ditemukan.");
+        router.push("/consultation/my-bookings");
       }
     };
     fetchTicket();
-  }, [bookingCodeFromUrl]);
+  }, []);
 
   useEffect(() => {
     if (!ticketData) return;

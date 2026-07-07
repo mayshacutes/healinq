@@ -25,7 +25,9 @@ function ChatRoom({ roomId, currentUserId, counselorName }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    console.log("[ChatRoom] currentUserId:", currentUserId);
+    messages.forEach(m => console.log(`[ChatRoom] msg id=${m.id.slice(0,8)} sender_id=${m.sender_id} match=${m.sender_id === currentUserId}`));
+  }, [messages, currentUserId]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -55,15 +57,15 @@ function ChatRoom({ roomId, currentUserId, counselorName }) {
           return (
             <div key={msg.id} className={`flex ${isSelf ? "justify-end" : "justify-start"}`}>
               {!isSelf && (
-                <div className="w-8 h-8 rounded-full bg-[#0C72A6] flex items-center justify-center text-white text-xs font-bold mr-2 flex-shrink-0 self-end">
+                <div className="w-8 h-8 rounded-full bg-pink-300 flex items-center justify-center text-pink-800 text-xs font-bold mr-2 flex-shrink-0 self-end">
                   K
                 </div>
               )}
               <div className={`max-w-[65%] px-4 py-2 rounded-2xl ${
-                isSelf ? "bg-[#0C72A6] text-white rounded-br-sm" : "bg-white text-gray-800 rounded-bl-sm shadow-sm"
+                isSelf ? "bg-[#0C72A6] text-white rounded-br-sm" : "bg-pink-300 text-pink-900 rounded-bl-sm shadow-sm"
               }`}>
                 <p className="text-sm break-words">{msg.message}</p>
-                <p className={`text-[10px] mt-1 text-right ${isSelf ? "text-blue-200" : "text-gray-400"}`}>
+                <p className={`text-[10px] mt-1 text-right ${isSelf ? "text-blue-200" : "text-pink-500"}`}>
                   {formatTime(msg.created_at)}
                 </p>
               </div>
@@ -106,6 +108,7 @@ export default function UserChatPage() {
   const [roomId, setRoomId] = useState(null);
   const [bookingCode, setBookingCode] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [actualUserId, setActualUserId] = useState(null);
   const [consultation, setConsultation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -135,10 +138,12 @@ export default function UserChatPage() {
     }
     setCurrentUser(user);
 
+    let clientId = null;
+
     if (bookingCodeFromUrl) {
       const { data } = await supabase
         .from("consultations")
-        .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic")
+        .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic, client_id")
         .eq("booking_code", bookingCodeFromUrl)
         .maybeSingle();
       if (data) {
@@ -151,9 +156,33 @@ export default function UserChatPage() {
           setIsLoading(false);
           return;
         }
+        clientId = data.client_id;
         setConsultation(data);
       }
+    } else {
+      // Fallback: cari consultation via chat_rooms
+      const { data: roomData } = await supabase
+        .from("chat_rooms")
+        .select("id, consultation_id")
+        .eq("id", roomIdFromUrl)
+        .maybeSingle();
+
+      if (roomData?.consultation_id) {
+        const { data } = await supabase
+          .from("consultations")
+          .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic, client_id")
+          .eq("id", roomData.consultation_id)
+          .maybeSingle();
+        if (data) {
+          clientId = data.client_id;
+          setConsultation(data);
+        }
+      }
     }
+
+    // Pakai client_id sebagai user ID asli (bukan user.id dari session)
+    setActualUserId(clientId || user.id);
+    console.log("[UserChat] actualUserId:", clientId || user.id, "| session user.id:", user.id, "| clientId from DB:", clientId);
 
     setIsLoading(false);
   };
@@ -207,10 +236,10 @@ export default function UserChatPage() {
 
       {/* CHAT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {currentUser && (
+        {currentUser && actualUserId && (
           <ChatRoom
             roomId={roomId}
-            currentUserId={currentUser.id}
+            currentUserId={actualUserId}
             counselorName={consultation?.counselor_name}
           />
         )}

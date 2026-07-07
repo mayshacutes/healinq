@@ -38,7 +38,9 @@ function ChatArea({ roomId, currentUserId, patientName }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    console.log("[ChatArea] currentUserId:", currentUserId);
+    messages.forEach(m => console.log(`[ChatArea] msg id=${m.id.slice(0,8)} sender_id=${m.sender_id} match=${m.sender_id === currentUserId}`));
+  }, [messages, currentUserId]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -64,9 +66,9 @@ function ChatArea({ roomId, currentUserId, patientName }) {
           const isCounselor = msg.sender_id === currentUserId;
           return (
             <div key={msg.id} className={`flex ${isCounselor ? "justify-end" : "justify-start"}`}>
-              <div className={`px-4 py-2 rounded-2xl max-w-[65%] ${isCounselor ? "bg-pink-300" : "bg-white"}`}>
+              <div className={`px-4 py-2 rounded-2xl max-w-[65%] ${isCounselor ? "bg-pink-300" : "bg-[#0C72A6] text-white"}`}>
                 <p className="text-sm break-words">{msg.message}</p>
-                <p className="text-[10px] text-gray-500 text-right mt-1">{formatTime(msg.created_at)}</p>
+                <p className={`text-[10px] text-right mt-1 ${isCounselor ? "text-gray-500" : "text-blue-200"}`}>{formatTime(msg.created_at)}</p>
               </div>
             </div>
           );
@@ -101,6 +103,7 @@ function ChatArea({ roomId, currentUserId, patientName }) {
 
 export default function CounselorChatPage() {
   const [counselor, setCounselor] = useState(null);
+  const [counselorRealAuthId, setCounselorRealAuthId] = useState(null);
   const [consultations, setConsultations] = useState([]);
   const [selectedConsultation, setSelectedConsultation] = useState(null);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -112,15 +115,44 @@ export default function CounselorChatPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setIsLoading(false); return; }
 
-      // Ambil data counselor by email
-      const { data: counselorData } = await supabase
-        .from("counselors")
-        .select("id, name, email")
-        .or(`email.eq.${user.email},auth_email.eq.${user.email}`)
-        .maybeSingle();
+      // Cari counselor: prioritas dari sessionStorage (tahan session sharing)
+      const storedId = sessionStorage.getItem("counselorId");
+      let counselorData = null;
+
+      if (storedId) {
+        const { data } = await supabase
+          .from("counselors")
+          .select("id, name, email, auth_email")
+          .eq("id", storedId)
+          .maybeSingle();
+        // Pastikan masih cocok dengan session (kalo ganti akun)
+        if (data && (data.email === user.email || data.auth_email === user.email)) {
+          counselorData = data;
+        }
+      }
+
+      // Fallback: cari via session email
+      if (!counselorData) {
+        const { data } = await supabase
+          .from("counselors")
+          .select("id, name, email, auth_email")
+          .or(`email.eq.${user.email},auth_email.eq.${user.email}`)
+          .maybeSingle();
+        counselorData = data;
+        if (counselorData) {
+          sessionStorage.setItem("counselorId", counselorData.id);
+        }
+      }
 
       if (!counselorData) { setIsLoading(false); return; }
-      setCounselor({ ...counselorData, authId: user.id });
+      setCounselor(counselorData);
+
+      // Cari UUID auth asli konselor pake email dari counselors (bukan user.email)
+      const targetEmail = counselorData.auth_email || counselorData.email;
+      const res = await fetch(`/api/get-auth-id?email=${encodeURIComponent(targetEmail)}`);
+      const { id: realAuthId } = await res.json();
+      setCounselorRealAuthId(realAuthId || user.id);
+      console.log("[CounselorChat] counselorRealAuthId:", realAuthId, "| targetEmail:", targetEmail, "| session user.id:", user.id);
 
       // Ambil semua consultasi milik counselor ini
       const data = await getCounselorConsultations(counselorData.id);
@@ -217,10 +249,10 @@ export default function CounselorChatPage() {
               )}
             </div>
 
-            {selectedRoomId ? (
+            {selectedRoomId && counselorRealAuthId ? (
               <ChatArea
                 roomId={selectedRoomId}
-                currentUserId={counselor?.authId}
+                currentUserId={counselorRealAuthId}
                 patientName={selectedConsultation.client_name}
               />
             ) : (

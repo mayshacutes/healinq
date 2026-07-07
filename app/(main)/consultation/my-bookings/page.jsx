@@ -27,7 +27,7 @@ function getStatusLabel(status) {
 
 function isPaymentVerified(consultation) {
   const pay = consultation.payments?.[0];
-  return pay?.payment_status === "paid" || pay?.payment_status === "success";
+  return pay?.payment_status === "success";
 }
 
 function formatDate(d) {
@@ -95,8 +95,6 @@ export default function MyBookingsPage() {
   const verified = isPaymentVerified(booking);
   const roomId = booking.roomId;
 
-  alert(`roomId: ${roomId}, verified: ${verified}, status: ${sessionStatus}`); // ← tambah ini sementara
-
   if (!verified) {
       alert("Chat belum bisa dibuka karena pembayaran masih menunggu verifikasi.");
       return;
@@ -120,19 +118,11 @@ export default function MyBookingsPage() {
       return;
     }
 
-    // Simpan ke localStorage untuk halaman tiket (tiket page masih baca dari sana)
-    const ticketData = {
-      bookingCode: booking.booking_code,
-      counselorName: booking.counselor_name,
-      type: booking.consultation_type,
-      date: booking.consultation_date,
-      hour: booking.consultation_hour,
-      topic: booking.topic,
-      paymentStatus: "Paid",
-    };
-    localStorage.setItem("latestTicket", JSON.stringify(ticketData));
-    router.push(`/consultation/ticket/${booking.consultation_type || "online"}?bookingCode=${booking.booking_code}`);
+    const ticketType = booking.consultation_type === "offline" ? "offline" : "online";
+    router.push(`/consultation/ticket/${ticketType}?bookingCode=${booking.booking_code}`);
   };
+
+  const [filterTab, setFilterTab] = useState("all");
 
   if (isLoading) {
     return (
@@ -141,6 +131,111 @@ export default function MyBookingsPage() {
       </div>
     );
   }
+
+  const enriched = bookings.map(b => ({
+    ...b,
+    sessionStatus: getSessionStatus(b),
+    verified: isPaymentVerified(b),
+    isOnline: b.consultation_type === "online",
+    payStatus: b.payments?.[0]?.payment_status || "pending",
+  }));
+
+  const visible = filterTab === "all" ? enriched :
+    filterTab === "pending" ? enriched.filter(b => !b.verified) :
+    filterTab === "upcoming" ? enriched.filter(b => b.verified && (b.sessionStatus === "upcoming" || b.sessionStatus === "ongoing")) :
+    enriched.filter(b => b.verified && b.sessionStatus === "finished");
+
+  const renderCard = (booking) => {
+    const { sessionStatus, verified, isOnline, payStatus } = booking;
+    const canChat = isOnline && sessionStatus === "ongoing" && verified;
+
+    return (
+      <div key={booking.id} className="bg-white rounded-2xl p-6 shadow flex justify-between gap-6">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-3 flex-wrap">
+            <h2 className="text-xl font-bold text-gray-800">{booking.counselor_name}</h2>
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              sessionStatus === "ongoing" ? "bg-green-100 text-green-600" :
+              sessionStatus === "upcoming" ? "bg-blue-100 text-blue-600" :
+              "bg-gray-200 text-gray-600"
+            }`}>
+              {getStatusLabel(sessionStatus)}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+            <p><span className="font-semibold text-gray-800">Tipe:</span>{" "}
+              <span className="capitalize">{booking.consultation_type}</span>
+            </p>
+            <p><span className="font-semibold text-gray-800">Pembayaran:</span>{" "}
+              <span className={`capitalize font-medium ${
+                payStatus === "paid" || payStatus === "success" ? "text-green-600" :
+                payStatus === "failed" ? "text-red-500" : "text-yellow-600"
+              }`}>
+                {payStatus === "paid" || payStatus === "success" ? "Terverifikasi" :
+                 payStatus === "failed" ? "Gagal" : "Menunggu Verifikasi"}
+              </span>
+            </p>
+            <p><span className="font-semibold text-gray-800">Tanggal:</span>{" "}
+              {formatDate(booking.consultation_date)}
+            </p>
+            <p><span className="font-semibold text-gray-800">Jam:</span>{" "}
+              {booking.consultation_hour} WIB
+            </p>
+            <p className="col-span-2">
+              <span className="font-semibold text-gray-800">Kode Booking:</span>{" "}
+              <span className="font-mono">{booking.booking_code}</span>
+            </p>
+            <p className="col-span-2">
+              <span className="font-semibold text-gray-800">Topik:</span>{" "}
+              {booking.topic || "-"}
+            </p>
+            {!verified && booking.proof_uploaded && (
+              <p className="col-span-2 text-xs text-yellow-700">
+                Bukti transfer sudah diupload, menunggu verifikasi admin.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="w-[210px] flex flex-col gap-3 justify-center">
+          <button
+            onClick={() => handleViewTicket(booking)}
+            disabled={!verified}
+            className={`px-4 py-2 rounded-full font-semibold text-sm ${
+              verified ? "bg-pink-300 text-pink-700 hover:bg-pink-400"
+              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {verified ? "Lihat Tiket" : "Menunggu Verifikasi"}
+          </button>
+
+          {isOnline && (
+            <button
+              onClick={() => handleGoToChat(booking)}
+              disabled={!canChat}
+              className={`px-4 py-2 rounded-full font-semibold text-sm ${
+                canChat ? "bg-[#0C72A6] text-white hover:bg-[#095f8c]"
+                : "bg-gray-200 text-gray-500 cursor-not-allowed"
+              }`}
+            >
+              {!verified ? "Menunggu Verifikasi" :
+               sessionStatus === "upcoming" ? "Belum Dimulai" :
+               sessionStatus === "finished" ? "Sesi Berakhir" :
+               "Masuk Room Chat"}
+            </button>
+          )}
+
+          {!isOnline && (
+            <button disabled
+              className="bg-gray-200 text-gray-500 px-4 py-2 rounded-full font-semibold text-sm cursor-not-allowed">
+              Sesi Offline
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#cdeefd] to-[#a8d8f0] p-10">
@@ -153,6 +248,24 @@ export default function MyBookingsPage() {
         <p className="text-gray-600 mt-2 mb-8">
           Lihat riwayat booking, jadwal aktif, dan akses room chat dari sini.
         </p>
+
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {[
+            { key: "all", label: "Semua" },
+            { key: "pending", label: "⏳ Menunggu Verifikasi" },
+            { key: "upcoming", label: "📅 Akan Datang" },
+            { key: "finished", label: "✅ Selesai" },
+          ].map(tab => (
+            <button key={tab.key} onClick={() => setFilterTab(tab.key)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition ${
+                filterTab === tab.key
+                  ? "bg-[#0C72A6] text-white"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {bookings.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center shadow">
@@ -168,101 +281,12 @@ export default function MyBookingsPage() {
             </button>
           </div>
         ) : (
-          <div className="space-y-5">
-            {bookings.map((booking) => {
-              const sessionStatus = getSessionStatus(booking);
-              const isOnline = booking.consultation_type === "online";
-              const verified = isPaymentVerified(booking);
-              const canChat = isOnline && sessionStatus === "ongoing" && verified;
-              const payStatus = booking.payments?.[0]?.payment_status || "pending";
-
-              return (
-                <div key={booking.id} className="bg-white rounded-2xl p-6 shadow flex justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3 flex-wrap">
-                      <h2 className="text-xl font-bold text-gray-800">{booking.counselor_name}</h2>
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        sessionStatus === "ongoing" ? "bg-green-100 text-green-600" :
-                        sessionStatus === "upcoming" ? "bg-blue-100 text-blue-600" :
-                        "bg-gray-200 text-gray-600"
-                      }`}>
-                        {getStatusLabel(sessionStatus)}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                      <p><span className="font-semibold text-gray-800">Tipe:</span>{" "}
-                        <span className="capitalize">{booking.consultation_type}</span>
-                      </p>
-                      <p><span className="font-semibold text-gray-800">Pembayaran:</span>{" "}
-                        <span className={`capitalize font-medium ${
-                          payStatus === "paid" ? "text-green-600" :
-                          payStatus === "failed" ? "text-red-500" : "text-yellow-600"
-                        }`}>
-                          {payStatus === "paid" ? "Terverifikasi" :
-                           payStatus === "failed" ? "Gagal" : "Menunggu Verifikasi"}
-                        </span>
-                      </p>
-                      <p><span className="font-semibold text-gray-800">Tanggal:</span>{" "}
-                        {formatDate(booking.consultation_date)}
-                      </p>
-                      <p><span className="font-semibold text-gray-800">Jam:</span>{" "}
-                        {booking.consultation_hour} WIB
-                      </p>
-                      <p className="col-span-2">
-                        <span className="font-semibold text-gray-800">Kode Booking:</span>{" "}
-                        <span className="font-mono">{booking.booking_code}</span>
-                      </p>
-                      <p className="col-span-2">
-                        <span className="font-semibold text-gray-800">Topik:</span>{" "}
-                        {booking.topic || "-"}
-                      </p>
-                      {!verified && booking.proof_uploaded && (
-                        <p className="col-span-2 text-xs text-yellow-700">
-                          Bukti transfer sudah diupload, menunggu verifikasi admin.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="w-[210px] flex flex-col gap-3 justify-center">
-                    <button
-                      onClick={() => handleViewTicket(booking)}
-                      disabled={!verified}
-                      className={`px-4 py-2 rounded-full font-semibold text-sm ${
-                        verified ? "bg-pink-300 text-pink-700 hover:bg-pink-400"
-                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      }`}
-                    >
-                      {verified ? "Lihat Tiket" : "Menunggu Verifikasi"}
-                    </button>
-
-                    {isOnline && (
-                      <button
-                        onClick={() => handleGoToChat(booking)}
-                        disabled={!canChat}
-                        className={`px-4 py-2 rounded-full font-semibold text-sm ${
-                          canChat ? "bg-[#0C72A6] text-white hover:bg-[#095f8c]"
-                          : "bg-gray-200 text-gray-500 cursor-not-allowed"
-                        }`}
-                      >
-                        {!verified ? "Menunggu Verifikasi" :
-                         sessionStatus === "upcoming" ? "Belum Dimulai" :
-                         sessionStatus === "finished" ? "Sesi Berakhir" :
-                         "Masuk Room Chat"}
-                      </button>
-                    )}
-
-                    {!isOnline && (
-                      <button disabled
-                        className="bg-gray-200 text-gray-500 px-4 py-2 rounded-full font-semibold text-sm cursor-not-allowed">
-                        Sesi Offline
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="space-y-4">
+            {visible.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Tidak ada booking di kategori ini.</p>
+            ) : (
+              visible.map(renderCard)
+            )}
           </div>
         )}
       </div>

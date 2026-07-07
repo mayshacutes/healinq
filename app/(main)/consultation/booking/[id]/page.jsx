@@ -144,9 +144,15 @@ export default function BookingPage() {
     fetchAvailableHours();
   }, [date, selected, type]);
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
   if (!date || !selectedHour) {
     alert("Pilih tanggal dan jam terlebih dahulu!");
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    alert("Kamu harus login terlebih dahulu!");
     return;
   }
 
@@ -159,6 +165,7 @@ export default function BookingPage() {
     hour: selectedHour,
     topic: topic,
     price: type === "offline" ? 75000 : 50000,
+    clientId: user.id,
   };
 
   localStorage.setItem("pendingBooking", JSON.stringify(bookingData));
