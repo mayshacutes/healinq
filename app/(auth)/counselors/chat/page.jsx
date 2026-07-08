@@ -62,7 +62,7 @@ function ChatArea({ roomId, currentUserId, patientName }) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-pink-400 border-t-transparent"></div>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#0C72A6] border-t-transparent"></div>
       </div>
     );
   }
@@ -72,8 +72,8 @@ function ChatArea({ roomId, currentUserId, patientName }) {
       <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-1">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mb-3">
-              <svg className="w-8 h-8 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-16 h-16 rounded-full bg-[#e8f4fd] flex items-center justify-center mb-3">
+              <svg className="w-8 h-8 text-[#0C72A6]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 0 1-2.555-.337A5.972 5.972 0 0 1 5.41 20.97a5.969 5.969 0 0 1-.474-.065 4.48 4.48 0 0 0 .978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25Z" />
               </svg>
             </div>
@@ -99,24 +99,24 @@ function ChatArea({ roomId, currentUserId, patientName }) {
                   className={`flex items-end gap-2 mb-2 ${isCounselor ? "justify-end" : "justify-start"} animate-fade-in`}
                 >
                   {!isCounselor && (
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
                       {patientName?.charAt(0) || "P"}
                     </div>
                   )}
                   <div className={`max-w-[70%] sm:max-w-[60%] ${isCounselor ? "items-end" : "items-start"} flex flex-col`}>
                     <div className={`px-4 py-2.5 text-sm leading-relaxed ${
                       isCounselor
-                        ? "bg-gradient-to-br from-pink-400 to-pink-500 text-white rounded-2xl rounded-br-sm shadow-sm"
+                        ? "bg-gradient-to-br from-[#0C72A6] to-[#095f8c] text-white rounded-2xl rounded-br-sm shadow-sm"
                         : "bg-white text-gray-800 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100"
                     }`}>
                       <p className="break-words">{msg.message}</p>
                     </div>
-                    <span className={`text-[10px] mt-1 ${isCounselor ? "text-right text-pink-300" : "text-left text-gray-400"}`}>
+                    <span className={`text-[10px] mt-1 ${isCounselor ? "text-right text-blue-300" : "text-left text-gray-400"}`}>
                       {formatTime(msg.created_at)}
                     </span>
                   </div>
                   {isCounselor && (
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#0C72A6] to-[#095f8c] flex items-center justify-center text-white text-sm font-bold flex-shrink-0 shadow-sm">
                       K
                     </div>
                   )}
@@ -131,21 +131,21 @@ function ChatArea({ roomId, currentUserId, patientName }) {
       <div className="px-4 sm:px-6 pb-2 flex gap-2 flex-wrap">
         {quickReplies.map((q, i) => (
           <button key={i} onClick={() => setInput(q)}
-            className="bg-white border border-pink-200 px-4 py-1.5 rounded-full text-xs text-pink-600 hover:bg-pink-50 hover:border-pink-300 transition font-medium shadow-sm">
+            className="bg-white border border-[#0C72A6]/20 px-4 py-1.5 rounded-full text-xs text-[#0C72A6] hover:bg-[#e8f4fd] hover:border-[#0C72A6]/40 transition font-medium shadow-sm">
             {q}
           </button>
         ))}
       </div>
 
       <div className="px-4 sm:px-6 py-3 bg-white border-t border-gray-100">
-        <div className="flex gap-3 items-center bg-gray-50 rounded-full px-4 py-1.5 border border-gray-200 focus-within:border-pink-400 focus-within:shadow-sm transition">
+        <div className="flex gap-3 items-center bg-gray-50 rounded-full px-4 py-1.5 border border-gray-200 focus-within:border-[#0C72A6] focus-within:shadow-sm transition">
           <input value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Tulis pesan..."
             className="flex-1 bg-transparent py-2 text-sm outline-none placeholder-gray-400" />
           <button onClick={handleSend}
             disabled={!input.trim()}
-            className="bg-gradient-to-r from-pink-400 to-pink-500 text-white w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md transition shrink-0">
+            className="bg-gradient-to-r from-[#0C72A6] to-[#095f8c] text-white w-9 h-9 rounded-full flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-md transition shrink-0">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
             </svg>
@@ -240,29 +240,29 @@ export default function CounselorChatPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-[#fef5f7] to-[#f5f7fb]">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-[#d4effc] to-[#e8f4fd]">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-pink-400 border-t-transparent"></div>
-          <p className="text-sm text-pink-500 font-medium">Memuat chat...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#0C72A6] border-t-transparent"></div>
+          <p className="text-sm text-[#0C72A6] font-medium">Memuat chat...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-[#fef5f7] to-[#f5f7fb]">
+    <div className="flex h-screen bg-gradient-to-br from-[#d4effc] to-[#e8f4fd]">
 
       {/* SIDEBAR - DAFTAR PASIEN */}
       <div className={`${
         showMobileList ? "flex" : "hidden"
-      } md:flex w-full md:w-[340px] lg:w-[380px] bg-white border-r border-gray-200 overflow-y-auto flex-col`}>
-        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-pink-50 to-white">
+      } md:flex w-full md:w-[340px] lg:w-[380px] bg-white/95 backdrop-blur-sm border-r border-gray-200 overflow-y-auto flex-col`}>
+        <div className="p-5 border-b border-gray-100 bg-gradient-to-r from-[#e8f4fd] to-white">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#0C72A6] to-[#095f8c] flex items-center justify-center text-white font-bold text-sm shadow-md">
               {counselor?.name?.charAt(0) || "K"}
             </div>
             <div>
-              <h1 className="font-bold text-[#0c72a6] text-sm">Chat Pasien</h1>
+              <h1 className="font-bold text-[#0C72A6] text-sm">Chat Pasien</h1>
               <p className="text-xs text-gray-400">{counselor?.name}</p>
             </div>
           </div>
@@ -270,8 +270,8 @@ export default function CounselorChatPage() {
 
         {consultations.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-pink-50 flex items-center justify-center mb-3">
-              <svg className="w-8 h-8 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-16 h-16 rounded-full bg-[#e8f4fd] flex items-center justify-center mb-3">
+              <svg className="w-8 h-8 text-[#0C72A6]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
               </svg>
             </div>
@@ -287,8 +287,10 @@ export default function CounselorChatPage() {
                 <div
                   key={c.id}
                   onClick={() => handleSelectConsultation(c)}
-                  className={`p-4 cursor-pointer transition hover:bg-pink-50/50 ${
-                    isSelected ? "bg-pink-50 border-l-4 border-l-pink-400" : "border-l-4 border-l-transparent"
+                  className={`p-4 cursor-pointer transition ${
+                    isSelected
+                      ? "bg-[#e8f4fd] border-l-4 border-l-[#0C72A6]"
+                      : "border-l-4 border-l-transparent hover:bg-gray-50"
                   } ${!isOngoing ? "opacity-50" : ""}`}
                 >
                   <div className="flex items-center gap-3">
@@ -332,8 +334,8 @@ export default function CounselorChatPage() {
       } md:flex flex-1 flex-col`}>
         {!selectedConsultation ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
-            <div className="w-20 h-20 rounded-full bg-pink-50 flex items-center justify-center">
-              <svg className="w-10 h-10 text-pink-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div className="w-20 h-20 rounded-full bg-[#e8f4fd] flex items-center justify-center">
+              <svg className="w-10 h-10 text-[#0C72A6]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
               </svg>
             </div>
@@ -346,12 +348,12 @@ export default function CounselorChatPage() {
           <>
             <div className="bg-white/90 backdrop-blur-md border-b border-gray-200/80 px-4 sm:px-6 py-3 flex items-center gap-3 shadow-sm">
               <button onClick={handleBackToList}
-                className="md:hidden w-9 h-9 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 hover:bg-pink-100 transition shrink-0">
+                className="md:hidden w-9 h-9 rounded-full bg-[#e8f4fd] flex items-center justify-center text-[#0C72A6] hover:bg-[#d4effc] transition shrink-0">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                 </svg>
               </button>
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-pink-500 flex items-center justify-center text-white font-bold text-sm shadow-md flex-shrink-0">
                 {selectedConsultation.client_name?.charAt(0) || "P"}
               </div>
               <div className="min-w-0 flex-1">
@@ -362,7 +364,7 @@ export default function CounselorChatPage() {
                   {formatDate(selectedConsultation.consultation_date)} · {selectedConsultation.consultation_hour} · {selectedConsultation.consultation_type}
                 </p>
                 {selectedConsultation.topic && (
-                  <p className="text-[11px] text-pink-500 font-medium truncate mt-0.5">
+                  <p className="text-[11px] text-[#0C72A6] font-medium truncate mt-0.5">
                     Topik: {selectedConsultation.topic}
                   </p>
                 )}
