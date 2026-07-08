@@ -1,24 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthCallback() {
+  const getRedirectPath = useCallback(() => {
+    if (typeof window === "undefined") return "/dashboard/user";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("next") || "/dashboard/user";
+  }, []);
+
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Ambil session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+        let { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        // Fallback: exchange code for session if getSession returns null
         if (sessionError || !session) {
-          console.error("No session:", sessionError);
-          window.location.href = "/login";
-          return;
+          const { data: exchangeData, error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(window.location.href);
+
+          if (exchangeError || !exchangeData.session) {
+            console.error("Session exchange failed:", exchangeError);
+            window.location.href = "/login";
+            return;
+          }
+
+          session = exchangeData.session;
         }
 
         const userEmail = session.user.email;
         const userId = session.user.id;
-        
+
         console.log("=== GOOGLE CALLBACK ===");
         console.log("Email:", userEmail);
         console.log("User ID:", userId);
@@ -39,20 +52,17 @@ export default function AuthCallback() {
         // =====================
         if (counselorData && counselorData.status === "Active") {
           console.log("✅ DETECTED AS COUNSELOR!");
-          
-          // Update atau buat profile
-          await supabase
-            .from("profiles")
-            .upsert({
-              id: userId,
-              email: userEmail,
-              role: "counselor",
-              status: "Active",
-              username: userEmail.split('@')[0],
-              full_name: counselorData.name || userEmail.split('@')[0],
-              created_at: new Date().toISOString(),
-            });
-          
+
+          await supabase.from("profiles").upsert({
+            id: userId,
+            email: userEmail,
+            role: "counselor",
+            status: "Active",
+            username: userEmail.split('@')[0],
+            full_name: counselorData.name || userEmail.split('@')[0],
+            created_at: new Date().toISOString(),
+          });
+
           console.log("✅ Redirecting to /counselor/schedule");
           window.location.replace("/counselors/schedule");
           return;
@@ -76,11 +86,28 @@ export default function AuthCallback() {
         }
 
         // =====================
-        // DEFAULT: USER DASHBOARD
+        // BUAT PROFILE BARU UNTUK USER GOOGLE OAuth
         // =====================
-        console.log("❌ Regular user, redirecting to /dashboard/user");
-        window.location.replace("/dashboard/user");
-        
+        if (!profileData) {
+          console.log("🆕 New Google user, creating profile...");
+          await supabase.from("profiles").upsert({
+            id: userId,
+            email: userEmail,
+            role: "user",
+            status: "Active",
+            username: userEmail.split('@')[0],
+            full_name: session.user.user_metadata?.full_name || userEmail.split('@')[0],
+            created_at: new Date().toISOString(),
+          });
+        }
+
+        // =====================
+        // REDIRECT (hargai ?next= jika ada)
+        // =====================
+        const redirectPath = getRedirectPath();
+        console.log(`✅ Redirecting to ${redirectPath}`);
+        window.location.replace(redirectPath);
+
       } catch (error) {
         console.error("Callback error:", error);
         window.location.href = "/login";
@@ -88,7 +115,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, []);
+  }, [getRedirectPath]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#d9edf8]">
