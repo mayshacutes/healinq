@@ -55,7 +55,7 @@ export default function AdminDashboardPage() {
       .from("consultations")
       .select("*", { count: "exact", head: true });
     const { count: totalChats } = await supabase
-      .from("messages")
+      .from("chat_rooms")
       .select("*", { count: "exact", head: true });
 
     setStats([
