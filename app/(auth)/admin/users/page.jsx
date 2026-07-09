@@ -159,16 +159,42 @@ export default function AdminUsersPage() {
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
-    if (!editingUser.username.trim() || !editingUser.email.trim()) {
+
+    const cleanUsername = editingUser.username.trim();
+    const cleanEmail = editingUser.email.trim().toLowerCase();
+
+    if (!cleanUsername || !cleanEmail) {
       setActionMessage("Username and Email are required.");
       return;
     }
+
     setSaving(true);
+
+    const { data: existingUsername, error: usernameCheckError } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", cleanUsername)
+      .neq("id", editingUser.id)
+      .maybeSingle();
+
+    if (usernameCheckError) {
+      console.error(usernameCheckError);
+      setActionMessage("Gagal mengecek username.");
+      setSaving(false);
+      return;
+    }
+
+    if (existingUsername) {
+      setActionMessage("Username sudah digunakan. Silakan pilih username lain.");
+      setSaving(false);
+      return;
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({
-        username: editingUser.username,
-        email: editingUser.email,
+        username: cleanUsername,
+        email: cleanEmail,
         address: editingUser.address,
         telp_number: editingUser.telp_number,
         birth_date: editingUser.birth_date,

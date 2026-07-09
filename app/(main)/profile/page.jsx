@@ -180,6 +180,27 @@ export default function UserProfilePage() {
       return;
     }
 
+    const cleanUsername = editForm.username.trim();
+    const cleanFullName = editForm.full_name.trim();
+
+    const { data: existingUsername, error: usernameCheckError } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", cleanUsername)
+      .neq("id", user.id)
+      .maybeSingle();
+
+    if (usernameCheckError) {
+      console.error(usernameCheckError);
+      setActionMessage("Gagal mengecek username.");
+      return;
+    }
+
+    if (existingUsername) {
+      setActionMessage("Username sudah digunakan. Silakan pilih username lain.");
+      return;
+    }
+
     let avatarUrl = editForm.avatar_url || "";
 
     if (avatarFile) {
@@ -212,8 +233,8 @@ export default function UserProfilePage() {
 
     const updatedProfile = {
       ...editForm,
-      full_name: editForm.full_name,
-      username: editForm.username,
+      full_name: cleanFullName,
+      username: cleanUsername,
       bio: editForm.bio,
       telp_number: editForm.telp_number,
       birth_date: editForm.birth_date,
