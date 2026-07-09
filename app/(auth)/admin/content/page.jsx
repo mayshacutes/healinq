@@ -6,6 +6,7 @@ import { logActivity } from "@/lib/activityLogger";
 import { supabase } from "@/lib/supabaseClient";
 import { lyricAPI, jarAPI, questionAPI, seedDefaultData } from "@/lib/supabaseApi";
 
+
 // ========== FUNGSI FORMAT TANGGAL ==========
 function formatTopDate(date) {
   return new Intl.DateTimeFormat("en-US", {
@@ -47,6 +48,66 @@ const jarOfHappinessCategories = [
   { value: "Gratitude & Resilience", label: "Gratitude & Resilience" },
 ];
 
+function PaginationControls({
+  totalItems,
+  startIndex,
+  endIndex,
+  currentPage,
+  totalPages,
+  rowsPerPage,
+  setRowsPerPage,
+  setCurrentPage,
+  label,
+}) {
+  if (totalItems === 0) return null;
+
+  return (
+    <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-2 text-[13px] text-[#666]">
+        <span>Show</span>
+        <select
+          value={rowsPerPage}
+          onChange={(e) => setRowsPerPage(Number(e.target.value))}
+          className="rounded-full border border-[#e6e6e6] bg-white px-3 py-2 text-[13px] text-[#333] focus:outline-none focus:ring-2 focus:ring-[#e85fa7]/20"
+        >
+          <option value={10}>10</option>
+          <option value={15}>15</option>
+        </select>
+        <span>{label} per page</span>
+      </div>
+
+      <div className="text-[13px] text-[#666]">
+        Showing {startIndex + 1} - {Math.min(endIndex, totalItems)} of{" "}
+        {totalItems} {label}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Previous
+        </button>
+
+        <span className="rounded-full bg-[#ffe7f1] px-4 py-2 text-[13px] font-medium text-[#db2d8d]">
+          Page {currentPage} of {totalPages}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="rounded-full border border-[#e6e6e6] bg-white px-4 py-2 text-[13px] font-medium text-[#666] transition hover:bg-[#fff5fa] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ========== MAIN COMPONENT ==========
 export default function AdminContentPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -57,6 +118,15 @@ export default function AdminContentPage() {
   const [lyrics, setLyrics] = useState([]);
   const [jarOfHappiness, setJarOfHappiness] = useState([]);
   const [questions, setQuestions] = useState([]);
+
+  const [lyricPage, setLyricPage] = useState(1);
+  const [lyricRowsPerPage, setLyricRowsPerPage] = useState(10);
+
+  const [jarPage, setJarPage] = useState(1);
+  const [jarRowsPerPage, setJarRowsPerPage] = useState(10);
+
+  const [questionPage, setQuestionPage] = useState(1);
+  const [questionRowsPerPage, setQuestionRowsPerPage] = useState(10);
 
   // Form states
   const [lyricForm, setLyricForm] = useState({ title: "", lyric: "" });
@@ -132,6 +202,33 @@ export default function AdminContentPage() {
       return () => clearTimeout(timer);
     }
   }, [actionMessage]);
+
+  useEffect(() => {
+    setLyricPage(1);
+  }, [lyrics.length, lyricRowsPerPage]);
+
+  useEffect(() => {
+    setJarPage(1);
+  }, [jarOfHappiness.length, jarRowsPerPage]);
+
+  useEffect(() => {
+    setQuestionPage(1);
+  }, [questions.length, questionRowsPerPage]);
+
+  const lyricTotalPages = Math.max(1, Math.ceil(lyrics.length / lyricRowsPerPage));
+  const lyricStartIndex = (lyricPage - 1) * lyricRowsPerPage;
+  const lyricEndIndex = lyricStartIndex + lyricRowsPerPage;
+  const paginatedLyrics = lyrics.slice(lyricStartIndex, lyricEndIndex);
+
+  const jarTotalPages = Math.max(1, Math.ceil(jarOfHappiness.length / jarRowsPerPage));
+  const jarStartIndex = (jarPage - 1) * jarRowsPerPage;
+  const jarEndIndex = jarStartIndex + jarRowsPerPage;
+  const paginatedJar = jarOfHappiness.slice(jarStartIndex, jarEndIndex);
+
+  const questionTotalPages = Math.max(1, Math.ceil(questions.length / questionRowsPerPage));
+  const questionStartIndex = (questionPage - 1) * questionRowsPerPage;
+  const questionEndIndex = questionStartIndex + questionRowsPerPage;
+  const paginatedQuestions = questions.slice(questionStartIndex, questionEndIndex);
 
   // ========== LYRIC HANDLERS ==========
   const handleAddLyric = async (e) => {
@@ -543,9 +640,9 @@ export default function AdminContentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {lyrics.map((item, idx) => (
+                  {paginatedLyrics.map((item, idx) => (
                     <tr key={item.id} className="border-b border-[#f2f2f2] hover:bg-[#f9f9f9]">
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{idx + 1}</td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{lyricStartIndex + idx + 1}</td>
                       <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">{item.title}</td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
                         <div className="max-w-[460px] line-clamp-2">{item.lyric}</div>
@@ -575,6 +672,17 @@ export default function AdminContentPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              totalItems={lyrics.length}
+              startIndex={lyricStartIndex}
+              endIndex={lyricEndIndex}
+              currentPage={lyricPage}
+              totalPages={lyricTotalPages}
+              rowsPerPage={lyricRowsPerPage}
+              setRowsPerPage={setLyricRowsPerPage}
+              setCurrentPage={setLyricPage}
+              label="lyrics"
+            />
           </div>
 
           {/* JAR OF HAPPINESS TABLE */}
@@ -600,9 +708,9 @@ export default function AdminContentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {jarOfHappiness.map((item, idx) => (
+                  {paginatedJar.map((item, idx) => (
                     <tr key={item.id} className="border-b border-[#f2f2f2] hover:bg-[#f9f9f9]">
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{idx + 1}</td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{jarStartIndex + idx + 1}</td>
                       <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">{item.title}</td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{item.category}</td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">
@@ -633,6 +741,17 @@ export default function AdminContentPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              totalItems={jarOfHappiness.length}
+              startIndex={jarStartIndex}
+              endIndex={jarEndIndex}
+              currentPage={jarPage}
+              totalPages={jarTotalPages}
+              rowsPerPage={jarRowsPerPage}
+              setRowsPerPage={setJarRowsPerPage}
+              setCurrentPage={setJarPage}
+              label="affirmations"
+            />
           </div>
 
           {/* FYP QUESTIONS TABLE */}
@@ -657,9 +776,9 @@ export default function AdminContentPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {questions.map((item, idx) => (
+                  {paginatedQuestions.map((item, idx) => (
                     <tr key={item.id} className="border-b border-[#f2f2f2] hover:bg-[#f9f9f9]">
-                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{idx + 1}</td>
+                      <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{questionStartIndex + idx + 1}</td>
                       <td className="px-4 py-4 text-[14px] font-medium text-[#262626]">{item.text}</td>
                       <td className="px-4 py-4 text-[14px] text-[#5f5f5f]">{getCategoryLabel(item.category)}</td>
                       <td className="px-4 py-4">
@@ -687,6 +806,17 @@ export default function AdminContentPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              totalItems={questions.length}
+              startIndex={questionStartIndex}
+              endIndex={questionEndIndex}
+              currentPage={questionPage}
+              totalPages={questionTotalPages}
+              rowsPerPage={questionRowsPerPage}
+              setRowsPerPage={setQuestionRowsPerPage}
+              setCurrentPage={setQuestionPage}
+              label="questions"
+            />
           </div>
 
           {/* QUICK ACTIONS */}

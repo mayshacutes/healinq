@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Icon } from "@iconify/react";
 
 export default function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
@@ -42,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }) {
         onClick={onClose}
       >
         <Image
-          src="/images/logo.png"
+          src="/images/icon_profile.png"
           alt="HealinQ"
           width={52}
           height={52}
@@ -91,10 +92,12 @@ export default function Sidebar({ isOpen, onClose }) {
           }`}
       >
         <button
+          type="button"
           onClick={onClose}
-          className="absolute -right-10 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow md:hidden"
+          className="absolute -right-10 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#db2d8d] shadow transition hover:bg-[#fff5fa] md:hidden"
+          aria-label="Close menu"
         >
-          ✕
+          <Icon icon="solar:close-circle-bold" className="text-[22px]" />
         </button>
 
         {sidebarContent}

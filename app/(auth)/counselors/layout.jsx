@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@iconify/react";
 import CounselorSidebar from "@/components/CounselorSidebar";
 
 export default function CounselorLayout({ children }) {
@@ -10,13 +11,12 @@ export default function CounselorLayout({ children }) {
     <div className="relative min-h-screen bg-[#d9edf8]">
       {/* Hamburger — mobile only */}
       <button
+        type="button"
         onClick={() => setSidebarOpen(true)}
-        className="fixed left-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white/80 shadow md:hidden"
+        className="fixed left-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#db2d8d] shadow-[0_4px_12px_rgba(0,0,0,0.16)] transition hover:bg-[#fff5fa] md:hidden"
         aria-label="Open menu"
       >
-        <span className="block h-0.5 w-4 bg-gray-700 rounded" />
-        <span className="block h-0.5 w-4 bg-gray-700 rounded mt-1" />
-        <span className="block h-0.5 w-4 bg-gray-700 rounded mt-1" />
+        <Icon icon="solar:hamburger-menu-bold" className="text-[24px]" />
       </button>
 
       <div className="relative z-10 flex">
