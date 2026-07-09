@@ -18,8 +18,13 @@ export async function POST(request) {
 
     console.log("CREATE COUNSELOR BODY:", body);
 
+    const cleanFullName = full_name?.trim();
+    const cleanEmail = email?.trim().toLowerCase();
+    const cleanPassword = password;
+    const cleanUsername = cleanEmail?.split("@")[0]?.trim();
+
     // VALIDATION
-    if (!full_name || !email || !password) {
+    if (!cleanFullName || !cleanEmail || !cleanPassword) {
       return NextResponse.json(
         {
           success: false,
@@ -29,20 +34,60 @@ export async function POST(request) {
       );
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(cleanEmail)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Format email tidak valid.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // CEK USERNAME DUPLICATE DI PROFILES
+    const { data: existingUsername, error: usernameCheckError } =
+      await supabaseAdmin
+        .from("profiles")
+        .select("id, username, role")
+        .ilike("username", cleanUsername)
+        .maybeSingle();
+
+    if (usernameCheckError) {
+      console.error("USERNAME CHECK ERROR:", usernameCheckError);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Gagal mengecek username.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (existingUsername) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: `Username "${cleanUsername}" sudah digunakan. Gunakan email lain atau ubah username akun yang sudah ada.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // CREATE AUTH USER
-    const {
-      data: authData,
-      error: authError,
-    } = await supabaseAdmin.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
-      password,
-      email_confirm: true,
-      user_metadata: {
-        username: email.split("@")[0],
-        full_name,
-        role: "counselor",
-      },
-    });
+    const { data: authData, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: cleanEmail,
+        password: cleanPassword,
+        email_confirm: true,
+        user_metadata: {
+          username: cleanUsername,
+          full_name: cleanFullName,
+          role: "counselor",
+        },
+      });
 
     console.log("AUTH DATA:", authData);
     console.log("AUTH ERROR:", authError);
@@ -62,11 +107,13 @@ export async function POST(request) {
 
     console.log("AUTH ID:", authId);
 
-    // UPDATE PROFILE (dibuat otomatis oleh trigger handle_new_user)
+    // UPDATE PROFILE
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .update({
-        full_name,
+        username: cleanUsername,
+        full_name: cleanFullName,
+        email: cleanEmail,
         role: "counselor",
         status,
         specialty,
@@ -92,8 +139,8 @@ export async function POST(request) {
       .from("counselors")
       .insert({
         id: authId,
-        name: full_name,
-        email: email.trim().toLowerCase(),
+        name: cleanFullName,
+        email: cleanEmail,
         specialty,
         specialization: specialty,
         address,
@@ -120,9 +167,7 @@ export async function POST(request) {
       message: "Counselor created successfully.",
       counselorId: authId,
     });
-
   } catch (error) {
-
     console.error("CREATE COUNSELOR ERROR:");
     console.error(error);
 

@@ -70,7 +70,33 @@ export default function SignUp() {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const cleanUsername = formData.username.trim();
+      const cleanEmail = formData.email.trim().toLowerCase();
+
+      const { data: existingUsername, error: usernameCheckError } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", cleanUsername)
+        .maybeSingle();
+
+      if (usernameCheckError) {
+        console.error(usernameCheckError);
+        setErrors({
+          general: "Gagal mengecek username.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (existingUsername) {
+        setErrors({
+          username: "Username sudah digunakan. Silakan pilih username lain.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({
         provider: "google",
         options: {
           // sesuai flow kamu: register Google -> balik ke halaman login
@@ -112,11 +138,11 @@ export default function SignUp() {
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
+        email: cleanEmail,
         password: formData.password,
         options: {
           data: {
-            username: formData.username,
+            username: cleanUsername,
           },
         },
       });
@@ -138,8 +164,8 @@ export default function SignUp() {
           .upsert(
             {
               id: user.id,
-              username: formData.username,
-              email: formData.email,
+              username: cleanUsername,
+              email: cleanEmail,
             },
             {
               onConflict: "id",
@@ -158,7 +184,7 @@ export default function SignUp() {
         await logActivity({
           actor_id: user.id,
 
-          actor_name: formData.username,
+          actor_name: cleanUsername,
 
           actor_role: "User",
 

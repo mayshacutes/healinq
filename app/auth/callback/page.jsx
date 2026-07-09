@@ -11,6 +11,41 @@ export default function AuthCallback() {
   }, []);
 
   useEffect(() => {
+    const normalizeUsername = (email) => {
+      return (
+        email
+          ?.split("@")[0]
+          ?.trim()
+          ?.toLowerCase()
+          ?.replace(/[^a-z0-9._-]/g, "") || "user"
+      );
+    };
+
+    const getAvailableUsername = async (baseUsername, currentUserId) => {
+      let candidate = baseUsername || "user";
+
+      for (let i = 0; i < 50; i++) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", candidate)
+          .neq("id", currentUserId)
+          .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data) {
+          return candidate;
+        }
+
+        candidate = `${baseUsername}${i + 1}`;
+      }
+
+      return `${baseUsername}${Date.now()}`;
+    };
+
     const handleCallback = async () => {
       try {
         let { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -31,6 +66,7 @@ export default function AuthCallback() {
 
         const userEmail = session.user.email;
         const userId = session.user.id;
+        const baseUsername = normalizeUsername(userEmail);
 
         console.log("=== GOOGLE CALLBACK ===");
         console.log("Email:", userEmail);
@@ -53,15 +89,28 @@ export default function AuthCallback() {
         if (counselorData && counselorData.status === "Active") {
           console.log("✅ DETECTED AS COUNSELOR!");
 
-          await supabase.from("profiles").upsert({
-            id: userId,
-            email: userEmail,
-            role: "counselor",
-            status: "Active",
-            username: userEmail.split('@')[0],
-            full_name: counselorData.name || userEmail.split('@')[0],
-            created_at: new Date().toISOString(),
-          });
+          const safeUsername = await getAvailableUsername(baseUsername, userId);
+
+          const { error: profileUpsertError } = await supabase.from("profiles").upsert(
+            {
+              id: userId,
+              email: userEmail,
+              role: "counselor",
+              status: "Active",
+              username: safeUsername,
+              full_name: counselorData.name || baseUsername,
+              created_at: new Date().toISOString(),
+            },
+            {
+              onConflict: "id",
+            }
+          );
+
+          if (profileUpsertError) {
+            console.error("Failed to upsert counselor profile:", profileUpsertError);
+            window.location.href = "/login";
+            return;
+          }
 
           console.log("✅ Redirecting to /counselor/schedule");
           window.location.replace("/counselors/schedule");
@@ -90,15 +139,28 @@ export default function AuthCallback() {
         // =====================
         if (!profileData) {
           console.log("🆕 New Google user, creating profile...");
-          await supabase.from("profiles").upsert({
-            id: userId,
-            email: userEmail,
-            role: "user",
-            status: "Active",
-            username: userEmail.split('@')[0],
-            full_name: session.user.user_metadata?.full_name || userEmail.split('@')[0],
-            created_at: new Date().toISOString(),
-          });
+          const safeUsername = await getAvailableUsername(baseUsername, userId);
+
+          const { error: profileCreateError } = await supabase.from("profiles").upsert(
+            {
+              id: userId,
+              email: userEmail,
+              role: "user",
+              status: "Active",
+              username: safeUsername,
+              full_name: session.user.user_metadata?.full_name || baseUsername,
+              created_at: new Date().toISOString(),
+            },
+            {
+              onConflict: "id",
+            }
+          );
+
+          if (profileCreateError) {
+            console.error("Failed to create Google profile:", profileCreateError);
+            window.location.href = "/login";
+            return;
+          }
         }
 
         // =====================
