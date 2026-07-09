@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { Icon } from "@iconify/react";
 
 export default function AdminSidebar({ isOpen, onClose }) {
   const pathname = usePathname();
@@ -28,13 +29,12 @@ export default function AdminSidebar({ isOpen, onClose }) {
       <Link
         href="/admin/profile"
         onClick={onClose}
-        className={`mb-10 flex h-[64px] w-[64px] items-center justify-center rounded-full transition hover:scale-105 ${
-          isProfileActive ? "ring-4 ring-white/70" : ""
-        }`}
+        className={`mb-10 flex h-[64px] w-[64px] items-center justify-center rounded-full transition hover:scale-105 ${isProfileActive ? "ring-4 ring-white/70" : ""
+          }`}
         title="Admin Profile"
       >
         <Image
-          src="/images/logo.png"
+          src="/images/icon_profile.png"
           alt="HealinQ"
           width={64}
           height={64}
@@ -48,11 +48,10 @@ export default function AdminSidebar({ isOpen, onClose }) {
             key={item.name}
             href={item.href}
             onClick={onClose}
-            className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${
-              isActive(item.href)
+            className={`flex min-h-[52px] w-full items-center justify-center rounded-full px-4 text-center text-[16px] font-semibold transition ${isActive(item.href)
                 ? "bg-white text-[#db2d8d] shadow-[0_4px_10px_rgba(0,0,0,0.12)]"
                 : "text-white hover:bg-white/20"
-            }`}
+              }`}
           >
             {item.name}
           </Link>
@@ -71,15 +70,16 @@ export default function AdminSidebar({ isOpen, onClose }) {
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 h-screen w-[160px] flex-col items-center bg-[#efc6dc] px-4 py-6 shadow-sm transition-transform duration-300 md:flex ${
-          isOpen ? "flex translate-x-0" : "hidden -translate-x-full md:hidden"
-        }`}
+        className={`fixed left-0 top-0 z-50 h-screen w-[160px] flex-col items-center bg-[#efc6dc] px-4 py-6 shadow-sm transition-transform duration-300 md:flex ${isOpen ? "flex translate-x-0" : "hidden -translate-x-full md:hidden"
+          }`}
       >
         <button
+          type="button"
           onClick={onClose}
-          className="absolute -right-10 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 text-gray-600 shadow md:hidden"
+          className="absolute -right-10 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#db2d8d] shadow transition hover:bg-[#fff5fa] md:hidden"
+          aria-label="Close menu"
         >
-          ✕
+          <Icon icon="solar:close-circle-bold" className="text-[22px]" />
         </button>
 
         {sidebarContent}
