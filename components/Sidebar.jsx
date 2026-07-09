@@ -42,11 +42,11 @@ export default function Sidebar({ isOpen, onClose }) {
         onClick={onClose}
       >
         <Image
-          src="/images/icon_profile.png"
-          alt="Profile"
+          src="/images/logo.png"
+          alt="HealinQ"
           width={52}
           height={52}
-          className="h-[52px] w-[52px] object-contain"
+          className="h-[52px] w-[52px] rounded-full object-cover"
         />
       </Link>
 

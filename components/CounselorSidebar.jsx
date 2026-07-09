@@ -31,11 +31,11 @@ export default function CounselorSidebar({ isOpen, onClose }) {
         title="Counselor Profile"
       >
         <Image
-          src="/images/icon_profile.png"
-          alt="Counselor Profile"
+          src="/images/logo.png"
+          alt="HealinQ"
           width={64}
           height={64}
-          className="h-[64px] w-[64px] object-contain"
+          className="h-[64px] w-[64px] rounded-full object-cover"
         />
       </Link>
 
