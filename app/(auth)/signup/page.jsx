@@ -74,7 +74,7 @@ export default function SignUp() {
         provider: "google",
         options: {
           // sesuai flow kamu: register Google -> balik ke halaman login
-          redirectTo: `${window.location.origin}/auth/callback?next=/login`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             prompt: "select_account",
           },
