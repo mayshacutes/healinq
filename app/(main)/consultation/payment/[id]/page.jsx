@@ -17,9 +17,6 @@ export default function PaymentPage() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [proofFile, setProofFile] = useState(null);
   const [proofDataUrl, setProofDataUrl] = useState(null);
-  const [proofMessage, setProofMessage] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [consultationId, setConsultationId] = useState(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("pendingBooking");
@@ -38,9 +35,54 @@ export default function PaymentPage() {
   const price = bookingData?.price || 50000;
   const total = price + adminFee;
 
-  // BAYAR: INSERT KE consultations + payments + chat_rooms
+  // UPLOAD BUKTI BAYAR
+  const handleProofFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Hanya file gambar yang diperbolehkan.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran file maksimal 5MB.");
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => { setProofDataUrl(reader.result); setProofFile(file); };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadProof = async (consultId) => {
+    if (!proofFile) return null;
+
+    const body = new FormData();
+    body.append("file", proofFile);
+    body.append("consultationId", consultId.toString());
+
+    const res = await fetch("/api/upload-payment-proof", { method: "POST", body });
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      throw new Error(result.error || "Gagal mengupload bukti pembayaran.");
+    }
+
+    return result;
+  };
+
+  // BAYAR: WAJIB upload bukti dulu, baru INSERT consultations + payments + chat_rooms
   const handlePayment = async () => {
     if (!bookingData) return;
+
+    if (!proofFile) {
+      alert("Silakan pilih bukti transfer terlebih dahulu.");
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
@@ -79,7 +121,7 @@ export default function PaymentPage() {
           status: "pending",
           booking_code: bookingCode,
           session_duration: 60,
-          proof_uploaded: false,
+          proof_uploaded: true,
           attendance_confirmed: false,
         })
         .select()
@@ -108,7 +150,18 @@ export default function PaymentPage() {
       // 3. BUAT CHAT ROOM
       await createRoomForConsultation(consultation.id, user.id, bookingData.counselorId);
 
-      // 4. Simpan ke localStorage untuk halaman tiket
+      // 4. UPLOAD BUKTI TRANSFER
+      try {
+        await uploadProof(consultation.id);
+      } catch (uploadErr) {
+        console.error("Upload proof failed:", uploadErr);
+        alert("Gagal mengupload bukti transfer, tetapi booking sudah tersimpan. Silakan upload dari halaman My Bookings.");
+        setIsProcessing(false);
+        router.push("/consultation/my-bookings");
+        return;
+      }
+
+      // 5. Simpan ke localStorage untuk halaman tiket
       const ticketData = {
         ...bookingData,
         bookingCode,
@@ -127,74 +180,13 @@ export default function PaymentPage() {
       localStorage.setItem("latestTicket", JSON.stringify(ticketData));
       localStorage.removeItem("pendingBooking");
 
-      setConsultationId(consultation.id);
-      setBookingData(ticketData);
       setPaymentCompleted(true);
       setIsProcessing(false);
-      setProofMessage("Pembayaran berhasil. Silakan upload bukti transfer untuk verifikasi.");
 
     } catch (err) {
       console.error("Unexpected error:", err);
       alert("Terjadi kesalahan. Coba lagi.");
       setIsProcessing(false);
-    }
-  };
-
-  // UPLOAD BUKTI BAYAR
-  const handleProofFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      alert("Hanya file gambar yang diperbolehkan.");
-      e.target.value = "";
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert("Ukuran file maksimal 5MB.");
-      e.target.value = "";
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => { setProofDataUrl(reader.result); setProofFile(file); };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSubmitProof = async () => {
-    if (!proofFile || !consultationId) {
-      alert("Pilih file bukti pembayaran terlebih dahulu.");
-      return;
-    }
-
-    setIsUploading(true);
-    setProofMessage("");
-
-    try {
-      const body = new FormData();
-      body.append("file", proofFile);
-      body.append("consultationId", consultationId.toString());
-
-      const res = await fetch("/api/upload-payment-proof", {
-        method: "POST",
-        body,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
-        alert(result.error || "Gagal mengupload bukti pembayaran. Coba lagi.");
-        setIsUploading(false);
-        return;
-      }
-
-      setProofMessage("Bukti transfer berhasil diupload. Menunggu verifikasi admin.");
-    } catch (err) {
-      console.error("Failed to submit proof:", err);
-      alert("Gagal mengirim bukti pembayaran. Coba lagi.");
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -296,27 +288,28 @@ export default function PaymentPage() {
             </div>
 
             {!paymentCompleted && (
-              <button onClick={handlePayment} disabled={isProcessing}
-                className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-5 font-semibold disabled:bg-gray-400">
-                {isProcessing ? "Memproses..." : "Bayar Sekarang"}
-              </button>
+              <>
+                <div className="mt-5 bg-white rounded-2xl p-5 text-sm">
+                  <p className="font-semibold mb-3">Upload Bukti Transfer <span className="text-red-500">*</span></p>
+                  <input type="file" accept="image/*" onChange={handleProofFileChange}
+                    className="w-full text-sm text-gray-600" />
+                  {proofDataUrl && (
+                    <img src={proofDataUrl} alt="Bukti" className="w-full max-h-48 object-contain rounded-xl border mt-3" />
+                  )}
+                </div>
+                <button onClick={handlePayment} disabled={isProcessing}
+                  className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-4 font-semibold disabled:bg-gray-400">
+                  {isProcessing ? "Memproses..." : "Bayar Sekarang"}
+                </button>
+              </>
             )}
 
             {paymentCompleted && (
               <div className="mt-5 bg-white rounded-2xl p-5 text-sm">
-                <p className="font-semibold mb-3">Upload Bukti Transfer</p>
-                <input type="file" accept="image/*" onChange={handleProofFileChange}
-                  className="w-full text-sm text-gray-600" />
-                {proofDataUrl && (
-                  <img src={proofDataUrl} alt="Bukti" className="w-full max-h-48 object-contain rounded-xl border mt-3" />
-                )}
-                <button onClick={handleSubmitProof} disabled={!proofDataUrl || isUploading}
-                  className="w-full bg-[#0C72A6] text-white py-3 rounded-full mt-4 font-semibold disabled:bg-gray-400">
-                  {isUploading ? "Mengupload..." : "Upload Bukti"}
-                </button>
-                {proofMessage && <p className="mt-3 text-sm text-green-600">{proofMessage}</p>}
+                <p className="font-semibold text-green-600 mb-2">✅ Pembayaran berhasil diproses!</p>
+                <p className="text-gray-600">Bukti transfer sudah terkirim. Menunggu verifikasi admin.</p>
                 <button onClick={() => router.push("/consultation/my-bookings")}
-                  className="w-full mt-3 border border-[#0C72A6] text-[#0C72A6] py-2 rounded-full text-sm">
+                  className="w-full mt-4 bg-[#0C72A6] text-white py-3 rounded-full font-semibold">
                   Lihat My Bookings
                 </button>
               </div>
