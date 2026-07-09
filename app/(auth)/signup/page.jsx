@@ -70,36 +70,9 @@ export default function SignUp() {
     setIsSubmitting(true);
 
     try {
-      const cleanUsername = formData.username.trim();
-      const cleanEmail = formData.email.trim().toLowerCase();
-
-      const { data: existingUsername, error: usernameCheckError } = await supabase
-        .from("profiles")
-        .select("id")
-        .ilike("username", cleanUsername)
-        .maybeSingle();
-
-      if (usernameCheckError) {
-        console.error(usernameCheckError);
-        setErrors({
-          general: "Gagal mengecek username.",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (existingUsername) {
-        setErrors({
-          username: "Username sudah digunakan. Silakan pilih username lain.",
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          // sesuai flow kamu: register Google -> balik ke halaman login
           redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: {
             prompt: "select_account",
@@ -114,8 +87,9 @@ export default function SignUp() {
         setIsSubmitting(false);
       }
     } catch (err) {
+      console.error("GOOGLE REGISTER ERROR:", err);
       setErrors({
-        general: "Terjadi kesalahan saat register Google.",
+        general: err?.message || "Terjadi kesalahan saat register Google.",
       });
       setIsSubmitting(false);
     }
@@ -137,17 +111,45 @@ export default function SignUp() {
     setIsSubmitting(true);
 
     try {
+      const cleanUsername = formData.username.trim();
+      const cleanEmail = formData.email.trim().toLowerCase();
+
+      const { data: existingUsername, error: usernameCheckError } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", cleanUsername)
+        .maybeSingle();
+
+      if (usernameCheckError) {
+        console.error("USERNAME CHECK ERROR:", usernameCheckError);
+        setErrors({
+          general: "Gagal mengecek username.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (existingUsername) {
+        setErrors({
+          username: "Username sudah digunakan. Silakan pilih username lain.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password: formData.password,
         options: {
           data: {
             username: cleanUsername,
+            role: "user",
           },
         },
       });
 
       if (error) {
+        console.error("SIGN UP ERROR:", error);
         setErrors({
           general: error.message || "Registrasi gagal.",
         });
@@ -157,55 +159,33 @@ export default function SignUp() {
 
       const user = data?.user;
 
-      // Simpan / update data user ke tabel profiles
       if (user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .upsert(
-            {
-              id: user.id,
-              username: cleanUsername,
-              email: cleanEmail,
-            },
-            {
-              onConflict: "id",
-            }
-          );
-
-        if (profileError) {
-          setErrors({
-            general: profileError.message || "Gagal menyimpan profile user.",
+        try {
+          await logActivity({
+            actor_id: user.id,
+            actor_name: cleanUsername,
+            actor_role: "User",
+            action: "Created a new account",
+            category: "Authentication",
+            status: "Completed",
+            description: "A new user account was successfully registered.",
           });
-          setIsSubmitting(false);
-          return;
+        } catch (logError) {
+          console.error("Activity log signup gagal:", logError);
         }
-
-        // ACTIVITY LOG SIGNUP
-        await logActivity({
-          actor_id: user.id,
-
-          actor_name: cleanUsername,
-
-          actor_role: "User",
-
-          action: "Created a new account",
-
-          category: "Authentication",
-
-          status: "Completed",
-
-          description:
-            "A new user account was successfully registered.",
-        });
-
       }
 
       alert("Registrasi berhasil! Silakan login.");
       router.push("/login");
       router.refresh();
     } catch (err) {
+      console.error("REGISTER ERROR:", err);
+
       setErrors({
-        general: "Terjadi kesalahan saat registrasi.",
+        general:
+          err?.message ||
+          err?.error_description ||
+          "Terjadi kesalahan saat registrasi.",
       });
     } finally {
       setIsSubmitting(false);
