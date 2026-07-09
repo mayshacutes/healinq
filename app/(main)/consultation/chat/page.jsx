@@ -177,12 +177,6 @@ export default function UserChatPage() {
   const init = async () => {
     setIsLoading(true);
 
-    if (!roomIdFromUrl) {
-      setErrorMessage("Room ID tidak ditemukan.");
-      setIsLoading(false);
-      return;
-    }
-
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setErrorMessage("Kamu harus login terlebih dahulu.");
@@ -196,7 +190,7 @@ export default function UserChatPage() {
     if (bookingCodeFromUrl) {
       const { data } = await supabase
         .from("consultations")
-        .select("counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic, client_id")
+        .select("id, counselor_name, consultation_date, consultation_hour, consultation_type, session_duration, topic, client_id")
         .eq("booking_code", bookingCodeFromUrl)
         .maybeSingle();
       if (data) {
@@ -210,8 +204,19 @@ export default function UserChatPage() {
         }
         clientId = data.client_id;
         setConsultation(data);
+
+        if (!roomIdFromUrl) {
+          const { data: roomData } = await supabase
+            .from("chat_rooms")
+            .select("id")
+            .eq("consultation_id", data.id)
+            .maybeSingle();
+          if (roomData?.id) {
+            setRoomId(roomData.id);
+          }
+        }
       }
-    } else {
+    } else if (roomIdFromUrl) {
       const { data: roomData } = await supabase
         .from("chat_rooms")
         .select("id, consultation_id")
@@ -229,6 +234,12 @@ export default function UserChatPage() {
           setConsultation(data);
         }
       }
+    }
+
+    if (!roomIdFromUrl && !bookingCodeFromUrl) {
+      setErrorMessage("Room ID tidak ditemukan.");
+      setIsLoading(false);
+      return;
     }
 
     setActualUserId(clientId || user.id);
